@@ -1,0 +1,20 @@
+# 编译输出目录
+/build
+.externalNativeBuild
+.cxx
+
+# 操作系统的临时文件
+desktop.ini
+.directory
+.DS_Store
+
+# 编译工具的临时文件
+.gradle
+
+# IDE本地配置
+.vscode
+.idea
+
+# Android工程配置
+local.properties
+/captures
