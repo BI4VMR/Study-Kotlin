@@ -1,20 +1,27 @@
-# 编译输出目录
-/build
-.externalNativeBuild
-.cxx
-
-# 操作系统的临时文件
+# ----- 操作系统临时文件 -----
+# Windows
 desktop.ini
+# Linux
 .directory
+# Mac OS
 .DS_Store
 
-# 编译工具的临时文件
+# ----- 编译工具输出目录 -----
+# Maven
+target/
+# Gradle
+build/
+
+# ----- 编译工具临时文件 -----
+# Gradle
 .gradle
 
-# IDE本地配置
-.vscode
-.idea
+# ----- IDE本地配置 -----
+# IntelliJ IDEA
+.idea/
+# Visual Studio Code
+.vscode/
 
-# Android工程配置
+# ----- Android工程 -----
+# 本地属性配置文件
 local.properties
-/captures
