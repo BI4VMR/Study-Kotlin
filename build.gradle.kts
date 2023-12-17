@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-// 插件版本声明
+// Gradle插件声明
 plugins {
-    kotlin("jvm") version "1.8.21"
+    alias(libs.plugins.kotlin.core)
 }
 
 group = "net.bi4vmr.study"

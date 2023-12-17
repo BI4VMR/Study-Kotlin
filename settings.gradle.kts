@@ -5,7 +5,7 @@ pluginManagement {
         // 添加本地私有仓库与代理镜像，无法直连时应当禁用该配置。
         val hostInfo = java.net.InetAddress.getLocalHost().toString()
         println("Current host info is $hostInfo")
-        if (hostInfo.contains("172.18.")) {
+        if (hostInfo.startsWith("BI4VMR") && hostInfo.contains("172.18.")) {
             println("Current host is in private network, add private repository.")
             maven {
                 isAllowInsecureProtocol = true
@@ -33,7 +33,7 @@ dependencyResolutionManagement {
     repositories {
         // 添加本地私有仓库与代理镜像，无法直连时应当禁用该配置。
         val hostInfo = java.net.InetAddress.getLocalHost().toString()
-        if (hostInfo.contains("172.18.")) {
+        if (hostInfo.startsWith("BI4VMR") && hostInfo.contains("172.18.")) {
             maven {
                 isAllowInsecureProtocol = true
                 setUrl("http://172.18.5.1:8081/repository/maven-union/")
@@ -51,7 +51,7 @@ dependencyResolutionManagement {
         // 声明命名空间"libs"
         create("libs") {
             // 导入依赖版本配置文件
-            from(files("./versions.toml"))
+            from(files("dependency.toml"))
         }
     }
 }

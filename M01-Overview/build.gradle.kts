@@ -1,8 +1,7 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.core)
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-    implementation(libs.google.gson)
+    implementation(libs.kotlin.stdlib)
 }
