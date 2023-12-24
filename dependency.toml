@@ -5,20 +5,17 @@ java_gson = "2.10.1"
 
 
 # ----- Kotlin：核心 -----
-kotlin_core = "1.8.20"
+kotlin_core = "1.9.21"
 
 
 # ----- Android：核心 -----
-android_minSdk = "26"
-android_targetSdk = "32"
-android_compileSdk = "32"
-
 android_agp = "7.4.2"
 
-android_appcompat = "1.6.1"
+android_appcompat = "1.5.1"
 android_material = "1.8.0"
 android_constraintLayout = "2.1.4"
 
+android_corektx = "1.10.1"
 
 # ----- Android：图像处理 -----
 android_glide-core = "4.16.0"
@@ -45,10 +42,10 @@ android_appcompat = { group = "androidx.appcompat", name = "appcompat", version.
 # Material Design
 android_material = { group = "com.google.android.material", name = "material", version.ref = "android_material" }
 # 约束布局
-android_constraintLayout = { group = "androidx.constraintlayout:constraintlayout", name = "constraintlayout", version.ref = "android_constraintLayout" }
+android_constraintLayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "android_constraintLayout" }
 
-# Kotlin扩展
-android_corektx = { group = "androidx.core", name = "core-ktx", version.ref = "kotlin_core" }
+# Android Kotlin扩展
+android_corektx = { group = "androidx.core", name = "core-ktx", version.ref = "android_corektx" }
 
 
 # ----- Android：图像处理 -----
@@ -63,6 +60,10 @@ android_coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "and
 
 # 编组
 [bundles]
+# ----- Android：核心 -----
+android_core = ["android_appcompat", "android_material", "android_constraintLayout"]
+android_coreWithKT = ["android_appcompat", "android_material", "android_constraintLayout", "android_corektx"]
+
 # ----- Android：图像处理 -----
 android_coil = ["android_coil-core", "android_coil-gif"]
 

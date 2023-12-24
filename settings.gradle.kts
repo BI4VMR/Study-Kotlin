@@ -60,4 +60,8 @@ dependencyResolutionManagement {
 // 主工程名称
 rootProject.name = "Study-Kotlin"
 
+/* ----- 基础知识 ----- */
 include("M01-Overview")
+
+/* ----- 基本语法 ----- */
+include("M02-Base")
