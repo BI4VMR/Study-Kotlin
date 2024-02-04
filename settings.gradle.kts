@@ -61,7 +61,11 @@ dependencyResolutionManagement {
 rootProject.name = "Study-Kotlin"
 
 /* ----- 基础知识 ----- */
-include("M01-Overview")
+include("M01_Overview:C00_Temporary")
+include("M01_Overview:C01_HelloWorld")
 
 /* ----- 基本语法 ----- */
-include("M02-Base")
+include("M02_Base")
+
+/* ----- 高级特性 ----- */
+include(":M03_Advance:C03_Concurrent")
