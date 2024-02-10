@@ -7,6 +7,9 @@ java_gson = "2.10.1"
 # ----- Kotlin：核心 -----
 kotlin_core = "1.9.21"
 
+kotlinx_coroutines = "1.7.3"
+kotlinx_serial_json = "1.6.2"
+
 
 # ----- Android：核心 -----
 android_agp = "7.4.2"
@@ -16,6 +19,7 @@ android_material = "1.8.0"
 android_constraintLayout = "2.1.4"
 
 android_corektx = "1.10.1"
+
 
 # ----- Android：图像处理 -----
 android_glide-core = "4.16.0"
@@ -34,6 +38,11 @@ java_gson = { group = "com.google.code.gson", name = "gson", version.ref = "java
 # ----- Kotlin：核心 -----
 # Kotlin标准库
 kotlin_stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin_core" }
+
+# Kotlin协程支持
+kotlinx_coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx_coroutines" }
+# Kotlin序列化支持(JSON)
+kotlinx_serial_json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx_serial_json" }
 
 
 # ----- Android：核心 -----
@@ -72,7 +81,7 @@ android_coil = ["android_coil-core", "android_coil-gif"]
 [plugins]
 # ----- Kotlin -----
 kotlin_core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin_core" }
-
+kotlin_serial = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin_core" }
 
 # ----- Android -----
 android_application = { id = "com.android.application", version.ref = "android_agp" }
