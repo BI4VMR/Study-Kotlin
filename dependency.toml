@@ -14,11 +14,15 @@ kotlinx_serial_json = "1.6.2"
 # ----- Android：核心 -----
 android_agp = "7.4.2"
 
-android_appcompat = "1.5.1"
+android_appcompat = "1.6.1"
 android_material = "1.8.0"
 android_constraintLayout = "2.1.4"
 
 android_corektx = "1.10.1"
+
+
+# ----- Android：实用工具 -----
+android_utilcodex = "1.31.1"
 
 
 # ----- Android：图像处理 -----
@@ -26,6 +30,10 @@ android_glide-core = "4.16.0"
 
 android_coil-core = "1.1.1"
 android_coil-gif = "0.9.5"
+
+
+# ----- Android：数据存储 -----
+android_room = "2.5.1"
 
 
 # 组件
@@ -57,6 +65,11 @@ android_constraintLayout = { group = "androidx.constraintlayout", name = "constr
 android_corektx = { group = "androidx.core", name = "core-ktx", version.ref = "android_corektx" }
 
 
+# ----- Android：实用工具 -----
+# UtilCodeX
+android_utilcodex = { group = "com.blankj", name = "utilcodex", version.ref = "android_utilcodex" }
+
+
 # ----- Android：图像处理 -----
 # Glide
 android_glide-core = { group = "com.github.bumptech.glide", name = "glide", version.ref = "android_glide-core" }
@@ -67,11 +80,24 @@ android_coil-core = { group = "io.coil-kt", name = "coil", version.ref = "androi
 android_coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "android_coil-gif" }
 
 
+# ----- Android：数据存储 -----
+# Room
+android_room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "android_room" }
+android_room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "android_room" }
+
+# Room-APT
+android_room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "android_room" }
+
+# Room-Test
+android_room-test = { group = "androidx.room", name = "room-testing", version.ref = "android_room" }
+
+
 # 编组
 [bundles]
 # ----- Android：核心 -----
 android_core = ["android_appcompat", "android_material", "android_constraintLayout"]
 android_coreWithKT = ["android_appcompat", "android_material", "android_constraintLayout", "android_corektx"]
+
 
 # ----- Android：图像处理 -----
 android_coil = ["android_coil-core", "android_coil-gif"]
@@ -83,6 +109,8 @@ android_coil = ["android_coil-core", "android_coil-gif"]
 kotlin_core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin_core" }
 kotlin_serial = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin_core" }
 
+
 # ----- Android -----
 android_application = { id = "com.android.application", version.ref = "android_agp" }
 android_library = { id = "com.android.library", version.ref = "android_agp" }
+android_kotlin = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin_core" }
