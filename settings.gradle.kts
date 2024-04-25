@@ -65,7 +65,7 @@ include("M01_Overview:C00_Temporary")
 include("M01_Overview:C01_HelloWorld")
 
 /* ----- 基本语法 ----- */
-include("M02_Base")
+include(":M02_Syntax:C01_Struct")
 
 /* ----- 高级特性 ----- */
 include(":M03_Advance:C03_Concurrent")
