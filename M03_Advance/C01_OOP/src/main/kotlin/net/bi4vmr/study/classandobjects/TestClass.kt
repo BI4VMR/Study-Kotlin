@@ -6,7 +6,7 @@ package net.bi4vmr.study.classandobjects
  * @author BI4VMR
  */
 fun main() {
-    example03()
+    example04()
 }
 
 /*
@@ -45,5 +45,14 @@ fun example02() {
 fun example03() {
     // 使用次要构造方法创建对象
     val lisi = Person3("李四", 20, '女')
+    lisi.speak()
+}
+
+/*
+ * 示例：在主要构造方法中声明全局变量。
+ */
+fun example04() {
+    // 使用次要构造方法创建对象
+    val lisi = Person4("李四", 20, '女')
     lisi.speak()
 }
