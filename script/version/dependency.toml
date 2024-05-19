@@ -11,6 +11,10 @@ kotlinx_coroutines = "1.7.3"
 kotlinx_serial_json = "1.6.2"
 
 
+# ----- Kotlin：Gradle插件 -----
+kotlin_gradle_ksp = "1.9.21-1.0.16"
+
+
 # ----- Android：核心 -----
 android_agp = "7.4.2"
 
@@ -108,6 +112,7 @@ android_coil = ["android_coil-core", "android_coil-gif"]
 # ----- Kotlin -----
 kotlin_core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin_core" }
 kotlin_serial = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin_core" }
+kotlin_ksp = { id = "com.google.devtools.ksp", version.ref = "kotlin_gradle_ksp" }
 
 
 # ----- Android -----

@@ -1,9 +1,7 @@
 package net.bi4vmr.study.nullsafe
 
 /**
- * 测试类 - 空值安全。
- *
- * @author BI4VMR
+ * 测试代码 - 空值安全。
  */
 fun main() {
     example02()

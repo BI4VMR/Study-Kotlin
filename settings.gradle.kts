@@ -51,7 +51,7 @@ dependencyResolutionManagement {
         // 声明命名空间"libs"
         create("libs") {
             // 导入依赖版本配置文件
-            from(files("dependency.toml"))
+            from(files("script/version/dependency.toml"))
         }
     }
 }
