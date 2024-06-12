@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter
  * @author BI4VMR
  */
 fun main() {
-    example01()
+    example02()
 }
 
 /*
@@ -36,26 +36,29 @@ fun example01() {
 }
 
 /*
- * 示例：延时
+ * 示例：顺序执行。
  */
-suspend fun example02() {
-    CoroutineScope(Dispatchers.Default).launch {
-        println("Coroutine exec start.")
-        delay(3000)
-        println("Coroutine exec end.")
-    }.join()
+fun example02() {
+    runBlocking {
+        CoroutineScope(Dispatchers.Default).launch {
+            // 先执行第一个任务
+            function1()
+            // 第一个任务执行完毕后，再执行第二个任务。
+            function2()
+        }.join()
+    }
 }
 
 suspend fun function1() {
-    println("Suspend function1 exec.")
+    println("Suspend function1 exec start. Time:[${getTime()}]")
     delay(2000)
-    println("Suspend function1 exec end.")
+    println("Suspend function1 exec end. Time:[${getTime()}]")
 }
 
 suspend fun function2() {
-    println("Suspend function2 exec.")
+    println("Suspend function2 exec start. Time:[${getTime()}]")
     delay(3000)
-    println("Suspend function2 exec end.")
+    println("Suspend function2 exec end. Time:[${getTime()}]")
 }
 
 /**
