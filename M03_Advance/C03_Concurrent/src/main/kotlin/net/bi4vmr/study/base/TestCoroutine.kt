@@ -36,47 +36,69 @@ fun example01() {
 }
 
 /*
- * 示例：挂起函数。
+ * 示例：挂起与恢复 - 挂起函数。
  */
 fun example02() {
+    runBlocking {
+        CoroutineScope(Dispatchers.Default).launch {
+            // 开启任务并获取返回值
+            val value = task()
+            println("Task return value is $value")
+        }.join()
+    }
+}
+
+// 挂起函数示例
+suspend fun task(): Int {
+    println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
+    delay(2000)
+    println("Task end. Name:[${getThread()}] Time:[${getTime()}]")
+    return 0
+}
+
+/*
+ * 示例：挂起与恢复 - 挂起与恢复机制。
+ */
+fun example03() {
     val scope = CoroutineScope(Dispatchers.Default)
     // 开启第一个任务
     scope.launch {
-        function1()
+        task("1", 2000)
     }
     // 开启第二个任务
     scope.launch {
-        function2()
+        task("2", 3000)
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
     Thread.sleep(5000L)
 }
 
+// 挂起函数示例
+suspend fun task(name: String, time: Long) {
+    println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
+    delay(time)
+    println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+}
+
 /*
- * 示例：顺序执行多个任务。
- *
- * 协程体中的任务默认按照顺序执行，前一个任务执行完毕后，后一个任务才会开始执行。
+ * 示例：任务调度 - 顺序执行。
  */
-fun example022() {
+fun example04() {
     runBlocking {
-        // 先执行第一个任务
-        function1()
-        // 第一个任务执行完毕后，再执行第二个任务。
-        function2()
-        // CoroutineScope(Dispatchers.Default).launch {
-        //     // 先执行第一个任务
-        //     function1()
-        //     // 第一个任务执行完毕后，再执行第二个任务。
-        //     function2()
-        // }.join()
+        CoroutineScope(Dispatchers.Default).launch {
+            // 先执行第一个任务
+            task("1", 2000)
+            // 第一个任务执行完毕后，再执行第二个任务。
+            task("2", 2000)
+        }.join()
     }
 }
 
 /*
  * 示例：并发执行多个任务。
  */
-fun example03() {
+fun example033() {
     runBlocking {
         println("async start")
         val a = async { function1() }
@@ -89,7 +111,7 @@ fun example03() {
 /*
  * 示例：等待多个任务完成再继续执行。
  */
-fun example04() {
+fun example04344() {
     runBlocking {
 
         val job1: Deferred<Int> = async { function1() }
