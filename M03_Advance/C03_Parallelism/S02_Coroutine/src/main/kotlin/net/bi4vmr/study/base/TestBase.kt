@@ -3,6 +3,10 @@ package net.bi4vmr.study.base
 import kotlinx.coroutines.*
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlin.concurrent.thread
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 
 /**
@@ -11,7 +15,7 @@ import kotlin.random.Random
  * @author BI4VMR
  */
 fun main() {
-    example07()
+    example09()
 }
 
 /*
@@ -190,6 +194,85 @@ fun example07() {
              */
             val results: List<Int> = awaitAll(*jobs.toTypedArray())
             println("All task is end, results is ${results}.")
+        }.join()
+    }
+}
+
+/**
+ * 网络请求回调接口。
+ */
+private interface NetCallback {
+
+    // 请求成功
+    fun onSuccess(data: String)
+
+    // 请求失败
+    fun onFailure(message: String)
+}
+
+/**
+ * 模拟网络请求。
+ *
+ * @param[result] 控制请求结果。
+ * @param[callback] 结果回调。
+ */
+private fun request(result: Boolean, callback: NetCallback) {
+    // 开启新线程进行网络请求
+    thread {
+        // 线程休眠，模拟网络延时。
+        Thread.sleep(3000L)
+        // 休眠结束，调用回调方法反馈执行结果。
+        if (result) {
+            callback.onSuccess("200 - OK.")
+        } else {
+            callback.onFailure("502 - Bad Gateway.")
+        }
+    }
+}
+
+/*
+ * 示例：回调接口转挂起函数 - 回调接口使用示例。
+ */
+fun example08() {
+    println("Mock request start. Time:[${getTime()}]")
+    request(true, object : NetCallback {
+        override fun onSuccess(data: String) {
+            println("OnSuccess. Time:[${getTime()}] Data:[$data]")
+        }
+
+        override fun onFailure(message: String) {
+            println("OnFailure. Time:[${getTime()}] Info:[$message]")
+        }
+    })
+}
+
+private suspend fun requestSuspend(result: Boolean): String {
+    return suspendCoroutine {
+        request(result, object : NetCallback {
+            override fun onSuccess(data: String) {
+                // 请求成功，解除挂起状态并返回数据。
+                it.resume(data)
+            }
+
+            override fun onFailure(message: String) {
+                // 请求失败，抛出异常。
+                val exception = Exception(message)
+                it.resumeWithException(exception)
+            }
+        })
+    }
+}
+
+/*
+ * 示例：回调接口转挂起函数 - 挂起函数使用示例。
+ */
+fun example09() {
+    runBlocking {
+        CoroutineScope(Dispatchers.IO).launch {
+            println("Mock request start. Time:[${getTime()}]")
+            // 声明变量以便接收请求成功的结果
+            val data = requestSuspend(true)
+            println("Request success. Time:[${getTime()}] Data:[$data]")
         }.join()
     }
 }
