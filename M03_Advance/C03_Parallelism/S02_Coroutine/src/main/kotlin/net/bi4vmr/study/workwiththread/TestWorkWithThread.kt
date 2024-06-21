@@ -1,9 +1,6 @@
 package net.bi4vmr.study.workwiththread
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
@@ -17,7 +14,7 @@ import kotlin.coroutines.suspendCoroutine
  * @author BI4VMR。
  */
 fun main() {
-    example02()
+    example04()
 }
 
 /**
@@ -117,9 +114,55 @@ fun example03() {
                 println("Request success. Time:[${getTime()}] Data:[$data]")
             } catch (e: Exception) {
                 // 捕获异常以获取失败详情
-                println("Request failure. Info:[${e.message}]")
+                println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
             }
         }.join()
+    }
+}
+
+/**
+ * 模拟网络请求（挂起函数实现-可取消）。
+ *
+ * @param[result] 控制请求结果。
+ */
+private suspend fun requestSuspend2(result: Boolean): String {
+    return suspendCancellableCoroutine {
+        request(result, object : NetCallback {
+            override fun onSuccess(data: String) {
+                // 请求成功，解除挂起状态并返回数据。
+                it.resume(data)
+            }
+
+            override fun onFailure(message: String) {
+                // 请求失败，抛出异常。
+                val exception = Exception(message)
+                it.resumeWithException(exception)
+            }
+        })
+    }
+}
+
+/**
+ * 模拟网络请求（中途取消任务）。
+ */
+fun example04() {
+    runBlocking {
+        val job: Job = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                println("Mock request start. Time:[${getTime()}]")
+                // 模拟请求失败的情况
+                val data = requestSuspend2(true)
+                println("Request success. Time:[${getTime()}] Data:[$data]")
+            } catch (e: Exception) {
+                // 捕获异常以获取失败详情
+                println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
+            }
+        }
+
+        // 延时1秒后取消协程任务
+        delay(1000)
+        job.cancel(CancellationException("Task has been canceled."))
+        job.join()
     }
 }
 
