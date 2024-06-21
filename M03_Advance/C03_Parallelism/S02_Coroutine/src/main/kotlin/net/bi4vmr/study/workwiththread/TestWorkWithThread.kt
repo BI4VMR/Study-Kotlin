@@ -17,7 +17,7 @@ import kotlin.coroutines.suspendCoroutine
  * @author BI4VMR。
  */
 fun main() {
-    example01()
+    example02()
 }
 
 /**
@@ -69,7 +69,7 @@ fun example01() {
 }
 
 /**
- * 模拟网络请求（挂起函数）。
+ * 模拟网络请求（挂起函数实现）。
  *
  * @param[result] 控制请求结果。
  */
@@ -131,4 +131,13 @@ fun example03() {
 private fun getTime(): String {
     val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     return LocalTime.now().format(dateFormatter)
+}
+
+/**
+ * 获取当前线程名称。
+ *
+ * @return 线程名称。
+ */
+private fun getThread(): String {
+    return Thread.currentThread().name
 }
