@@ -14,7 +14,7 @@ import kotlin.coroutines.suspendCoroutine
  * @author BI4VMR。
  */
 fun main() {
-    example04()
+    example05()
 }
 
 /**
@@ -50,7 +50,7 @@ fun request(result: Boolean, callback: NetCallback) {
 }
 
 /*
- * 示例：使用回调风格的API。
+ * 示例：使用接口回调风格的API。
  */
 fun example01() {
     println("Mock request start. Time:[${getTime()}]")
@@ -164,6 +164,44 @@ fun example04() {
         job.cancel(CancellationException("Task has been canceled."))
         job.join()
     }
+}
+
+/**
+ * 模拟网络请求（协程转接口回调）。
+ *
+ * @param[result] 控制请求结果。
+ * @param[callback] 结果回调。
+ */
+fun requestCallback(result: Boolean, callback: NetCallback) {
+    // 在新线程进行网络请求
+    thread {
+        // 开启协程任务并阻塞当前线程
+        runBlocking {
+            try {
+                val data: String = requestSuspend(result)
+                // 获取到结果后，通过回调方法通知调用者。
+                callback.onSuccess(data)
+            } catch (e: Exception) {
+                callback.onFailure(e.message ?: "")
+            }
+        }
+    }
+}
+
+/**
+ * 将协程API转换为接口回调风格的API
+ */
+fun example05() {
+    println("Mock request start. Time:[${getTime()}]")
+    requestCallback(true, object : NetCallback {
+        override fun onSuccess(data: String) {
+            println("OnSuccess. Time:[${getTime()}] Data:[$data]")
+        }
+
+        override fun onFailure(message: String) {
+            println("OnFailure. Time:[${getTime()}] Info:[$message]")
+        }
+    })
 }
 
 /**
