@@ -9,12 +9,12 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * 测试代码 - 与线程相互转换。
+ * 测试代码 - 与线程交互。
  *
  * @author BI4VMR。
  */
 fun main() {
-    example05()
+    example02()
 }
 
 /**

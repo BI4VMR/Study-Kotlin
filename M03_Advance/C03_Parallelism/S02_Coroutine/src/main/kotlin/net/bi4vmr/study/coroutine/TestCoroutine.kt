@@ -1,16 +1,12 @@
-package net.bi4vmr.study.base
+package net.bi4vmr.study.coroutine
 
 import kotlinx.coroutines.*
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import kotlin.concurrent.thread
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 
 /**
- * 测试代码 - 基本应用。
+ * 测试代码 - 协程。
  *
  * @author BI4VMR
  */
