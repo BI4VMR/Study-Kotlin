@@ -3,7 +3,6 @@ package net.bi4vmr.study.coroutine
 import kotlinx.coroutines.*
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import kotlin.random.Random
 
 /**
  * 测试代码 - 协程。
@@ -11,7 +10,7 @@ import kotlin.random.Random
  * @author BI4VMR
  */
 fun main() {
-    example01()
+    example06()
 }
 
 /*
@@ -83,115 +82,74 @@ fun example03() {
 }
 
 /*
- * 示例：任务调度 - 顺序执行任务。
+ * 示例：取消任务（无效示范）。
  */
 fun example04() {
-    // 测试方法：延时特定秒数。
-    suspend fun task(name: String, time: Long) {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
-        delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+    // 启动一个协程，循环输出日志信息。
+    val job: Job = CoroutineScope(Dispatchers.Default).launch {
+        for (i in 1..10_000) {
+            println("Task start. Index:[$i]")
+        }
     }
 
-    runBlocking {
-        CoroutineScope(Dispatchers.Default).launch {
-            // 先执行第一个任务
-            task("1", 2000)
-            // 第一个任务执行完毕后，再执行第二个任务。
-            task("2", 2000)
-        }.join()
-    }
+    // 主线程等待25毫秒，然后取消协程任务。
+    Thread.sleep(25L)
+    job.cancel()
+    println("Try to cancel task.")
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /*
- * 示例：任务调度 - 并发执行任务。
+ * 示例：取消任务（非挂起状态）。
  */
 fun example05() {
-    // 测试方法：延时特定秒数。
-    suspend fun task(name: String, time: Long) {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
-        delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
-    }
-
-    runBlocking {
-        CoroutineScope(Dispatchers.Default).launch {
-            // 使用"launch()"方法开启任务，不接收返回值。
-            launch { task("1", 2000) }
-
-            // 使用"async()"方法开启任务，并通过变量保存任务实例，以便后续获取返回值。
-            val job: Deferred<Int> = async {
-                task("2", 2000)
-                114514
+    // 启动一个协程，循环输出日志信息。
+    val job: Job = CoroutineScope(Dispatchers.Default).launch {
+        for (i in 1..10_000) {
+            // 每轮循环开始前，先判断当前任务是否已被取消。
+            if (!isActive) {
+                // 任务被取消时，终止后续任务。
+                println("Task was canceled!")
+                return@launch
             }
-            // 异步等待任务结束，并接收返回值。
-            val result: Int = job.await()
-            println("Task 2 is end, result is $result.")
-        }.join()
+
+            println("Task start. Index:[$i]")
+        }
     }
+
+    // 主线程等待25毫秒，然后取消协程任务。
+    Thread.sleep(25L)
+    println("Try to cancel task.")
+    job.cancel()
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /*
- * 示例：任务调度 - 等待多个任务的结果1。
+ * 示例：取消任务（挂起状态）。
  */
 fun example06() {
-    // 测试方法：延时特定秒数，并以该秒数为返回值。
-    suspend fun task(name: String, time: Long): Long {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
-        delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
-        return time
+    // 启动一个协程，循环输出日志信息。
+    val job: Job = CoroutineScope(Dispatchers.Default).launch {
+        try {
+            println("Task start.")
+            delay(2000L)
+            println("Task end.")
+        } catch (e: CancellationException) {
+            println("Catch cancellation exception!")
+        }
     }
 
-    runBlocking {
-        CoroutineScope(Dispatchers.Default).launch {
-            // 使用"async()"方法开启两个异步任务
-            val job1: Deferred<Long> = async { task("1", 2000) }
-            val job2: Deferred<Long> = async { task("2", 3000) }
+    // 主线程等待25毫秒，然后取消协程任务。
+    Thread.sleep(25L)
+    println("Try to cancel task.")
+    job.cancel()
 
-            // 使当前任务等待上述两个任务结束，并通过变量接收运行结果。
-            val result1 = job1.await()
-            val result2 = job2.await()
-
-            println("All task is end, summary is ${result1 + result2}.")
-        }.join()
-    }
-}
-
-/*
- * 示例：任务调度 - 等待多个任务的结果2。
- */
-fun example07() {
-    // 测试方法：随机延时若干秒。
-    suspend fun task(name: String): Int {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
-        // 随机延时1-5秒
-        val time: Int = (Random.nextInt(5) + 1)
-        delay(time * 1000L)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
-        return time
-    }
-
-    runBlocking {
-        CoroutineScope(Dispatchers.Default).launch {
-            // 创建集合保存任务实例
-            val jobs: MutableList<Deferred<Int>> = mutableListOf()
-            // 循环开启多个任务
-            for (i in 1..10) {
-                // 启动任务，并将任务实例保存至集合
-                jobs.add(async { task("$i") })
-            }
-
-            /*
-             * 调用"awaitAll()"方法，等待所有任务完成。
-             *
-             * "awaitAll()"方法的参数是Deferred<T>类型可变参数，"toTypedArray()"方法可以将集合转为Array<T>类型变量，在Array<T>之前
-             * 加上"*"可以便捷地将Array<T>转换为多个参数的形式。
-             */
-            val results: List<Int> = awaitAll(*jobs.toTypedArray())
-            println("All task is end, results is ${results}.")
-        }.join()
-    }
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /**
