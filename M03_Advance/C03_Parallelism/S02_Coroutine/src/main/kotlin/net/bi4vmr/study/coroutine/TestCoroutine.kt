@@ -10,29 +10,29 @@ import java.time.format.DateTimeFormatter
  * @author BI4VMR
  */
 fun main() {
-    example06()
+    example02()
 }
 
 /*
  * 示例：基本应用。
  *
- * 若在Android等主线程无限循环的环境中实验，无需调用"runBlocking{}"和"join()"方法。
+ * 若在Android等主线程无限循环的环境中实验，无需调用"Thread.sleep()"方法。
  */
 fun example01() {
-    // 阻塞主线程，等待协程执行完毕。
-    runBlocking {
-        /*
-         * 使用Default调度器，提交任务并启动协程。
-         *
-         * 此处开启协程时需要调用"join()"方法，否则主线程结束后整个进程将会终止，子线程（协程任务）不会继续执行。
-         */
-        CoroutineScope(Dispatchers.Default).launch {
-            println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
-            // 延时2秒，模拟耗时操作。
-            delay(2000)
-            println("Task end. Name:[${getThread()}] Time:[${getTime()}]")
-        }.join()
+    /*
+     * 使用Default调度器，提交任务并启动协程。
+     *
+     * 此处开启协程时需要调用"join()"方法，否则主线程结束后整个进程将会终止，子线程（协程任务）不会继续执行。
+     */
+    CoroutineScope(Dispatchers.Default).launch {
+        println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
+        // 延时2秒，模拟耗时操作。
+        delay(2000)
+        println("Task end. Name:[${getThread()}] Time:[${getTime()}]")
     }
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /*
@@ -47,13 +47,14 @@ fun example02() {
         return 0
     }
 
-    runBlocking {
-        CoroutineScope(Dispatchers.Default).launch {
-            // 开启任务并获取返回值
-            val value = task()
-            println("Task return value is $value")
-        }.join()
+    CoroutineScope(Dispatchers.Default).launch {
+        // 开启任务并获取返回值
+        val value = task()
+        println("Task return value is $value")
     }
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /*
