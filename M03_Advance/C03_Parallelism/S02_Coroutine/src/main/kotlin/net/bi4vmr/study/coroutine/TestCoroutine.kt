@@ -5,18 +5,16 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 测试代码 - 协程。
+ * 测试代码 - 概述。
  *
  * @author BI4VMR
  */
 fun main() {
-    example02()
+    example07()
 }
 
 /*
  * 示例：基本应用。
- *
- * 若在Android等主线程无限循环的环境中实验，无需调用"Thread.sleep()"方法。
  */
 fun example01() {
     /*
@@ -31,7 +29,11 @@ fun example01() {
         println("Task end. Name:[${getThread()}] Time:[${getTime()}]")
     }
 
-    // 阻塞主线程5秒，避免协程提前终止。
+    /*
+     * 阻塞主线程5秒，避免协程提前终止。
+     *
+     * 若在Android等主线程无限循环的环境中实验，无需调用"Thread.sleep()"方法。
+     */
     Thread.sleep(5000L)
 }
 
@@ -39,7 +41,7 @@ fun example01() {
  * 示例：挂起与恢复 - 挂起函数。
  */
 fun example02() {
-    // 挂起函数示例
+    // 定义挂起函数
     suspend fun task(): Int {
         println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
         delay(2000)
@@ -48,7 +50,7 @@ fun example02() {
     }
 
     CoroutineScope(Dispatchers.Default).launch {
-        // 开启任务并获取返回值
+        // 在协程任务中调用挂起函数，并获取返回值。
         val value = task()
         println("Task return value is $value")
     }
@@ -83,9 +85,34 @@ fun example03() {
 }
 
 /*
- * 示例：取消任务（无效示范）。
+ * 示例：协程的生命周期。
  */
 fun example04() {
+    // 启动协程任务，并声明变量保存任务实例。
+    val job: Job = CoroutineScope(Dispatchers.Default).launch {
+        println("Task start. Time:[${getTime()}]")
+        delay(2000L)
+        println("Task end. Time:[${getTime()}]")
+    }
+
+    // 主线程等待100毫秒，然后访问属性获取协程任务的状态。
+    Thread.sleep(100L)
+    // 判断当前任务是否为Active状态
+    val active: Boolean = job.isActive
+    // 判断当前任务是否为Completed状态
+    val completed: Boolean = job.isCompleted
+    // 判断当前任务是否为Cancelled状态
+    val cancelled: Boolean = job.isCancelled
+    println("正在运行:[$active] 任务完成:[$completed] 任务取消:[$cancelled]")
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
+}
+
+/*
+ * 示例：取消任务（非挂起状态 - 无效示范）。
+ */
+fun example05() {
     // 启动一个协程，循环输出日志信息。
     val job: Job = CoroutineScope(Dispatchers.Default).launch {
         for (i in 1..10_000) {
@@ -105,7 +132,7 @@ fun example04() {
 /*
  * 示例：取消任务（非挂起状态）。
  */
-fun example05() {
+fun example06() {
     // 启动一个协程，循环输出日志信息。
     val job: Job = CoroutineScope(Dispatchers.Default).launch {
         for (i in 1..10_000) {
@@ -132,15 +159,15 @@ fun example05() {
 /*
  * 示例：取消任务（挂起状态）。
  */
-fun example06() {
+fun example07() {
     // 启动一个协程，循环输出日志信息。
     val job: Job = CoroutineScope(Dispatchers.Default).launch {
         try {
-            println("Task start.")
+            println("Task start. Time:[${getTime()}]")
             delay(2000L)
             println("Task end.")
         } catch (e: CancellationException) {
-            println("Catch cancellation exception!")
+            println("Catch cancellation exception! Time:[${getTime()}]")
         }
     }
 

@@ -91,33 +91,35 @@ private suspend fun requestSuspend(result: Boolean): String {
  * 示例：使用协程风格的API（请求成功）。
  */
 fun example02() {
-    runBlocking {
-        CoroutineScope(Dispatchers.IO).launch {
-            println("Mock request start. Time:[${getTime()}]")
-            // 声明变量以便接收请求成功的结果
-            val data = requestSuspend(true)
-            println("Request success. Time:[${getTime()}] Data:[$data]")
-        }.join()
+    CoroutineScope(Dispatchers.IO).launch {
+        println("Mock request start. Time:[${getTime()}]")
+        // 声明变量以便接收请求成功的结果
+        val data = requestSuspend(true)
+        println("Request success. Time:[${getTime()}] Data:[$data]")
     }
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /*
  * 示例：使用协程风格的API（请求失败）。
  */
 fun example03() {
-    runBlocking {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                println("Mock request start. Time:[${getTime()}]")
-                // 模拟请求失败的情况
-                val data = requestSuspend(false)
-                println("Request success. Time:[${getTime()}] Data:[$data]")
-            } catch (e: Exception) {
-                // 捕获异常以获取失败详情
-                println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
-            }
-        }.join()
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            println("Mock request start. Time:[${getTime()}]")
+            // 模拟请求失败的情况
+            val data = requestSuspend(false)
+            println("Request success. Time:[${getTime()}] Data:[$data]")
+        } catch (e: Exception) {
+            // 捕获异常以获取失败详情
+            println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
+        }
     }
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /**
@@ -146,24 +148,24 @@ private suspend fun requestSuspend2(result: Boolean): String {
  * 模拟网络请求（中途取消任务）。
  */
 fun example04() {
-    runBlocking {
-        val job: Job = CoroutineScope(Dispatchers.IO).launch {
-            try {
-                println("Mock request start. Time:[${getTime()}]")
-                // 模拟请求失败的情况
-                val data = requestSuspend2(true)
-                println("Request success. Time:[${getTime()}] Data:[$data]")
-            } catch (e: Exception) {
-                // 捕获异常以获取失败详情
-                println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
-            }
+    val job: Job = CoroutineScope(Dispatchers.IO).launch {
+        try {
+            println("Mock request start. Time:[${getTime()}]")
+            // 模拟请求失败的情况
+            val data = requestSuspend2(true)
+            println("Request success. Time:[${getTime()}] Data:[$data]")
+        } catch (e: Exception) {
+            // 捕获异常以获取失败详情
+            println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
         }
-
-        // 延时1秒后取消协程任务
-        delay(1000)
-        job.cancel(CancellationException("Task has been canceled."))
-        job.join()
     }
+
+    // 延时1秒后取消协程任务
+    Thread.sleep(1000L)
+    job.cancel(CancellationException("Task has been canceled."))
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
 }
 
 /**
