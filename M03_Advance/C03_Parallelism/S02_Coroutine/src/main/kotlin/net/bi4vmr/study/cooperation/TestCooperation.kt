@@ -11,7 +11,7 @@ import kotlin.random.Random
  * @author BI4VMR@outlook.com
  */
 fun main() {
-    example02()
+    example04()
 }
 
 /*
@@ -111,7 +111,7 @@ fun example04() {
         // 创建集合保存任务实例
         val jobs: MutableList<Deferred<Int>> = mutableListOf()
         // 循环开启多个任务
-        for (i in 1..10) {
+        for (i in 1..5) {
             // 启动任务，并将任务实例保存至集合
             jobs.add(async { task("$i") })
         }

@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter
  * @author BI4VMR
  */
 fun main() {
-    example07()
+    example06()
 }
 
 /*
@@ -110,29 +110,9 @@ fun example04() {
 }
 
 /*
- * 示例：取消任务（非挂起状态 - 无效示范）。
+ * 示例：取消任务（未挂起状态）。
  */
 fun example05() {
-    // 启动一个协程，循环输出日志信息。
-    val job: Job = CoroutineScope(Dispatchers.Default).launch {
-        for (i in 1..10_000) {
-            println("Task start. Index:[$i]")
-        }
-    }
-
-    // 主线程等待25毫秒，然后取消协程任务。
-    Thread.sleep(25L)
-    job.cancel()
-    println("Try to cancel task.")
-
-    // 阻塞主线程5秒，避免协程提前终止。
-    Thread.sleep(5000L)
-}
-
-/*
- * 示例：取消任务（非挂起状态）。
- */
-fun example06() {
     // 启动一个协程，循环输出日志信息。
     val job: Job = CoroutineScope(Dispatchers.Default).launch {
         for (i in 1..10_000) {
@@ -157,9 +137,9 @@ fun example06() {
 }
 
 /*
- * 示例：取消任务（挂起状态）。
+ * 示例：取消任务（已挂起状态）。
  */
-fun example07() {
+fun example06() {
     // 启动一个协程，循环输出日志信息。
     val job: Job = CoroutineScope(Dispatchers.Default).launch {
         try {
@@ -168,6 +148,8 @@ fun example07() {
             println("Task end.")
         } catch (e: CancellationException) {
             println("Catch cancellation exception! Time:[${getTime()}]")
+        } finally {
+            println("Do some clean work...")
         }
     }
 

@@ -14,7 +14,7 @@ import kotlin.coroutines.suspendCoroutine
  * @author BI4VMR。
  */
 fun main() {
-    example02()
+    example04()
 }
 
 /**
@@ -129,6 +129,11 @@ fun example03() {
  */
 private suspend fun requestSuspend2(result: Boolean): String {
     return suspendCancellableCoroutine {
+        // 此处可以书写收到中断请求后的清理工作
+        it.invokeOnCancellation {
+            println("Task was canceled!")
+        }
+
         request(result, object : NetCallback {
             override fun onSuccess(data: String) {
                 // 请求成功，解除挂起状态并返回数据。
