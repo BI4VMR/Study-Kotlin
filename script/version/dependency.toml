@@ -23,7 +23,10 @@ android_appcompat = "1.6.1"
 android_material = "1.8.0"
 android_constraintLayout = "2.1.4"
 
-android_corektx = "1.10.1"
+android_KTX_core = "1.10.1"
+android_KTX_coroutine = "1.8.1"
+android_KTX_lifecycleRuntime = "2.5.1"
+android_KTX_lifecycleViewModel = "2.5.1"
 
 
 # ----- Android：实用工具 -----
@@ -69,8 +72,14 @@ android_material = { group = "com.google.android.material", name = "material", v
 # 约束布局
 android_constraintLayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "android_constraintLayout" }
 
-# Android Kotlin扩展
-android_corektx = { group = "androidx.core", name = "core-ktx", version.ref = "android_corektx" }
+# Android Kotlin扩展（核心）
+android_KTX_core = { group = "androidx.core", name = "core-ktx", version.ref = "android_KTX_core" }
+# Android Kotlin扩展（协程）
+android_KTX_coroutine = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "android_KTX_coroutine" }
+# Android Kotlin扩展（Lifecycle-Runtime）
+android_KTX_lifecycleRuntime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "android_KTX_lifecycleRuntime" }
+# Android Kotlin扩展（Lifecycle-ViewModel）
+android_KTX_lifecycleViewModel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "android_KTX_lifecycleViewModel" }
 
 
 # ----- Android：实用工具 -----
@@ -104,7 +113,7 @@ android_room-test = { group = "androidx.room", name = "room-testing", version.re
 [bundles]
 # ----- Android：核心 -----
 android_core = ["android_appcompat", "android_material", "android_constraintLayout"]
-android_coreWithKT = ["android_appcompat", "android_material", "android_constraintLayout", "android_corektx"]
+android_coreWithKT = ["android_appcompat", "android_material", "android_constraintLayout", "android_KTX_core", "android_KTX_coroutine", "android_KTX_lifecycleRuntime", "android_KTX_lifecycleViewModel"]
 
 
 # ----- Android：图像处理 -----

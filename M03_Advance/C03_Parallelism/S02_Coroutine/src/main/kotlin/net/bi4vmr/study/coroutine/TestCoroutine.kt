@@ -10,10 +10,10 @@ import java.time.format.DateTimeFormatter
  * @author BI4VMR
  */
 fun main() {
-    example06()
+    example01()
 }
 
-/*
+/**
  * 示例：基本应用。
  */
 fun example01() {
