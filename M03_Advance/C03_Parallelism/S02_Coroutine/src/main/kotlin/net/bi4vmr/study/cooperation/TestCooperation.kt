@@ -11,7 +11,7 @@ import kotlin.random.Random
  * @author BI4VMR@outlook.com
  */
 fun main() {
-    example04()
+    example022()
 }
 
 /*
@@ -59,6 +59,31 @@ fun example02() {
         // 异步等待任务结束，并接收返回值。
         val result: Int = job.await()
         println("Task 2 is end, result is $result.")
+    }
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
+}
+
+/*
+ * 示例：等待其他任务结束。
+ */
+fun example022() {
+    // 测试方法：延时特定秒数。
+    suspend fun task(name: String, time: Long) {
+        println("Task $name start. Time:[${getTime()}]")
+        delay(time)
+        println("Task $name end. Time:[${getTime()}]")
+    }
+
+    CoroutineScope(Dispatchers.Default).launch {
+        println("Task root start.")
+        // 使用"launch()"方法开启子任务。
+        val job: Job = launch { task("1", 2000) }
+
+        // 在当前协程任务中调用子任务的"join()"方法，等待子任务结束再继续运行。
+        job.join()
+        println("Task root end.")
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
