@@ -19,8 +19,6 @@ fun main() {
 fun example01() {
     /*
      * 使用Default调度器，提交任务并启动协程。
-     *
-     * 此处开启协程时需要调用"join()"方法，否则主线程结束后整个进程将会终止，子线程（协程任务）不会继续执行。
      */
     CoroutineScope(Dispatchers.Default).launch {
         println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
@@ -32,7 +30,7 @@ fun example01() {
     /*
      * 阻塞主线程5秒，避免协程提前终止。
      *
-     * 若在Android等主线程无限循环的环境中实验，无需调用"Thread.sleep()"方法。
+     * 若在Web Server、Android等主线程无限循环的环境中实验，无需调用"Thread.sleep()"方法。
      */
     Thread.sleep(5000L)
 }
