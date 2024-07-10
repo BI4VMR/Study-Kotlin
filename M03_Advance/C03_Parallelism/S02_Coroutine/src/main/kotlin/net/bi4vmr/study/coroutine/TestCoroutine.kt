@@ -7,7 +7,7 @@ import java.time.format.DateTimeFormatter
 /**
  * 测试代码 - 概述。
  *
- * @author BI4VMR
+ * @author BI4VMR@outlook.com
  */
 fun main() {
     example01()
@@ -21,10 +21,10 @@ fun example01() {
      * 使用Default调度器，提交任务并启动协程。
      */
     CoroutineScope(Dispatchers.Default).launch {
-        println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task start. Thread:[${getThread()}] Time:[${getTime()}]")
         // 延时2秒，模拟耗时操作。
         delay(2000)
-        println("Task end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task end. Thread:[${getThread()}] Time:[${getTime()}]")
     }
 
     /*
@@ -41,16 +41,16 @@ fun example01() {
 fun example02() {
     // 定义挂起函数
     suspend fun task(): Int {
-        println("Task start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task start. Thread:[${getThread()}] Time:[${getTime()}]")
         delay(2000)
-        println("Task end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task end. Thread:[${getThread()}] Time:[${getTime()}]")
         return 0
     }
 
     CoroutineScope(Dispatchers.Default).launch {
         // 在协程任务中调用挂起函数，并获取返回值。
         val value = task()
-        println("Task return value is $value")
+        println("Task return value is $value.")
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
@@ -63,9 +63,9 @@ fun example02() {
 fun example03() {
     // 挂起函数示例
     suspend fun task(name: String, time: Long) {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
         delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name end. Thread:[${getThread()}] Time:[${getTime()}]")
     }
 
     val scope = CoroutineScope(Dispatchers.Default)

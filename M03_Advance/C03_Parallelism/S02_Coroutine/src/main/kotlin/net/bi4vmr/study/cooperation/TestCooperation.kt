@@ -11,7 +11,7 @@ import kotlin.random.Random
  * @author BI4VMR@outlook.com
  */
 fun main() {
-    example022()
+    example03()
 }
 
 /*
@@ -20,9 +20,9 @@ fun main() {
 fun example01() {
     // 测试方法：延时特定秒数。
     suspend fun task(name: String, time: Long) {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
         delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name end. Thread:[${getThread()}] Time:[${getTime()}]")
     }
 
     CoroutineScope(Dispatchers.Default).launch {
@@ -37,14 +37,55 @@ fun example01() {
 }
 
 /*
- * 示例：并发执行任务。
+ * 示例：顺序执行任务 - 协程与接口回调风格对比（伪代码）。
  */
 fun example02() {
+    /* 接口回调风格
+
+     val studentID: Long = 1
+
+     // 首先根据ID查询学生信息
+     queryStudent(studentID, object : OnResult() {
+         override fun onSuccess(student: Student) {
+             // 获取班级ID
+             val classID: Long = student.classID
+             // 然后根据班级ID查询班级信息
+             queryClass(classID, object : OnResult() {
+                 override fun onSuccess(classInfo: ClassInfo) {
+                     // 显示班级信息
+                     println(classInfo)
+                 }
+             })
+         }
+     })
+     */
+
+    /* 协程风格
+
+     val studentID: Long = 1
+
+     CoroutineScope(Dispatchers.Default).launch {
+         // 首先根据ID查询学生信息
+         val student: Student = queryStudent(studentID)
+         // 获取班级ID
+         val classID: Long = student.classID
+         // 然后根据班级ID查询班级信息
+         val classInfo: ClassInfo = queryClass(classID)
+         // 显示班级信息
+         println(classInfo)
+     }
+     */
+}
+
+/*
+ * 示例：并发执行任务。
+ */
+fun example03() {
     // 测试方法：延时特定秒数。
     suspend fun task(name: String, time: Long) {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
         delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name end. Thread:[${getThread()}] Time:[${getTime()}]")
     }
 
     CoroutineScope(Dispatchers.Default).launch {
@@ -68,7 +109,7 @@ fun example02() {
 /*
  * 示例：等待其他任务结束。
  */
-fun example022() {
+fun example04() {
     // 测试方法：延时特定秒数。
     suspend fun task(name: String, time: Long) {
         println("Task $name start. Time:[${getTime()}]")
@@ -93,12 +134,12 @@ fun example022() {
 /*
  * 示例：等待多个任务的结果（方式1）。
  */
-fun example03() {
+fun example05() {
     // 测试方法：延时特定秒数，并以该秒数为返回值。
     suspend fun task(name: String, time: Long): Long {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
         delay(time)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name end. Thread:[${getThread()}] Time:[${getTime()}]")
         return time
     }
 
@@ -121,14 +162,14 @@ fun example03() {
 /*
  * 示例：等待多个任务的结果（方式2）。
  */
-fun example04() {
+fun example06() {
     // 测试方法：随机延时若干秒。
     suspend fun task(name: String): Int {
-        println("Task $name start. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
         // 随机延时1-5秒
         val time: Int = (Random.nextInt(5) + 1)
         delay(time * 1000L)
-        println("Task $name end. Name:[${getThread()}] Time:[${getTime()}]")
+        println("Task $name end. Thread:[${getThread()}] Time:[${getTime()}]")
         return time
     }
 
