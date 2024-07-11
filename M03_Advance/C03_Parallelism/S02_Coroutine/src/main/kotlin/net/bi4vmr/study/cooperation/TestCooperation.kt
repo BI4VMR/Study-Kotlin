@@ -11,7 +11,7 @@ import kotlin.random.Random
  * @author BI4VMR@outlook.com
  */
 fun main() {
-    example03()
+    example04()
 }
 
 /*
@@ -40,7 +40,7 @@ fun example01() {
  * 示例：顺序执行任务 - 协程与接口回调风格对比（伪代码）。
  */
 fun example02() {
-    /* 接口回调风格
+    /* ----- 接口回调风格 -----
 
      val studentID: Long = 1
 
@@ -60,7 +60,7 @@ fun example02() {
      })
      */
 
-    /* 协程风格
+    /* ----- 协程风格 -----
 
      val studentID: Long = 1
 
@@ -95,6 +95,7 @@ fun example03() {
         // 使用"async()"方法开启任务，并通过变量保存任务实例，以便后续获取返回值。
         val job: Deferred<Int> = async {
             task("2", 2000)
+            // 协程体是一个Lambda表达式，最后一条语句的值即返回值。
             114514
         }
         // 异步等待任务结束，并接收返回值。
@@ -107,7 +108,7 @@ fun example03() {
 }
 
 /*
- * 示例：等待其他任务结束。
+ * 示例：等待其他任务完成。
  */
 fun example04() {
     // 测试方法：延时特定秒数。
@@ -122,7 +123,7 @@ fun example04() {
         // 使用"launch()"方法开启子任务。
         val job: Job = launch { task("1", 2000) }
 
-        // 在当前协程任务中调用子任务的"join()"方法，等待子任务结束再继续运行。
+        // 在顶级协程中调用子任务的"join()"方法，等待子任务结束再继续运行。
         job.join()
         println("Task root end.")
     }
