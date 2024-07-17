@@ -14,7 +14,7 @@ import kotlin.coroutines.suspendCoroutine
  * @author BI4VMR。
  */
 fun main() {
-    example04()
+    example06()
 }
 
 /**
@@ -49,7 +49,7 @@ fun request(result: Boolean, callback: NetCallback) {
     }
 }
 
-/*
+/**
  * 示例：使用接口回调风格的API。
  */
 fun example01() {
@@ -87,7 +87,7 @@ private suspend fun requestSuspend(result: Boolean): String {
     }
 }
 
-/*
+/**
  * 示例：使用协程风格的API（请求成功）。
  */
 fun example02() {
@@ -102,7 +102,7 @@ fun example02() {
     Thread.sleep(5000L)
 }
 
-/*
+/**
  * 示例：使用协程风格的API（请求失败）。
  */
 fun example03() {
@@ -150,7 +150,7 @@ private suspend fun requestSuspend2(result: Boolean): String {
 }
 
 /**
- * 模拟网络请求（中途取消任务）。
+ * 示例：模拟网络请求（中途取消任务）。
  */
 fun example04() {
     val job: Job = CoroutineScope(Dispatchers.IO).launch {
@@ -196,7 +196,7 @@ fun requestCallback(result: Boolean, callback: NetCallback) {
 }
 
 /**
- * 将协程API转换为接口回调风格的API
+ * 示例：将协程API转换为接口回调风格的API。
  */
 fun example05() {
     println("Mock request start. Time:[${getTime()}]")
@@ -209,6 +209,21 @@ fun example05() {
             println("OnFailure. Time:[${getTime()}] Info:[$message]")
         }
     })
+}
+
+/**
+ * 示例：开启一个协程，使主线程等待协程执行完毕再结束。
+ */
+fun example06() {
+    runBlocking {
+        // 启动协程后调用"join()"方法，使主线程等待协程执行完毕。
+        CoroutineScope(Dispatchers.Default).launch {
+            println("Task start.")
+            delay(2000)
+            println("Task end.")
+        }.join()
+    }
+    println("Main thread end.")
 }
 
 /**

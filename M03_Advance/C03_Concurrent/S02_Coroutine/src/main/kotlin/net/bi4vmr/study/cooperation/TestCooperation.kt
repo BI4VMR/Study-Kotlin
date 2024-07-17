@@ -11,10 +11,10 @@ import kotlin.random.Random
  * @author BI4VMR@outlook.com
  */
 fun main() {
-    example04()
+    example044()
 }
 
-/*
+/**
  * 示例：顺序执行任务。
  */
 fun example01() {
@@ -27,16 +27,16 @@ fun example01() {
 
     CoroutineScope(Dispatchers.Default).launch {
         // 先执行第一个任务
-        task("1", 2000)
+        task("A", 2000)
         // 第一个任务执行完毕后，再执行第二个任务。
-        task("2", 2000)
+        task("B", 2000)
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
     Thread.sleep(5000L)
 }
 
-/*
+/**
  * 示例：顺序执行任务 - 协程与接口回调风格对比（伪代码）。
  */
 fun example02() {
@@ -77,7 +77,7 @@ fun example02() {
      */
 }
 
-/*
+/**
  * 示例：并发执行任务。
  */
 fun example03() {
@@ -89,18 +89,10 @@ fun example03() {
     }
 
     CoroutineScope(Dispatchers.Default).launch {
-        // 使用"launch()"方法开启任务，不接收返回值。
-        launch { task("1", 2000) }
-
-        // 使用"async()"方法开启任务，并通过变量保存任务实例，以便后续获取返回值。
-        val job: Deferred<Int> = async {
-            task("2", 2000)
-            // 协程体是一个Lambda表达式，最后一条语句的值即返回值。
-            114514
-        }
-        // 异步等待任务结束，并接收返回值。
-        val result: Int = job.await()
-        println("Task 2 is end, result is $result.")
+        // 创建协程执行任务A
+        launch { task("A", 2000) }
+        // 创建协程执行任务B
+        launch { task("B", 2000) }
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
@@ -126,6 +118,34 @@ fun example04() {
         // 在顶级协程中调用子任务的"join()"方法，等待子任务结束再继续运行。
         job.join()
         println("Task root end.")
+    }
+
+    // 阻塞主线程5秒，避免协程提前终止。
+    Thread.sleep(5000L)
+}
+
+/*
+ * 示例：获取任务结果。
+ */
+fun example044() {
+    // 测试方法：延时特定秒数。
+    suspend fun task(name: String, time: Long) {
+        println("Task $name start. Time:[${getTime()}]")
+        delay(time)
+        println("Task $name end. Time:[${getTime()}]")
+    }
+
+    CoroutineScope(Dispatchers.Default).launch {
+        println("Task root start.")
+        // 使用"async()"方法开启任务，并通过变量保存任务对象，以便后续获取返回值。
+        val job: Deferred<Int> = async {
+            task("sub", 2000)
+            // 协程体是一个Lambda表达式，最后一条语句的值即任务的返回值。
+            114514
+        }
+        // 异步等待任务结束，并接收返回值。
+        val result: Int = job.await()
+        println("Task root end, subtask result is $result.")
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
