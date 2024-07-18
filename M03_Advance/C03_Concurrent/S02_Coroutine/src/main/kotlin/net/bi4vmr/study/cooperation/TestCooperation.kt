@@ -11,7 +11,7 @@ import kotlin.random.Random
  * @author BI4VMR@outlook.com
  */
 fun main() {
-    example044()
+    example05()
 }
 
 /**
@@ -111,23 +111,23 @@ fun example04() {
     }
 
     CoroutineScope(Dispatchers.Default).launch {
-        println("Task root start.")
+        println("Task Root start.")
         // 使用"launch()"方法开启子任务。
-        val job: Job = launch { task("1", 2000) }
+        val job: Job = launch { task("A", 2000) }
 
         // 在顶级协程中调用子任务的"join()"方法，等待子任务结束再继续运行。
         job.join()
-        println("Task root end.")
+        println("Task Root end.")
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：获取任务结果。
+/**
+ * 示例：获取其他任务的结果。
  */
-fun example044() {
+fun example05() {
     // 测试方法：延时特定秒数。
     suspend fun task(name: String, time: Long) {
         println("Task $name start. Time:[${getTime()}]")
@@ -136,26 +136,26 @@ fun example044() {
     }
 
     CoroutineScope(Dispatchers.Default).launch {
-        println("Task root start.")
-        // 使用"async()"方法开启任务，并通过变量保存任务对象，以便后续获取返回值。
+        println("Task Root start.")
+        // 使用"async()"方法开启任务，并声明变量保存任务对象，以便后续获取返回值。
         val job: Deferred<Int> = async {
-            task("sub", 2000)
+            task("A", 2000)
             // 协程体是一个Lambda表达式，最后一条语句的值即任务的返回值。
             114514
         }
         // 异步等待任务结束，并接收返回值。
         val result: Int = job.await()
-        println("Task root end, subtask result is $result.")
+        println("Task Root end, task A result is $result.")
     }
 
     // 阻塞主线程5秒，避免协程提前终止。
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：等待多个任务的结果（方式1）。
+/**
+ * 示例：合并多个任务的结果（方式1）。
  */
-fun example05() {
+fun example06() {
     // 测试方法：延时特定秒数，并以该秒数为返回值。
     suspend fun task(name: String, time: Long): Long {
         println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
@@ -180,10 +180,10 @@ fun example05() {
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：等待多个任务的结果（方式2）。
+/**
+ * 示例：合并多个任务的结果（方式2）。
  */
-fun example06() {
+fun example07() {
     // 测试方法：随机延时若干秒。
     suspend fun task(name: String): Int {
         println("Task $name start. Thread:[${getThread()}] Time:[${getTime()}]")
@@ -195,11 +195,11 @@ fun example06() {
     }
 
     CoroutineScope(Dispatchers.Default).launch {
-        // 创建集合保存任务实例
+        // 创建集合保存Deferred对象
         val jobs: MutableList<Deferred<Int>> = mutableListOf()
         // 循环开启多个任务
         for (i in 1..5) {
-            // 启动任务，并将任务实例保存至集合
+            // 启动任务，并将Deferred对象保存至集合。
             jobs.add(async { task("$i") })
         }
 

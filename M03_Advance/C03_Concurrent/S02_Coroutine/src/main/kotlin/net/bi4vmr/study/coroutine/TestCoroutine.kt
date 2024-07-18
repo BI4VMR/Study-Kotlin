@@ -86,7 +86,7 @@ fun example03() {
  * 示例：协程的生命周期。
  */
 fun example04() {
-    // 启动协程任务，并声明变量保存任务实例。
+    // 启动协程任务，并声明变量保存Job对象。
     val job: Job = CoroutineScope(Dispatchers.Default).launch {
         println("Task start. Time:[${getTime()}]")
         delay(2000L)
