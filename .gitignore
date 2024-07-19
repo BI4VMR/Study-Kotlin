@@ -6,16 +6,21 @@ desktop.ini
 # Mac OS
 .DS_Store
 
+
 # ----- 编译工具输出目录 -----
 # Maven
 target/
 out/
 # Gradle
 build/
+# CMake
+cmake-build-*/
+
 
 # ----- 编译工具临时文件 -----
 # Gradle
-.gradle
+.gradle/
+
 
 # ----- IDE本地配置 -----
 # IntelliJ IDEA
@@ -23,8 +28,15 @@ build/
 # Visual Studio Code
 .vscode/
 
+
+# ----- Java工程 -----
+# Java错误日志
+hs_err_pid*.log
+
+
 # ----- Android工程 -----
 # 本地属性配置文件
 local.properties
-# NDK
+# CMake - Android NDK
 .cxx/
+.externalNativeBuild/
