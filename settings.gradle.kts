@@ -19,13 +19,22 @@ pluginManagement {
         println("Current host in private LAN? [$isInPrivateLAN]")
 
         if (hostName.startsWith("BI4VMR") && isInPrivateLAN) {
-            println("Current host is in private network, add private repositorys.")
+            println("Current host is in private network, add LAN repositorys.")
             maven {
                 isAllowInsecureProtocol = true
                 setUrl("http://172.18.5.1:8081/repository/maven-union/")
             }
         } else {
-            println("Current host not in private network.")
+            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(5)) {
+                println("Current host is not in private network, add VPN repositorys.")
+                maven {
+                    isAllowInsecureProtocol = true
+                    setUrl("http://192.168.128.1:8081/repository/maven-union/")
+                }
+            } else {
+                println("Current host is not in private network, add LOCAL repositorys.")
+                mavenLocal()
+            }
         }
 
         // 腾讯云仓库镜像：Maven中心仓库
@@ -35,9 +44,6 @@ pluginManagement {
 
         mavenCentral()
         gradlePluginPortal()
-
-        // TestOnly
-        // mavenLocal()
     }
 }
 
@@ -66,15 +72,21 @@ dependencyResolutionManagement {
                 isAllowInsecureProtocol = true
                 setUrl("http://172.18.5.1:8081/repository/maven-union/")
             }
+        } else {
+            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(5)) {
+                maven {
+                    isAllowInsecureProtocol = true
+                    setUrl("http://192.168.128.1:8081/repository/maven-union/")
+                }
+            } else {
+                mavenLocal()
+            }
         }
 
         // 腾讯云仓库镜像：Maven中心仓库
         maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
 
         mavenCentral()
-
-        // TestOnly
-        // mavenLocal()
     }
 
     // 版本管理配置
@@ -82,7 +94,7 @@ dependencyResolutionManagement {
         // 声明命名空间"libs"
         create("libs") {
             // 导入依赖版本配置文件
-            from(files("script/version/dependency.toml"))
+            from(files("misc/version/dependency.toml"))
         }
     }
 }
@@ -91,13 +103,14 @@ dependencyResolutionManagement {
 // 主工程名称
 rootProject.name = "Study-Kotlin"
 
-/* ----- 基础知识 ----- */
+
+// ----- 基础知识 -----
 include("M01_Overview:C00_Temporary")
 include("M01_Overview:C01_HelloWorld")
 
-/* ----- 基本语法 ----- */
+// ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")
 
-/* ----- 高级特性 ----- */
+// ----- 高级特性 -----
 include(":M03_Advance:C01_OOP")
 include(":M03_Advance:C03_Concurrent:S02_Coroutine")
