@@ -1,4 +1,4 @@
-package net.bi4vmr.study
+package net.bi4vmr.study.struct
 
 import java.math.BigDecimal
 

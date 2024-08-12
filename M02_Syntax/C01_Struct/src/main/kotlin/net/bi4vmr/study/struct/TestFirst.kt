@@ -1,4 +1,4 @@
-package net.bi4vmr.study
+package net.bi4vmr.study.struct
 
 // "main"方法，是程序的入口。
 fun main(args: Array<String>) {
