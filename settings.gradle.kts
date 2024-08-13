@@ -91,10 +91,19 @@ dependencyResolutionManagement {
 
     // 版本管理配置
     versionCatalogs {
-        // 声明命名空间"libs"
-        create("libs") {
-            // 导入依赖版本配置文件
-            from(files("misc/version/dependency.toml"))
+        // 公共组件(Java)
+        create("libJava") {
+            from(files("misc/version/dependency_public_java.toml"))
+        }
+
+        // 公共组件(Kotlin)
+        create("libKotlin") {
+            from(files("misc/version/dependency_public_kotlin.toml"))
+        }
+
+        // 私有组件(Java)
+        create("privateLibJava") {
+            from(files("misc/version/dependency_private_java.toml"))
         }
     }
 }

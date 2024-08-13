@@ -1,8 +1,8 @@
 plugins {
-    alias(libs.plugins.kotlin.core)
-    id("org.jetbrains.dokka") version "1.9.20"
+    alias(libKotlin.plugins.core)
+    alias(libKotlin.plugins.dokka)
 }
 
 dependencies {
-    implementation(libs.kotlin.stdlib)
+    implementation(libKotlin.stdlib)
 }

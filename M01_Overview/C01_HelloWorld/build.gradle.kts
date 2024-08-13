@@ -1,7 +1,7 @@
 plugins {
-    alias(libs.plugins.kotlin.core)
+    alias(libKotlin.plugins.core)
 }
 
 dependencies {
-    implementation(libs.kotlin.stdlib)
+    implementation(libKotlin.stdlib)
 }
