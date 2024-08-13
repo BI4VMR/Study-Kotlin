@@ -3,24 +3,24 @@ package net.bi4vmr.study.struct
 import java.math.BigDecimal
 
 /**
- * 测试类 - Java文档注释
+ * 测试代码 - Kotlin文档注释。
  *
- * @author BI4VMR
- * @version 1.0
+ * @since 1.0.0
+ * @author bi4vmr@outlook.com
  */
 class TestComment {
 
     /**
-     * 计算两数之和
+     * 计算两数之和。
      *
      * 功能类似于[BigDecimal.add]。
      *
-     * @param a 运算数1。
-     * @param b 运算数2。
+     * @param[a] 运算数1。
+     * @param[b] 运算数2。
      * @return 两个运算数的和。
      * @since 1.0
-     * @throws IllegalArgumentException 除数为"0"。
-     * @see java.math.BigDecimal.add(BigDecimal)
+     * @throws[IllegalArgumentException] 除数为"0"。
+     * @see BigDecimal.add
      */
     fun divide(a: Int, b: Int): Int {
         if (b == 0) {
