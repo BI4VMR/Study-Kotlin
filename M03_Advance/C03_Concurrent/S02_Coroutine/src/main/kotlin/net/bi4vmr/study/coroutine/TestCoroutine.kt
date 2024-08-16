@@ -5,7 +5,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 测试代码 - 概述。
+ * 测试代码 - 协程。
  *
  * @author BI4VMR@outlook.com
  */
@@ -15,6 +15,8 @@ fun main() {
 
 /**
  * 示例：基本应用。
+ *
+ * 在本示例中，我们创建一个协程。
  */
 fun example01() {
     /*
