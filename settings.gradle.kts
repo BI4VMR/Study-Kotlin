@@ -25,7 +25,7 @@ pluginManagement {
                 setUrl("http://172.18.5.1:8081/repository/maven-union/")
             }
         } else {
-            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(5)) {
+            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(2000)) {
                 println("Current host is not in private network, add VPN repositorys.")
                 maven {
                     isAllowInsecureProtocol = true
@@ -73,7 +73,7 @@ dependencyResolutionManagement {
                 setUrl("http://172.18.5.1:8081/repository/maven-union/")
             }
         } else {
-            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(5)) {
+            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(2000)) {
                 maven {
                     isAllowInsecureProtocol = true
                     setUrl("http://192.168.128.1:8081/repository/maven-union/")

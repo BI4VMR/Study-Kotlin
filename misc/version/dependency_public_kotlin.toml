@@ -14,9 +14,11 @@ plugin_dokka = "1.9.20"
 # 组件
 [libraries]
 # ----- 核心组件 -----
+# < Kotlin 官方组件 >
 # Kotlin标准库
-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "core" }
+standardlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "core" }
 
+# < Kotlin 官方扩展 >
 # Kotlin协程支持
 ktx_coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "ktx_coroutines" }
 # Kotlin序列化支持(JSON)

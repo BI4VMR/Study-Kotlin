@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation(libKotlin.stdlib)
+    implementation(libKotlin.standardlib)
     implementation(libKotlin.ktx.coroutines)
 }

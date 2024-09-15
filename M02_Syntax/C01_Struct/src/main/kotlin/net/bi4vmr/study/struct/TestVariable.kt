@@ -3,8 +3,8 @@ package net.bi4vmr.study.struct
 /**
  * 测试代码 - 变量。
  *
- * @since 1.0.0
  * @author bi4vmr@outlook.com
+ * @since 1.0.0
  */
 fun main(args: Array<String>) {
     example03()
