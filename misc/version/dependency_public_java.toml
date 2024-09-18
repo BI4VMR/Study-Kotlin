@@ -14,7 +14,9 @@ mybatis = "3.5.16"
 
 
 # ----- 网络通讯 -----
-okhttp_bom = "4.12.0"
+okhttp3_bom = "4.12.0"
+
+retrofit2_bom = "2.11.0"
 
 okhttps_core = "4.0.3"
 
@@ -52,13 +54,18 @@ mybatis = { group = "org.mybatis", name = "mybatis", version.ref = "mybatis" }
 # ----- 网络通讯 -----
 # < OkHttp3 >
 # BOM文件（其他组件的版本配置文件）
-okhttp3_bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref = "okhttp_bom" }
+okhttp3_bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref = "okhttp3_bom" }
 # 核心
 okhttp3_core = { group = "com.squareup.okhttp3", name = "okhttp" }
 # 调试工具
 okhttp3_logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor" }
 okhttp3_mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver" }
 
+# < Retrofit >
+# BOM文件（其他组件的版本配置文件）
+retrofit2_bom = { group = "com.squareup.retrofit2", name = "retrofit-bom", version.ref = "retrofit2_bom" }
+# 核心
+retrofit2_core = { group = "com.squareup.retrofit2", name = "retrofit" }
 
 # < OkHttps >
 # 核心
