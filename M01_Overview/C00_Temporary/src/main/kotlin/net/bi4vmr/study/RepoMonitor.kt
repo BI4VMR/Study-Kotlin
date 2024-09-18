@@ -5,10 +5,8 @@ import cn.zhxu.okhttps.HttpResult
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.offbytwo.jenkins.JenkinsServer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import java.net.URI
 import kotlin.system.exitProcess
 
 /**
@@ -20,21 +18,26 @@ import kotlin.system.exitProcess
 // 轮询间隔（秒）
 const val CHECK_INTERVAL = 120
 
-const val MAVEN_USERNAME = "uploader"
-const val MAVEN_PASSWORD = "uploader"
-const val MAVEN_REPO = "maven-private"
-const val MAVEN_GROUP = "net.bi4vmr.tool.java"
-const val MAVEN_ARTIFACT = "io-base"
+const val MAVEN_USERNAME = "thundersoft_upload"
+const val MAVEN_PASSWORD = "ThunderSoft#2024"
+const val MAVEN_REPO = "pateo-thundersoft"
+const val MAVEN_GROUP = "com.hyundai.module"
+const val MAVEN_ARTIFACT = "appstore"
 const val MAVEN_URL =
-    "http://192.168.128.1:8081/service/rest/v1/search?repository={repo}&maven.groupId={group}&maven.artifactId={artifact}"
+    "http://10.100.0.2:8081/service/rest/v1/search?repository={repo}&maven.groupId={group}&maven.artifactId={artifact}"
 
+const val JENKINS_URL =
+    "http://10.10.96.190:8080/job/PRJ_HMTC_APP_MainInteraction/buildWithParameters?TARGET_MODULE=PateoLauncher"
+const val JENKINS_USERNAME = "yigangzhan"
+const val JENKINS_PASSWORD = "1138afb0901111c8a04fac7a2c2dfd2ae0"
+
+// 上次轮循到的最大版本号
 private var lastVersion: String = ""
 
-// curl -u admin:1105e3f897e39e7b29a5c25c3c07a4d3da -X 'POST' "http://192.168.128.1:8082/job/BaseLib/job/BaseLib-Java/build"
 fun main() = runBlocking {
     // 获取初始版本号
     checkNewVersion()
-
+    exitProcess(0)
     // 轮询
     while (true) {
         // 检测REPO中是否有新的版本
@@ -44,14 +47,10 @@ fun main() = runBlocking {
             // TODO 如果存在新的版本，则触发Jenkins构建。
 
             // TODO 将构建结果通过飞书发送
-
         } else {
             println("没有新的版本。")
-            val server = JenkinsServer(URI("http://192.168.128.1:8082/"), "admin", "Emczyg300498.")
-            server.getJob("BaseLib-Java")
-                .build()
         }
-        exitProcess(0)
+
         // 间隔时长
         delay(CHECK_INTERVAL * 1000L)
     }
@@ -122,8 +121,31 @@ fun compareVersions(version1: String, version2: String): Int {
     }
 
     for (i in 0 until 3) {
+        println("$i   -> ${list1[i]}  -  ${list2[i]}")
         if (list1[i] > list2[i]) return 1
         if (list1[i] < list2[i]) return -1
     }
     return 0
+}
+
+// 触发构建
+fun startBuild() {
+    // curl -u yigangzhan:1138afb0901111c8a04fac7a2c2dfd2ae0 -X 'POST' "http://10.10.96.190:8080/job/PRJ_HMTC_APP_MainInteraction/buildWithParameters?TARGET_MODULE=PateoLauncher"
+    val jenkinsClient: HTTP = HTTP.builder()
+        .build()
+
+    val result: HttpResult = jenkinsClient.sync(JENKINS_URL)
+        .basicAuth(JENKINS_USERNAME, MAVEN_PASSWORD)
+        .get()
+
+    return when (result.state) {
+        /* 请求成功 */
+        HttpResult.State.RESPONSED -> {
+            println("Jenkins start build.")
+        }
+        /* 请求失败 */
+        else -> {
+            println("Jenkins服务器不可访问，状态：${result.state}")
+        }
+    }
 }
