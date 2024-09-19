@@ -19,7 +19,7 @@ import kotlin.coroutines.suspendCoroutine
  * @since 1.0.0
  */
 // 轮询间隔（秒）
-const val CHECK_INTERVAL = 60
+const val CHECK_INTERVAL = 120
 
 const val MAVEN_USERNAME = "thundersoft_upload"
 const val MAVEN_PASSWORD = "ThunderSoft#2024"
@@ -44,54 +44,58 @@ fun main() = runBlocking {
     checkNewVersion()
 
     while (true) {
-        // 间隔时长
-        delay(CHECK_INTERVAL * 1000L)
+        try {
+            // 间隔时长
+            delay(CHECK_INTERVAL * 1000L)
 
-        // 检测仓库中是否有新的版本
-        val result: Boolean = checkNewVersion()
-        if (result) {
-            println("检测到新的版本，开始编译。")
-            // 如果存在新的版本，则触发Jenkins构建。
-            val buildID: String = startBuild() ?: return@runBlocking
-            println("任务已提交。 BuildID:[$buildID]")
+            // 检测仓库中是否有新的版本
+            val result: Boolean = checkNewVersion()
+            if (result) {
+                println("检测到新的版本，开始编译。")
+                // 如果存在新的版本，则触发Jenkins构建。
+                val buildID: String = startBuild() ?: return@runBlocking
+                println("任务已提交。 BuildID:[$buildID]")
 
-            var state: BuildResult? = null
-            // 轮循任务状态
-            for (i in 1..15) {
-                delay(60 * 1000L)
+                var state: BuildResult? = null
+                // 轮循任务状态
+                for (i in 1..15) {
+                    delay(60 * 1000L)
 
-                state = getBuildResult(buildID)
-                println("检查任务状态：$state")
-                // 结果不为空，说明任务执行完毕，退出循环。
-                if (state != null) {
-                    break
+                    state = getBuildResult(buildID)
+                    println("检查任务状态：$state")
+                    // 结果不为空，说明任务执行完毕，退出循环。
+                    if (state != null) {
+                        break
+                    }
                 }
+
+                // 建立结果目录
+                val outPath = File("/mnt/alist/天翼云盘/Work/Hyundai8295/$buildID")
+                outPath.mkdir()
+
+                when (state) {
+                    BuildResult.SUCCEESS -> {
+                        downloadAPK(buildID, outPath)
+                        File(outPath, "AAR版本：$lastVersion，构建结果：成功").createNewFile()
+                    }
+
+                    BuildResult.FAILURE -> {
+                        File(outPath, "AAR版本：$lastVersion，构建结果：失败").createNewFile()
+                    }
+
+                    BuildResult.ABORTED -> {
+                        File(outPath, "AAR版本：$lastVersion，构建结果：中途取消").createNewFile()
+                    }
+                    // 轮循超时
+                    else -> {
+                        File(outPath, "AAR版本：$lastVersion，构建结果：KT脚本轮循超时").createNewFile()
+                    }
+                }
+            } else {
+                println("没有新的版本。")
             }
-
-            // 建立结果目录
-            val outPath = File("/mnt/alist/天翼云盘/Work/Hyundai8295/$buildID")
-            outPath.mkdir()
-
-            when (state) {
-                BuildResult.SUCCEESS -> {
-                    downloadAPK(buildID, outPath)
-                    File(outPath, "AAR版本：$lastVersion，构建结果：成功").createNewFile()
-                }
-
-                BuildResult.FAILURE -> {
-                    File(outPath, "AAR版本：$lastVersion，构建结果：失败").createNewFile()
-                }
-
-                BuildResult.ABORTED -> {
-                    File(outPath, "AAR版本：$lastVersion，构建结果：中途取消").createNewFile()
-                }
-                // 轮循超时
-                else -> {
-                    File(outPath, "AAR版本：$lastVersion，构建结果：KT脚本轮循超时").createNewFile()
-                }
-            }
-        } else {
-            println("没有新的版本。")
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }
