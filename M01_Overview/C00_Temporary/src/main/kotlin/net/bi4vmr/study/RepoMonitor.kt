@@ -59,10 +59,10 @@ fun main() = runBlocking {
                 var state: BuildResult? = null
                 // 轮循任务状态
                 for (i in 1..15) {
-                    delay(60 * 1000L)
+                    delay(CHECK_INTERVAL * 1000L)
 
                     state = getBuildResult(buildID)
-                    println("检查任务状态：$state")
+                    println("第 $i 次检查任务状态：$state")
                     // 结果不为空，说明任务执行完毕，退出循环。
                     if (state != null) {
                         break
