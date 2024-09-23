@@ -19,7 +19,7 @@ import kotlin.coroutines.suspendCoroutine
  * @since 1.0.0
  */
 // 轮询间隔（秒）
-const val CHECK_INTERVAL = 120
+const val CHECK_INTERVAL = 180
 
 const val MAVEN_USERNAME = "thundersoft_upload"
 const val MAVEN_PASSWORD = "ThunderSoft#2024"
@@ -76,6 +76,7 @@ fun main() = runBlocking {
                 when (state) {
                     BuildResult.SUCCEESS -> {
                         downloadAPK(buildID, outPath)
+                        downloadLog(buildID, outPath)
                         File(outPath, "AAR版本：$lastVersion，构建结果：成功").createNewFile()
                     }
 
@@ -197,7 +198,7 @@ suspend fun startBuild(): String? {
             /* 请求成功 */
             HttpResult.State.RESPONSED -> {
                 // 等待20秒，静默期结束后再检查任务状态。
-                Thread.sleep(20 * 1000L)
+                Thread.sleep(15 * 1000L)
 
                 // 获取JSON格式的任务详情
                 val requestURI = "${result.getHeader("Location")}api/json"
@@ -301,6 +302,22 @@ fun downloadAPK(buildID: String, dstPath: File) {
         .stepRate(0.2)
         .setOnProcess { p: Process -> println("下载中... " + p.rate * 100) }
         .toFile("$dstPath${File.separator}HyundaiCarLauncher.apk")
+        .setOnSuccess { file: File -> println("下载完成！ " + file.absolutePath) }
+        .setOnFailure {
+            System.err.println("下载失败！")
+            it.exception.printStackTrace()
+        }
+        .start()
+}
+
+// 下载日志到本地
+fun downloadLog(buildID: String, dstPath: File) {
+    println("开始下载日志...")
+    client.sync("$JENKINS_URL/$buildID/consoleText")
+        .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
+        .get()
+        .body
+        .toFile("$dstPath${File.separator}构建日志.txt")
         .setOnSuccess { file: File -> println("下载完成！ " + file.absolutePath) }
         .setOnFailure {
             System.err.println("下载失败！")
