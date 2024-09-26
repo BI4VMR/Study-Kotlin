@@ -114,8 +114,8 @@ suspend fun checkNewVersion(): Boolean {
         when (result.state) {
             /* 请求成功 */
             HttpResult.State.RESPONSED -> {
-                val obj: JsonObject = JsonParser.parseString(result.body.toString())
-                    .asJsonObject
+                val body: String = result.body.toString()
+                val obj: JsonObject = JsonParser.parseString(body).asJsonObject
                 if (obj.has("items")) {
                     val versionList: MutableList<String> = mutableListOf()
                     val items: JsonArray = obj.getAsJsonArray("items")
@@ -135,6 +135,7 @@ suspend fun checkNewVersion(): Boolean {
                     }
                 } else {
                     System.err.println("Maven仓库返回的JSON无法解析！")
+                    System.err.println(body)
                     it.resume(false)
                 }
             }
