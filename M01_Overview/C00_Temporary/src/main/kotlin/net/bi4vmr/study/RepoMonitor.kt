@@ -228,14 +228,15 @@ suspend fun getBuildID(url: String): String? {
         when (result.state) {
             /* 请求成功 */
             HttpResult.State.RESPONSED -> {
-                val obj: JsonObject = JsonParser.parseString(result.body.toString())
-                    .asJsonObject
+                val body: String = result.body.toString()
+                val obj: JsonObject = JsonParser.parseString(body).asJsonObject
                 if (obj.has("executable")) {
                     val item: JsonObject = obj.getAsJsonObject("executable")
                     val id: String = item.get("number").asString
                     it.resume(id)
                 } else {
                     System.err.println("Jenkins返回的消息格式与预期不符，无法解析！")
+                    System.err.println(body)
                     it.resume(null)
                 }
             }
