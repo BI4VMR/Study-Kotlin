@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.roundToInt
 
 /**
  * 轮询Maven仓库中的指定产物，并触发Jenkins构建。
@@ -53,8 +54,10 @@ fun main() = runBlocking {
             if (result) {
                 println("检测到新的版本，开始编译。")
                 // 如果存在新的版本，则触发Jenkins构建。
-                val buildID: String = startBuild() ?: return@runBlocking
+                val buildID: String? = startBuild()
                 println("任务已提交。 BuildID:[$buildID]")
+                // 如果没有获取到ID，则放弃本次任务，进入下一轮循环。
+                if (buildID == null) continue
 
                 var state: BuildResult? = null
                 // 轮循任务状态
@@ -81,6 +84,7 @@ fun main() = runBlocking {
                     }
 
                     BuildResult.FAILURE -> {
+                        downloadLog(buildID, outPath)
                         File(outPath, "AAR版本：$lastVersion，构建结果：失败").createNewFile()
                     }
 
@@ -198,13 +202,22 @@ suspend fun startBuild(): String? {
         when (result.state) {
             /* 请求成功 */
             HttpResult.State.RESPONSED -> {
-                // 等待20秒，静默期结束后再检查任务状态。
-                Thread.sleep(15 * 1000L)
+                // 等待10秒，静默期结束后再检查任务状态。
+                runBlocking { delay(10 * 1000L) }
 
-                // 获取JSON格式的任务详情
-                val requestURI = "${result.getHeader("Location")}api/json"
-                val buildID = runBlocking {
-                    getBuildID(requestURI)
+                var buildID: String?
+                var times = 1
+                while (true) {
+                    // 获取JSON格式的任务详情
+                    val requestURI = "${result.getHeader("Location")}api/json"
+                    buildID = runBlocking { getBuildID(requestURI) }
+                    if (buildID != "-1") {
+                        break
+                    } else {
+                        println("Jenkins节点暂无可用的执行器，稍后将进行第 $times 次重试。")
+                        times++
+                        runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                    }
                 }
                 it.resume(buildID)
             }
@@ -230,6 +243,13 @@ suspend fun getBuildID(url: String): String? {
             HttpResult.State.RESPONSED -> {
                 val body: String = result.body.toString()
                 val obj: JsonObject = JsonParser.parseString(body).asJsonObject
+
+                // 等待可用的执行器
+                if (obj.has("why") && obj.get("why").asString.startsWith("Waiting for next available executor")) {
+                    it.resume("-1")
+                    return@suspendCoroutine
+                }
+
                 if (obj.has("executable")) {
                     val item: JsonObject = obj.getAsJsonObject("executable")
                     val id: String = item.get("number").asString
@@ -302,11 +322,11 @@ fun downloadAPK(buildID: String, dstPath: File) {
         .get()
         .body
         .stepRate(0.2)
-        .setOnProcess { p: Process -> println("下载中... " + p.rate * 100) }
+        .setOnProcess { p: Process -> println("产物下载中... ${(p.rate * 100).roundToInt()} %") }
         .toFile("$dstPath${File.separator}HyundaiCarLauncher.apk")
-        .setOnSuccess { file: File -> println("下载完成！ " + file.absolutePath) }
+        .setOnSuccess { file: File -> println("产物下载完成！ ${file.absolutePath}") }
         .setOnFailure {
-            System.err.println("下载失败！")
+            System.err.println("产物下载失败！")
             it.exception.printStackTrace()
         }
         .start()
@@ -320,9 +340,9 @@ fun downloadLog(buildID: String, dstPath: File) {
         .get()
         .body
         .toFile("$dstPath${File.separator}构建日志.txt")
-        .setOnSuccess { file: File -> println("下载完成！ " + file.absolutePath) }
+        .setOnSuccess { file: File -> println("日志下载完成！ ${file.absolutePath}") }
         .setOnFailure {
-            System.err.println("下载失败！")
+            System.err.println("日志下载失败！")
             it.exception.printStackTrace()
         }
         .start()
