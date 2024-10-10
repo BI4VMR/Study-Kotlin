@@ -242,10 +242,16 @@ suspend fun getBuildID(url: String): String? {
             /* 请求成功 */
             HttpResult.State.RESPONSED -> {
                 val body: String = result.body.toString()
+                println("----- BuildID JSON -----")
+                println(body)
+                println("-----")
                 val obj: JsonObject = JsonParser.parseString(body).asJsonObject
 
                 // 等待可用的执行器
-                if (obj.has("why") && obj.get("why").asString.startsWith("Waiting for next available executor")) {
+                if (obj.has("why") &&
+                    !obj.get("why").isJsonNull &&
+                    obj.get("why").asString.startsWith("Waiting for next available executor")
+                ) {
                     it.resume("-1")
                     return@suspendCoroutine
                 }
@@ -256,7 +262,6 @@ suspend fun getBuildID(url: String): String? {
                     it.resume(id)
                 } else {
                     System.err.println("Jenkins返回的消息格式与预期不符，无法解析！")
-                    System.err.println(body)
                     it.resume(null)
                 }
             }
