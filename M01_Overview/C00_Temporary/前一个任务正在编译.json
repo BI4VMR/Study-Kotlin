@@ -35,8 +35,8 @@
   ],
   "blocked": true,
   "buildable": false,
-  "id": 571616,
-  "inQueueSince": 1728524175042,
+  "id": 594272,
+  "inQueueSince": 1728719293882,
   "params": "\u000aTARGET_MODULE=PateoLauncher\u000aANDROID_SYSTEM_HOME=PRJ_HMTC_8295_QSSI\u000aPUBLISH_TYPE=false",
   "stuck": false,
   "task": {
@@ -45,7 +45,7 @@
     "url": "http://10.10.96.190:8080/job/PRJ_HMTC_APP_MainInteraction/",
     "color": "blue_anime"
   },
-  "url": "queue/item/571616/",
-  "why": "Build #407 is already in progress (ETA: 6.3 sec)",
-  "buildableStartMilliseconds": 1728524182759
+  "url": "queue/item/594272/",
+  "why": "Build #434 is already in progress (ETA: 2 min 47 sec)",
+  "buildableStartMilliseconds": 1728719300202
 }

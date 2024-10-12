@@ -211,12 +211,23 @@ suspend fun startBuild(): String? {
                     // 获取JSON格式的任务详情
                     val requestURI = "${result.getHeader("Location")}api/json"
                     buildID = runBlocking { getBuildID(requestURI) }
-                    if (buildID != "-1") {
-                        break
-                    } else {
-                        println("Jenkins节点暂无可用的执行器，稍后将进行第 $times 次重试。")
-                        times++
-                        runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                    when (buildID) {
+                        /* 等待可用的执行器 */
+                        "-1" -> {
+                            println("Jenkins节点暂无可用的执行器，稍后将进行第 $times 次重试。")
+                            times++
+                            runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                        }
+                        /* 等待前一个任务执行完毕 */
+                        "-2" -> {
+                            println("Jenkins等待前一个任务执行完毕，稍后将进行第 $times 次重试。")
+                            times++
+                            runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                        }
+                        /* 已取到ID，跳出轮循。 */
+                        else -> {
+                            break
+                        }
                     }
                 }
                 it.resume(buildID)
@@ -253,6 +264,12 @@ suspend fun getBuildID(url: String): String? {
                     obj.get("why").asString.startsWith("Waiting for next available executor")
                 ) {
                     it.resume("-1")
+                    return@suspendCoroutine
+                }
+
+                // 等待前一个任务执行完毕
+                if (obj.has("blocked") && obj.get("blocked").asBoolean) {
+                    it.resume("-2")
                     return@suspendCoroutine
                 }
 
