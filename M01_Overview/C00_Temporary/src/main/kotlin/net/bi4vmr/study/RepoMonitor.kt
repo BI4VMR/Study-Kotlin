@@ -9,7 +9,11 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.io.IOException
+import java.nio.file.*
+import java.nio.file.attribute.BasicFileAttributes
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.roundToInt
 
@@ -35,12 +39,21 @@ const val JENKINS_URL =
 const val JENKINS_USERNAME = "yigangzhan"
 const val JENKINS_TOKEN = "1138afb0901111c8a04fac7a2c2dfd2ae0"
 
+const val PATH_TEMP = "/tmp/build/Hyundai8295/"
+const val PATH_ALIST = "/mnt/alist/天翼云盘/Work/Hyundai8295/"
+
 val client: HTTP = HTTP.builder().build()
 
 // 上次轮循到的最大版本号
 private var lastVersion: String = ""
 
 fun main() = runBlocking {
+    // For Debug
+    // downloadAPKSync("463", File("/home/bi4vmr/Download"))
+    // println("end :${Thread.currentThread().id}")
+    // delay(3000L)
+    // exitProcess(0)
+
     // 向全局变量填充初始版本号
     checkNewVersion()
 
@@ -72,13 +85,16 @@ fun main() = runBlocking {
                     }
                 }
 
+                delay(5000L)
+
                 // 建立结果目录
-                val outPath = File("/mnt/alist/天翼云盘/Work/Hyundai8295/$buildID")
+                val outPath = File(PATH_TEMP, buildID)
                 outPath.mkdir()
 
                 when (state) {
                     BuildResult.SUCCEESS -> {
-                        downloadAPK(buildID, outPath)
+                        downloadAPKSync(buildID, outPath)
+                        delay(1000L)
                         downloadLog(buildID, outPath)
                         File(outPath, "AAR版本：$lastVersion，构建结果：成功").createNewFile()
                     }
@@ -96,6 +112,9 @@ fun main() = runBlocking {
                         File(outPath, "AAR版本：$lastVersion，构建结果：KT脚本轮循超时").createNewFile()
                     }
                 }
+
+                // 复制文件到AList目录
+                copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, buildID))
             } else {
                 println("没有新的版本。")
             }
@@ -253,9 +272,9 @@ suspend fun getBuildID(url: String): String? {
             /* 请求成功 */
             HttpResult.State.RESPONSED -> {
                 val body: String = result.body.toString()
-                println("----- BuildID JSON -----")
+                println("----- BuildID JSON Start -----")
                 println(body)
-                println("-----")
+                println("----- BuildID JSON End -----")
                 val obj: JsonObject = JsonParser.parseString(body).asJsonObject
 
                 // 等待可用的执行器
@@ -354,6 +373,28 @@ fun downloadAPK(buildID: String, dstPath: File) {
         .start()
 }
 
+suspend fun downloadAPKSync(buildID: String, dstPath: File) {
+    return suspendCoroutine { sc ->
+        println("开始下载产物...")
+        client.sync("$JENKINS_URL/$buildID/artifact/OUT_APP/app/HyundaiCarLauncher.apk")
+            .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
+            .get()
+            .body
+            .stepRate(0.2)
+            .setOnProcess { p: Process -> println("产物下载中... ${(p.rate * 100).roundToInt()} %") }
+            .toFile("$dstPath${File.separator}HyundaiCarLauncher.apk")
+            .setOnSuccess { file: File ->
+                println("产物下载完成！ ${file.absolutePath}")
+                sc.resume(Unit)
+            }
+            .setOnFailure {
+                System.err.println("产物下载失败！")
+                sc.resumeWithException(it.exception)
+            }
+            .start()
+    }
+}
+
 // 下载日志到本地
 fun downloadLog(buildID: String, dstPath: File) {
     println("开始下载日志...")
@@ -368,4 +409,30 @@ fun downloadLog(buildID: String, dstPath: File) {
             it.exception.printStackTrace()
         }
         .start()
+}
+
+@Throws(IOException::class)
+fun copyFiles(from: Path, to: Path) {
+    if (Files.notExists(from)) {
+        println("源文件夹不存在")
+    }
+    if (Files.notExists(to)) {
+        Files.createDirectories(to)
+    }
+
+    Files.walkFileTree(from, object : SimpleFileVisitor<Path>() {
+        @Throws(IOException::class)
+        override fun visitFile(
+            file: Path,
+            attrs: BasicFileAttributes
+        ): FileVisitResult {
+            val to1 = to.resolve(from.relativize(file))
+            // 如果说父路径不存在，则创建
+            if (Files.notExists(to1.parent)) {
+                Files.createDirectories(to1.parent)
+            }
+            Files.copy(file, to1)
+            return FileVisitResult.CONTINUE
+        }
+    })
 }
