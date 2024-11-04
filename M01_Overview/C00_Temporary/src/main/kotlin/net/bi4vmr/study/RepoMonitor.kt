@@ -32,7 +32,7 @@ const val MAVEN_REPO = "pateo-thundersoft"
 const val MAVEN_GROUP = "com.hyundai.module"
 const val MAVEN_ARTIFACT = "appstore"
 const val MAVEN_URL =
-    "http://10.100.0.2:8081/service/rest/v1/search?repository={repo}&maven.groupId={group}&maven.artifactId={artifact}"
+    "http://10.100.0.2:8081/service/rest/v1/search?repository={repo}&maven.groupId={group}&maven.artifactId={artifact}&sort=version"
 
 const val JENKINS_URL =
     "http://10.10.96.190:8080/job/PRJ_HMTC_APP_MainInteraction"
