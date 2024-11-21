@@ -34,7 +34,9 @@ const val MAVEN_ARTIFACT = "appstore"
 const val MAVEN_URL =
     "http://10.100.0.2:8081/service/rest/v1/search?repository={repo}&maven.groupId={group}&maven.artifactId={artifact}&sort=version"
 
-const val JENKINS_URL =
+const val JENKINS_URL_AAR =
+    "http://10.10.96.190:8080/job/PRJ_HMTC_APP/"
+const val JENKINS_URL_APK =
     "http://10.10.96.190:8080/job/PRJ_HMTC_APP_MainInteraction"
 const val JENKINS_USERNAME = "yigangzhan"
 const val JENKINS_TOKEN = "1138afb0901111c8a04fac7a2c2dfd2ae0"
@@ -65,10 +67,31 @@ fun main() = runBlocking {
             // 检测仓库中是否有新的版本
             val result: Boolean = checkNewVersion()
             if (result) {
-                println("检测到新的版本，开始编译。")
+                println("检测到新的版本，开始构建。")
                 // 如果存在新的版本，则触发Jenkins构建。
+                val aarBuildID: String? = startBuildAAR()
+                println("AAR构建任务已提交。 BuildID:[$aarBuildID]")
+                // 如果没有获取到ID，则放弃本次任务，进入下一轮循环。
+                if (aarBuildID == null) continue
+
+                var aarJobState: BuildResult?
+                // 轮循任务状态
+                for (i in 1..15) {
+                    delay(CHECK_INTERVAL * 1000L)
+
+                    aarJobState = getBuildResult(JENKINS_URL_AAR, aarBuildID)
+                    println("第 $i 次检查AAR构建任务状态：$aarJobState")
+                    // 结果不为空，说明任务执行完毕，退出循环。
+                    if (aarJobState != null) {
+                        break
+                    }
+                }
+
+                delay(5000L)
+                println("AAR构建完成，开始构建APK。")
+
                 val buildID: String? = startBuild()
-                println("任务已提交。 BuildID:[$buildID]")
+                println("APK构建任务已提交。 BuildID:[$buildID]")
                 // 如果没有获取到ID，则放弃本次任务，进入下一轮循环。
                 if (buildID == null) continue
 
@@ -77,7 +100,7 @@ fun main() = runBlocking {
                 for (i in 1..15) {
                     delay(CHECK_INTERVAL * 1000L)
 
-                    state = getBuildResult(buildID)
+                    state = getBuildResult(JENKINS_URL_APK, buildID)
                     println("第 $i 次检查任务状态：$state")
                     // 结果不为空，说明任务执行完毕，退出循环。
                     if (state != null) {
@@ -93,14 +116,16 @@ fun main() = runBlocking {
 
                 when (state) {
                     BuildResult.SUCCEESS -> {
-                        downloadAPKSync(buildID, outPath)
+                        downloadAPKSync(JENKINS_URL_APK, buildID, outPath)
                         delay(1000L)
-                        downloadLog(buildID, outPath)
+                        downloadLog(JENKINS_URL_AAR, buildID, outPath, "中间件")
+                        downloadLog(JENKINS_URL_APK, buildID, outPath, "APK")
                         File(outPath, "AAR版本：$lastVersion，构建结果：成功").createNewFile()
                     }
 
                     BuildResult.FAILURE -> {
-                        downloadLog(buildID, outPath)
+                        downloadLog(JENKINS_URL_AAR, buildID, outPath, "中间件")
+                        downloadLog(JENKINS_URL_APK, buildID, outPath, "APK")
                         File(outPath, "AAR版本：$lastVersion，构建结果：失败").createNewFile()
                     }
 
@@ -208,13 +233,67 @@ fun compareVersions(version1: String, version2: String): Int {
 }
 
 /**
+ * 触发构建AAR。
+ *
+ * @return BuildID。
+ */
+suspend fun startBuildAAR(): String? {
+    return suspendCoroutine {
+        val result: HttpResult =
+            client.sync("$JENKINS_URL_AAR/buildWithParameters?TARGET_MODULE=packages/apps/PateoCommon%20publish")
+                .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
+                .post()
+
+        when (result.state) {
+            /* 请求成功 */
+            HttpResult.State.RESPONSED -> {
+                // 等待10秒，静默期结束后再检查任务状态。
+                runBlocking { delay(10 * 1000L) }
+
+                var buildID: String?
+                var times = 1
+                while (true) {
+                    // 获取JSON格式的任务详情
+                    val requestURI = "${result.getHeader("Location")}api/json"
+                    buildID = runBlocking { getBuildID(requestURI) }
+                    when (buildID) {
+                        /* 等待可用的执行器 */
+                        "-1" -> {
+                            println("Jenkins节点暂无可用的执行器，稍后将进行第 $times 次重试。")
+                            times++
+                            runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                        }
+                        /* 等待前一个任务执行完毕 */
+                        "-2" -> {
+                            println("Jenkins等待前一个任务执行完毕，稍后将进行第 $times 次重试。")
+                            times++
+                            runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                        }
+                        /* 已取到ID，跳出轮循。 */
+                        else -> {
+                            break
+                        }
+                    }
+                }
+                it.resume(buildID)
+            }
+            /* 请求失败 */
+            else -> {
+                System.err.println("Jenkins服务器不可访问，状态：${result.state}")
+                it.resume(null)
+            }
+        }
+    }
+}
+
+/**
  * 触发构建。
  *
  * @return BuildID。
  */
 suspend fun startBuild(): String? {
     return suspendCoroutine {
-        val result: HttpResult = client.sync("$JENKINS_URL/buildWithParameters?TARGET_MODULE=PateoLauncher")
+        val result: HttpResult = client.sync("$JENKINS_URL_APK/buildWithParameters?TARGET_MODULE=PateoLauncher")
             .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
             .post()
 
@@ -317,9 +396,9 @@ enum class BuildResult {
 }
 
 // 获取构建状态
-suspend fun getBuildResult(buildID: String): BuildResult? {
+suspend fun getBuildResult(jobURL: String, buildID: String): BuildResult? {
     return suspendCoroutine {
-        val result: HttpResult = client.sync("$JENKINS_URL/$buildID/api/json")
+        val result: HttpResult = client.sync("$jobURL/$buildID/api/json")
             .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
             .get()
 
@@ -358,7 +437,7 @@ suspend fun getBuildResult(buildID: String): BuildResult? {
 // 下载产物到本地
 fun downloadAPK(buildID: String, dstPath: File) {
     println("开始下载产物...")
-    client.sync("$JENKINS_URL/$buildID/artifact/OUT_APP/app/HyundaiCarLauncher.apk")
+    client.sync("$JENKINS_URL_APK/$buildID/artifact/OUT_APP/app/HyundaiCarLauncher.apk")
         .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
         .get()
         .body
@@ -373,10 +452,11 @@ fun downloadAPK(buildID: String, dstPath: File) {
         .start()
 }
 
-suspend fun downloadAPKSync(buildID: String, dstPath: File) {
+suspend fun downloadAPKSync(jobURL: String, buildID: String, dstPath: File) {
     return suspendCoroutine { sc ->
-        println("开始下载产物...")
-        client.sync("$JENKINS_URL/$buildID/artifact/OUT_APP/app/HyundaiCarLauncher.apk")
+        val url = "$jobURL/$buildID/artifact/OUT_APP/app/HyundaiCarLauncher.apk"
+        println("开始下载产物... URL:[$url]")
+        client.sync(url)
             .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
             .get()
             .body
@@ -396,13 +476,13 @@ suspend fun downloadAPKSync(buildID: String, dstPath: File) {
 }
 
 // 下载日志到本地
-fun downloadLog(buildID: String, dstPath: File) {
+fun downloadLog(jobURL: String, buildID: String, dstPath: File, fileSuffix: String) {
     println("开始下载日志...")
-    client.sync("$JENKINS_URL/$buildID/consoleText")
+    client.sync("$jobURL/$buildID/consoleText")
         .basicAuth(JENKINS_USERNAME, JENKINS_TOKEN)
         .get()
         .body
-        .toFile("$dstPath${File.separator}构建日志.txt")
+        .toFile("$dstPath${File.separator}构建日志_${fileSuffix}.txt")
         .setOnSuccess { file: File -> println("日志下载完成！ ${file.absolutePath}") }
         .setOnFailure {
             System.err.println("日志下载失败！")
