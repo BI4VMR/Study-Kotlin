@@ -41,8 +41,8 @@ const val JENKINS_URL_APK =
 const val JENKINS_USERNAME = "yigangzhan"
 const val JENKINS_TOKEN = "1138afb0901111c8a04fac7a2c2dfd2ae0"
 
-const val PATH_TEMP = "/tmp/build/Hyundai8295/"
-const val PATH_ALIST = "/mnt/alist/天翼云盘/Work/Hyundai8295/"
+const val PATH_TEMP = "/tmp/pateo-build/Hyundai8295/"
+const val PATH_ALIST = "/mnt/alist-local/天翼云盘/Work/Hyundai8295_New/"
 
 val client: HTTP = HTTP.builder().build()
 
@@ -68,13 +68,24 @@ fun main() = runBlocking {
             val result: Boolean = checkNewVersion()
             if (result) {
                 println("检测到新的版本，开始构建。")
+                // 建立结果目录
+                val outPath = File(PATH_TEMP, lastVersion)
+                if (outPath.exists()) {
+                    outPath.deleteRecursively()
+                }
+                outPath.mkdir()
+
                 // 如果存在新的版本，则触发Jenkins构建。
                 val aarBuildID: String? = startBuildAAR()
                 println("AAR构建任务已提交。 BuildID:[$aarBuildID]")
                 // 如果没有获取到ID，则放弃本次任务，进入下一轮循环。
-                if (aarBuildID == null) continue
+                if (aarBuildID == null) {
+                    File(outPath, "中间件构建结果：失败（获取第一阶段BuildID超时）").createNewFile()
+                    copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, lastVersion))
+                    continue
+                }
 
-                var aarJobState: BuildResult?
+                var aarJobState: BuildResult? = null
                 // 轮循任务状态
                 for (i in 1..15) {
                     delay(CHECK_INTERVAL * 1000L)
@@ -87,13 +98,43 @@ fun main() = runBlocking {
                     }
                 }
 
+                when (aarJobState) {
+                    BuildResult.SUCCEESS -> {
+                        downloadLog(JENKINS_URL_AAR, aarBuildID, outPath, "中间件")
+                        File(outPath, "中间件构建结果：成功").createNewFile()
+                    }
+
+                    BuildResult.FAILURE -> {
+                        downloadLog(JENKINS_URL_AAR, aarBuildID, outPath, "中间件")
+                        File(outPath, "中间件构建结果：失败").createNewFile()
+                        copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, lastVersion))
+                        continue
+                    }
+
+                    BuildResult.ABORTED -> {
+                        File(outPath, "中间件构建结果：中途取消").createNewFile()
+                        copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, lastVersion))
+                        continue
+                    }
+                    // 轮循超时
+                    else -> {
+                        File(outPath, "中间件构建结果：KT脚本轮循超时").createNewFile()
+                        copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, lastVersion))
+                        continue
+                    }
+                }
+
                 delay(5000L)
                 println("AAR构建完成，开始构建APK。")
 
                 val buildID: String? = startBuild()
                 println("APK构建任务已提交。 BuildID:[$buildID]")
                 // 如果没有获取到ID，则放弃本次任务，进入下一轮循环。
-                if (buildID == null) continue
+                if (buildID == null) {
+                    File(outPath, "最终产物构建结果：失败（获取第二阶段BuildID超时）").createNewFile()
+                    copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, lastVersion))
+                    continue
+                }
 
                 var state: BuildResult? = null
                 // 轮循任务状态
@@ -110,36 +151,30 @@ fun main() = runBlocking {
 
                 delay(5000L)
 
-                // 建立结果目录
-                val outPath = File(PATH_TEMP, buildID)
-                outPath.mkdir()
-
                 when (state) {
                     BuildResult.SUCCEESS -> {
                         downloadAPKSync(JENKINS_URL_APK, buildID, outPath)
                         delay(1000L)
-                        downloadLog(JENKINS_URL_AAR, buildID, outPath, "中间件")
-                        downloadLog(JENKINS_URL_APK, buildID, outPath, "APK")
-                        File(outPath, "AAR版本：$lastVersion，构建结果：成功").createNewFile()
+                        downloadLog(JENKINS_URL_APK, buildID, outPath, "最终产物")
+                        File(outPath, "最终产物构建结果：成功").createNewFile()
                     }
 
                     BuildResult.FAILURE -> {
-                        downloadLog(JENKINS_URL_AAR, buildID, outPath, "中间件")
-                        downloadLog(JENKINS_URL_APK, buildID, outPath, "APK")
-                        File(outPath, "AAR版本：$lastVersion，构建结果：失败").createNewFile()
+                        downloadLog(JENKINS_URL_APK, buildID, outPath, "最终产物")
+                        File(outPath, "最终产物构建结果：失败").createNewFile()
                     }
 
                     BuildResult.ABORTED -> {
-                        File(outPath, "AAR版本：$lastVersion，构建结果：中途取消").createNewFile()
+                        File(outPath, "最终产物构建结果：中途取消").createNewFile()
                     }
                     // 轮循超时
                     else -> {
-                        File(outPath, "AAR版本：$lastVersion，构建结果：KT脚本轮循超时").createNewFile()
+                        File(outPath, "最终产物构建结果：KT脚本轮循超时").createNewFile()
                     }
                 }
 
                 // 复制文件到AList目录
-                copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, buildID))
+                copyFiles(outPath.toPath(), Paths.get(PATH_ALIST, lastVersion))
             } else {
                 println("没有新的版本。")
             }
@@ -173,12 +208,13 @@ suspend fun checkNewVersion(): Boolean {
                         }
                     }
 
-                    val maxVersion: String = getLatestVersion(versionList)
-                    println("当前最新版本：$maxVersion，上次检查时的最新版本：$lastVersion。")
-                    if (maxVersion != lastVersion) {
-                        lastVersion = maxVersion
+                    val currentMaxVersion: String = getLatestVersion(versionList)
+                    println("当前最新版本：$currentMaxVersion，上次检查时的最新版本：$lastVersion。")
+                    if (compareVersions(currentMaxVersion, lastVersion) > 0) {
+                        lastVersion = currentMaxVersion
                         it.resume(true)
                     } else {
+                        lastVersion = currentMaxVersion
                         it.resume(false)
                     }
                 } else {
@@ -205,6 +241,11 @@ fun getLatestVersion(versionList: List<String>): String {
 
 // 比较版本号
 fun compareVersions(version1: String, version2: String): Int {
+    // 处理第一次变量未初始化的情况
+    if (version1 == "" || version2 == "") {
+        return 1
+    }
+
     // 去掉数字序号之后的内容
     fun removeSuffix(v: String): String {
         val i = v.indexOf('_')
@@ -414,7 +455,7 @@ suspend fun getBuildResult(jobURL: String, buildID: String): BuildResult? {
                     } else {
                         val state: String = obj.get("result").asString
                         val enum: BuildResult = when (state) {
-                            "SUCCESS" -> BuildResult.SUCCEESS
+                            "SUCCESS", "UNSTABLE" -> BuildResult.SUCCEESS
                             "FAILURE" -> BuildResult.FAILURE
                             "ABORTED" -> BuildResult.ABORTED
                             else -> BuildResult.FAILURE
