@@ -1,4 +1,4 @@
-package net.bi4vmr.study.nullsafe
+package net.bi4vmr.study.oop.nullsafe
 
 /**
  * 测试代码 - 空值安全。

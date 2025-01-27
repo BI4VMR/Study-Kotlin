@@ -1,9 +1,10 @@
-package net.bi4vmr.study.classandobjects
+package net.bi4vmr.study.oop.base
 
 /**
- * 测试代码 - 变量的作用域。
+ * 测试代码：变量的作用域。
  *
- * @author BI4VMR
+ * @author bi4vmr@outlook.com
+ * @since 1.0.0
  */
 fun main() {
     // 创建测试类的对象

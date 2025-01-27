@@ -1,4 +1,6 @@
-package net.bi4vmr.study.classandobjects;
+package net.bi4vmr.study.oop;
+
+import net.bi4vmr.study.oop.base.TestCompanion;
 
 /**
  * TODO 添加描述

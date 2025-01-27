@@ -1,4 +1,4 @@
-package net.bi4vmr.study.classandobjects
+package net.bi4vmr.study.oop.base
 
 /**
  * 测试代码 - 伴生对象。

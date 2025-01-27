@@ -1,9 +1,10 @@
-package net.bi4vmr.study.classandobjects
+package net.bi4vmr.study.oop.base
 
 /**
- * 测试代码 - 类与对象。
+ * 测试代码：面向对象编程概述。
  *
- * @author BI4VMR
+ * @author bi4vmr@outlook.com
+ * @since 1.0.0
  */
 fun main() {
     example04()
