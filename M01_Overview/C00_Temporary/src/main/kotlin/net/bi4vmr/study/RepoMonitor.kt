@@ -15,6 +15,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -256,17 +257,37 @@ fun compareVersions(version1: String, version2: String): Int {
         }
     }
 
+    fun getSuffix(v: String): String {
+        val i = v.indexOf('_')
+        return if (i != -1) {
+            v.substring(i + 1, v.length)
+        } else {
+            ""
+        }
+    }
+
     val v1 = removeSuffix(version1)
     val v2 = removeSuffix(version2)
-    val list1 = v1.split('.').map { it.toInt() }
-    val list2 = v2.split('.').map { it.toInt() }
+    val list1 = v1.split('.').map { it.toLong() }.toMutableList()
+    val list2 = v2.split('.').map { it.toLong() }.toMutableList()
+
+    // 追加版本号之后的数字
+    try {
+        val v1Suffixs = getSuffix(version1).split('_').map { it.toLong() }
+        val v2Suffixs = getSuffix(version2).split('_').map { it.toLong() }
+        list1.addAll(v1Suffixs)
+        list2.addAll(v2Suffixs)
+    } catch (e: Exception) {
+        // System.err.println("版本号包含非数字部分，已忽略！ A:[$version1] B:[$version2]")
+        // e.printStackTrace()
+    }
 
     if (list1.size < 3 || list2.size < 3) {
         System.err.println("版本号格式不正确！")
         return 0
     }
 
-    for (i in 0 until 3) {
+    for (i in 0 until (min(list1.size, list2.size))) {
         if (list1[i] > list2[i]) return 1
         if (list1[i] < list2[i]) return -1
     }
