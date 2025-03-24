@@ -1,4 +1,4 @@
-package net.bi4vmr.study
+package net.bi4vmr.study.mockk.callback
 
 /**
  * 回调接口：文件操作。

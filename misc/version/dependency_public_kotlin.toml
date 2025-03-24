@@ -21,8 +21,10 @@ plugin_dokka = "1.9.20"
 # < Kotlin 官方组件 >
 # Kotlin标准库
 standardlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "core" }
-# Kotlin反射支持
+# Kotlin反射
 reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "core" }
+# Kotlin单元测试
+test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "core" }
 
 # < Kotlin 官方扩展 >
 # Kotlin协程支持

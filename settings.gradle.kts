@@ -160,3 +160,6 @@ include(":M03_Advance:C03_Concurrent:S02_Coroutine")
 include(":M03_Advance:C02_Features:S01_Generics")
 include(":M03_Advance:C02_Features:S02_Annotation")
 include(":M03_Advance:C02_Features:S03_Reflection")
+
+// ----- 实用工具 -----
+include(":M04_Utils:C01_Test:S01_MockK")
