@@ -3,6 +3,7 @@ package net.bi4vmr.study.mockk.callback
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 
@@ -70,6 +71,6 @@ class FileHelperTest {
         val captured1 = captor.captured
         val captured2 = captor2.captured
         println("captured1:[$captured1] captured2:[$captured2]")
-        // assertEquals(1, captured1.size)
+        assertEquals(false, captured1)
     }
 }

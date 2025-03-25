@@ -31,20 +31,21 @@ pluginManagement {
                 setUrl("http://172.16.5.1:8081/repository/maven-private/")
             }
         } else {
-            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(2000)) {
-                println("Current host is not in private network, add VPN repositorys.")
-                maven {
-                    isAllowInsecureProtocol = true
-                    setUrl("http://192.168.128.1:8081/repository/maven-mirror-tencent/")
-                }
-                maven {
-                    isAllowInsecureProtocol = true
-                    setUrl("http://192.168.128.1:8081/repository/maven-private/")
-                }
-            } else {
-                println("Current host is not in private network, add LOCAL repositorys.")
-                mavenLocal()
-            }
+            // VPN is not available now.
+            // if (java.net.InetAddress.getByName("192.168.128.1").isReachable(2000)) {
+            //     println("Current host is not in private network, add VPN repositorys.")
+            //     maven {
+            //         isAllowInsecureProtocol = true
+            //         setUrl("http://192.168.128.1:8081/repository/maven-mirror-tencent/")
+            //     }
+            //     maven {
+            //         isAllowInsecureProtocol = true
+            //         setUrl("http://192.168.128.1:8081/repository/maven-private/")
+            //     }
+            // } else {
+            //     println("Current host is not in private network, add LOCAL repositorys.")
+            mavenLocal()
+            // }
         }
 
         // 腾讯云仓库镜像：Maven中心仓库+Google+JCenter
@@ -92,22 +93,23 @@ dependencyResolutionManagement {
                 setUrl("http://172.16.5.1:8081/repository/maven-private/")
             }
         } else {
-            if (java.net.InetAddress.getByName("192.168.128.1").isReachable(2000)) {
-                maven {
-                    isAllowInsecureProtocol = true
-                    setUrl("http://192.168.128.1:8081/repository/maven-mirror-tencent/")
-                }
-                maven {
-                    isAllowInsecureProtocol = true
-                    setUrl("http://192.168.128.1:8081/repository/maven-jitpack/")
-                }
-                maven {
-                    isAllowInsecureProtocol = true
-                    setUrl("http://192.168.128.1:8081/repository/maven-private/")
-                }
-            } else {
-                mavenLocal()
-            }
+            // VPN is not available now.
+            // if (java.net.InetAddress.getByName("192.168.128.1").isReachable(2000)) {
+            //     maven {
+            //         isAllowInsecureProtocol = true
+            //         setUrl("http://192.168.128.1:8081/repository/maven-mirror-tencent/")
+            //     }
+            //     maven {
+            //         isAllowInsecureProtocol = true
+            //         setUrl("http://192.168.128.1:8081/repository/maven-jitpack/")
+            //     }
+            //     maven {
+            //         isAllowInsecureProtocol = true
+            //         setUrl("http://192.168.128.1:8081/repository/maven-private/")
+            //     }
+            // } else {
+            mavenLocal()
+            // }
         }
 
         // 腾讯云仓库镜像：Maven中心仓库+Google+JCenter
@@ -162,4 +164,6 @@ include(":M03_Advance:C02_Features:S02_Annotation")
 include(":M03_Advance:C02_Features:S03_Reflection")
 
 // ----- 实用工具 -----
-include(":M04_Utils:C01_Test:S01_MockK")
+include(":M04_Utils:C01_Test:S01_Base")
+include(":M04_Utils:C01_Test:S02_Mockito")
+include(":M04_Utils:C01_Test:S03_MockK")
