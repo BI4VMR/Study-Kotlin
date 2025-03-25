@@ -4,7 +4,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.io.File
 
@@ -39,7 +39,7 @@ class FileHelperTest {
         val capturedValue: String = captorResult.captured
         println("捕获到的参数值:[$capturedValue]")
         // 进一步验证该参数值
-        assertTrue(capturedValue.startsWith("Error"))
+        assertFalse(capturedValue.startsWith("OK"))
     }
 
     @Test

@@ -5,6 +5,6 @@ plugins {
 dependencies {
     implementation(libKotlin.standardlib)
 
-    testImplementation(libKotlin.mockk)
     testImplementation(libJava.junit4)
+    testImplementation(libKotlin.mockk)
 }

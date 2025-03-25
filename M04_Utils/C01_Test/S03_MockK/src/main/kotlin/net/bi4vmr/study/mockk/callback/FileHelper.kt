@@ -20,7 +20,7 @@ class FileHelper {
             File(path).createNewFile()
             callback.onResult(true, "OK!")
         } catch (e: Exception) {
-            callback.onResult(false, "Error!")
+            callback.onResult(false, "${e.message}")
             System.err.println("Save file failed! Reason:[${e.message}]")
         }
     }

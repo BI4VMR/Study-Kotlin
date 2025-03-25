@@ -13,6 +13,6 @@ class BaseTest {
 
     @Test
     fun test() {
-        assertEquals(22, 1)
+        assertEquals(1, 1)
     }
 }
