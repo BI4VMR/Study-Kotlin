@@ -1,6 +1,5 @@
 package net.bi4vmr.study.mockk.callback
 
-import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
@@ -8,11 +7,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.io.File
 
-
 /**
  * FileHelper的测试类。
  *
- * @author BI4VMR@outlook.com
+ * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
 class FileHelperTest {
@@ -48,9 +46,7 @@ class FileHelperTest {
 
         val fileHelper = FileHelper()
         // 创建Callback的Mock对象
-        val mockCallback: FileCallback = mockk()
-        // Mock回调方法，使用List作为捕获接收器。
-        every { mockCallback.onResult(any(), capture(capturedValues)) } returns Unit
+        val mockCallback: FileCallback = mockk(relaxed = true)
 
         // 多次调用待测方法，传入Callback的Mock对象
         val invalidPath = "/invalid_path.txt"
@@ -59,6 +55,11 @@ class FileHelperTest {
         val validPath = "/tmp/valid_path.txt"
         fileHelper.saveFile(validPath, mockCallback)
         File(validPath).deleteOnExit()
+
+        // 验证回调方法已触发，并使用 `capture()` 方法捕获第二个参数。
+        verify(exactly = 3) {
+            mockCallback.onResult(any(), capture(capturedValues))
+        }
 
         // 查看捕获到的参数值
         capturedValues.forEachIndexed { index, s ->
