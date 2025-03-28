@@ -50,6 +50,8 @@ class UserManagerTest {
         val mockDBHelper: DBHelper = mockk(relaxed = true)
         // 定义行为：如果 `queryUsers()` 方法被调用，则返回模拟数据。
         every { mockDBHelper.queryUsers() } returns mockDatas
+        // 此处注释了定义 `DBHelper#saveLog()` 方法行为的语句。
+        // every { mockDBHelper.saveLog(any()) } just runs
 
         // 构造待测类的对象，并注入Mock对象作为依赖。
         val manager = UserManager()
