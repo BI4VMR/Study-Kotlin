@@ -20,7 +20,7 @@ pluginManagement {
         }
         println("Current host in private LAN? [$isInPrivateLAN]")
 
-        if (hostName.startsWith("BI4VMR") && isInPrivateLAN) {
+        if (false && hostName.startsWith("BI4VMR") && isInPrivateLAN) {
             println("Current host is in private network, add LAN repositorys.")
             maven {
                 isAllowInsecureProtocol = true
@@ -79,7 +79,7 @@ dependencyResolutionManagement {
             }
         }
 
-        if (hostName.startsWith("BI4VMR") && isInPrivateLAN) {
+        if (false && hostName.startsWith("BI4VMR") && isInPrivateLAN) {
             maven {
                 isAllowInsecureProtocol = true
                 setUrl("http://172.16.5.1:8081/repository/maven-mirror-tencent/")
