@@ -42,7 +42,7 @@ const val JENKINS_URL_APK =
 const val JENKINS_USERNAME = "yigangzhan"
 const val JENKINS_TOKEN = "1138afb0901111c8a04fac7a2c2dfd2ae0"
 
-const val PATH_TEMP = "/tmp/pateo-build/Hyundai8295/"
+const val PATH_TEMP = "/var/tmp/pateo-build/Hyundai8295/"
 const val PATH_ALIST = "/mnt/alist-local/天翼云盘/Work/Hyundai8295_New/"
 
 val client: HTTP = HTTP.builder().build()
@@ -331,6 +331,12 @@ suspend fun startBuildAAR(): String? {
                             times++
                             runBlocking { delay(CHECK_INTERVAL * 1000L) }
                         }
+                        /* "executable"节点内容为空 */
+                        "-3" -> {
+                            println("`executable`节点内容为空，稍后将进行第 $times 次重试。")
+                            times++
+                            runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                        }
                         /* 已取到ID，跳出轮循。 */
                         else -> {
                             break
@@ -384,6 +390,12 @@ suspend fun startBuild(): String? {
                             times++
                             runBlocking { delay(CHECK_INTERVAL * 1000L) }
                         }
+                        /* "executable"节点内容为空 */
+                        "-3" -> {
+                            println("`executable`节点内容为空，稍后将进行第 $times 次重试。")
+                            times++
+                            runBlocking { delay(CHECK_INTERVAL * 1000L) }
+                        }
                         /* 已取到ID，跳出轮循。 */
                         else -> {
                             break
@@ -434,6 +446,12 @@ suspend fun getBuildID(url: String): String? {
                 }
 
                 if (obj.has("executable")) {
+                    // "executable"节点内容为空
+                    if (obj.get("executable").isJsonNull) {
+                        it.resume("-3")
+                        return@suspendCoroutine
+                    }
+
                     val item: JsonObject = obj.getAsJsonObject("executable")
                     val id: String = item.get("number").asString
                     it.resume(id)

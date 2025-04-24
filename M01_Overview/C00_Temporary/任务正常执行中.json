@@ -1,0 +1,56 @@
+{
+  "_class": "hudson.model.Queue$LeftItem",
+  "actions": [
+    {
+      "_class": "hudson.model.ParametersAction",
+      "parameters": [
+        {
+          "_class": "hudson.model.StringParameterValue",
+          "name": "Media_build",
+          "value": "Y"
+        },
+        {
+          "_class": "hudson.model.StringParameterValue",
+          "name": "TARGET_MODULE",
+          "value": "packages/apps/PateoCommon publish"
+        },
+        {
+          "_class": "hudson.model.StringParameterValue",
+          "name": "ANDROID_SYSTEM_HOME",
+          "value": "PRJ_HMTC_8295_QSSI"
+        }
+      ]
+    },
+    {
+      "_class": "hudson.model.CauseAction",
+      "causes": [
+        {
+          "_class": "hudson.model.Cause$UserIdCause",
+          "shortDescription": "Started by user 詹屹罡",
+          "userId": "yigangzhan",
+          "userName": "詹屹罡"
+        }
+      ]
+    }
+  ],
+  "blocked": false,
+  "buildable": false,
+  "id": 2118798,
+  "inQueueSince": 1745466988228,
+  "params": "\u000aMedia_build=Y\u000aTARGET_MODULE=packages/apps/PateoCommon publish\u000aANDROID_SYSTEM_HOME=PRJ_HMTC_8295_QSSI",
+  "stuck": false,
+  "task": {
+    "_class": "hudson.model.FreeStyleProject",
+    "name": "PRJ_HMTC_APP",
+    "url": "http://10.10.96.190:8080/job/PRJ_HMTC_APP/",
+    "color": "blue_anime"
+  },
+  "url": "queue/item/2118798/",
+  "why": null,
+  "cancelled": false,
+  "executable": {
+    "_class": "hudson.model.FreeStyleBuild",
+    "number": 1651,
+    "url": "http://10.10.96.190:8080/job/PRJ_HMTC_APP/1651/"
+  }
+}
