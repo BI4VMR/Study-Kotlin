@@ -154,6 +154,7 @@ include("M01_Overview:C01_HelloWorld")
 
 // ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")
+include(":M02_Syntax:C06_Exception")
 
 // ----- 高级特性 -----
 include(":M03_Advance:C01_OOP:S01_Base")

@@ -6,7 +6,7 @@ package net.bi4vmr.study.struct
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-fun main(args: Array<String>) {
+fun main() {
     example03()
 }
 
