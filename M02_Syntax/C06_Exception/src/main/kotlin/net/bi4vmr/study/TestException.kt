@@ -1,6 +1,10 @@
 package net.bi4vmr.study
 
 import net.bi4vmr.study.exception.CustomException
+import java.io.BufferedWriter
+import java.io.FileWriter
+import java.io.IOException
+import java.net.SocketException
 import java.util.*
 
 /**
@@ -10,7 +14,7 @@ import java.util.*
  * @since 1.0.0
  */
 fun main() {
-    example04()
+    example06()
 }
 
 /**
@@ -81,22 +85,46 @@ fun returnInTryCatch(): String {
 }
 
 /**
- * 示例五："try-with-resources"语法的基本应用。
+ * 示例五： `runCatching()` 函数的基本应用。
  *
- * 在本示例中，我们从控制台读取一行文本，并将其写入文件。
+ * 在本示例中，我们使用 `runCatching()` 方法代替 `try-catch` 语法。
  */
 fun example05() {
-    val scanner = Scanner(System.`in`)
-    scanner.use {  }.
-    // val writer = BufferedWriter(scanner)
+    runCatching {
+        val i = 10 / 5
+        println("i=$i")
+        // 返回一个数值
+        i
+    }.onSuccess { result ->
+        println("操作完毕，未发生异常！")
+        println("接收到返回值：$result")
+    }.onFailure { e ->
+        println("发生异常！${e.message}")
+    }
 }
 
 /**
- * 示例六：主动抛出异常。
+ * 示例六： `use()` 函数的基本应用。
+ *
+ * 在本示例中，我们从控制台读取一行文本，并将其写入文件。
+ */
+fun example06() {
+    val scanner = Scanner(System.`in`)
+    scanner.use {
+        BufferedWriter(FileWriter("output.txt")).use {
+            println("请输入文本，按回车键确认：")
+            val text = scanner.nextLine()
+            it.write(text)
+        }
+    }
+}
+
+/**
+ * 示例七：主动抛出异常。
  *
  * 在本示例中，我们编写一个方法用于计算整数角度的正切值，当输入值为90度的倍数时，向调用者抛出算术异常。
  */
-fun example06() {
+fun example07() {
     try {
         println("tan(45) = ${tan(45)}")
         println("tan(90) = ${tan(90)}")
@@ -114,11 +142,11 @@ fun tan(deg: Int): Double {
 }
 
 /**
- * 示例七：定义并使用自定义异常。
+ * 示例八：定义并使用自定义异常。
  *
  * 在本示例中，我们创建一个自定义异常类，在测试方法中抛出并捕获该异常。
  */
-fun example07() {
+fun example08() {
     try {
         raiseException()
     } catch (e: CustomException) {
@@ -132,11 +160,11 @@ fun raiseException() {
 }
 
 /**
- * 示例八：异常链的基本应用。
+ * 示例九：异常链的基本应用。
  *
  * 在本示例中，我们故意制造一个算术异常，并将其捕获后转为前文“示例七”中的CustomException，再向调用者抛出。
  */
-fun example08() {
+fun example09() {
     try {
         convertException()
     } catch (e: Exception) {
@@ -155,4 +183,15 @@ fun convertException() {
         // 抛出新建的CustomException
         throw customException
     }
+}
+
+/**
+ * 示例十：与Java交互 - 声明方法可能抛出的异常。
+ *
+ * 在本示例中，我们自定义一个方法，并使用 `@Throws` 注解声明可能出现的异常。
+ */
+@Throws(IOException::class, SocketException::class)
+fun javaExceptionTest() {
+    throw IOException()
+    // throw SocketException()
 }
