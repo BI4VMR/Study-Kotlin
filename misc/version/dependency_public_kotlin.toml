@@ -10,6 +10,7 @@ ktx_serial-json = "1.6.2"
 mockito_kotlin = "5.4.0"
 mockk = "1.13.17"
 
+
 # ----- Gradle插件 -----
 plugin_ksp = "1.9.21-1.0.16"
 plugin_dokka = "1.9.20"
@@ -50,6 +51,8 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 core = { id = "org.jetbrains.kotlin.jvm", version.ref = "core" }
 # 扩展・序列化
 serial = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "core" }
+# 扩展・Spring支持
+spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "core" }
 # KSP（注解处理器）
 ksp = { id = "com.google.devtools.ksp", version.ref = "plugin_ksp" }
 # Dokka（文档生成工具）
