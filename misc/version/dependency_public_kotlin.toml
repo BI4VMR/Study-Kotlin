@@ -20,23 +20,23 @@ plugin_dokka = "1.9.20"
 [libraries]
 # ----- 核心组件 -----
 # < Kotlin 官方组件 >
-# Kotlin标准库
+# Kotlin・标准库
 standardlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "core" }
-# Kotlin反射
+# Kotlin・反射
 reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "core" }
-# Kotlin单元测试
+# Kotlin・测试工具
 test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "core" }
 
 # < Kotlin 官方扩展 >
-# Kotlin协程支持
+# Kotlin・协程支持
 ktx_coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "ktx_coroutines" }
-# Kotlin序列化支持(JSON)
+# Kotlin・序列化支持・JSON
 ktx_serial-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "ktx_serial-json" }
 
 
 # ----- 测试工具 -----
 # < Mockito >
-# Mockito Kotlin扩展
+# Mockito・Kotlin扩展
 mockito_kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito_kotlin" }
 
 # < MockK >
