@@ -7,13 +7,14 @@ ktx_serial-json = "1.6.2"
 
 
 # ----- 测试工具 -----
-mockito_kotlin = "5.4.0"
+mockito-kotlin = "5.4.0"
 mockk = "1.13.17"
 
 
 # ----- Gradle插件 -----
 plugin_ksp = "1.9.21-1.0.16"
 plugin_dokka = "1.9.20"
+plugin_kover = "0.9.1"
 
 
 # 组件
@@ -28,16 +29,18 @@ reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref
 test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "core" }
 
 # < Kotlin 官方扩展 >
-# Kotlin・协程支持
-ktx_coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "ktx_coroutines" }
-# Kotlin・序列化支持・JSON
+# Kotlin・协程・核心
+ktx_coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "ktx_coroutines" }
+# Kotlin・协程・测试工具
+ktx_coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "ktx_coroutines" }
+# Kotlin・序列化・JSON
 ktx_serial-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "ktx_serial-json" }
 
 
 # ----- 测试工具 -----
 # < Mockito >
 # Mockito・Kotlin扩展
-mockito_kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito_kotlin" }
+mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito-kotlin" }
 
 # < MockK >
 # 核心
@@ -57,3 +60,5 @@ spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "core" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "plugin_ksp" }
 # Dokka（文档生成工具）
 dokka = { id = "org.jetbrains.dokka", version.ref = "plugin_dokka" }
+# Kover（测试代码覆盖率检测工具）
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "plugin_kover" }
