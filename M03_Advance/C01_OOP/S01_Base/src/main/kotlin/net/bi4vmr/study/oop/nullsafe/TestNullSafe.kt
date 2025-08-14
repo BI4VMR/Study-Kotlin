@@ -1,10 +1,13 @@
 package net.bi4vmr.study.oop.nullsafe
 
+import kotlinx.coroutines.runBlocking
+import kotlin.system.exitProcess
+
 /**
  * 测试代码 - 空值安全。
  */
 fun main() {
-    example02()
+    example07()
 }
 
 /*
@@ -92,10 +95,33 @@ fun example05() {
  */
 fun example06() {
     var str: String? = null
+    // 字符串为空时，终止进程。
+    runBlocking {
+        if (str == null) {
+            exitProcess(1)
+        }
+    }
 
-    // 该语句无法通过编译。
-    // println(str.length)
-
-    // 该语句可以通过编译，但运行时将会出现NPE。
+    // 代码运行至此处时字符串不可能为空，但前文判断跨作用域了，编译器仍然认为字符串可能为空。
     println(str!!.length)
+}
+
+fun example07() {
+    var str: String? = null
+    // 字符串为空时，终止进程。
+    runBlocking {
+        if (str == null) {
+            exitProcess(1)
+        }
+    }
+
+    // 代码运行至此处时字符串不可能为空，但前文判断跨作用域了，编译器仍然认为字符串可能为空。
+    val Nullnull = requireNotNull(str) { "inpossbo null value" }
+    // 转换为非空变量
+    println(Nullnull.length)
+
+    // 代码运行至此处时字符串不可能为空，但前文判断跨作用域了，编译器仍然认为字符串可能为空。
+    requireNotNull(str) { "inpossbo null value" }
+    // 转换为非空变量
+    println(str.length)
 }
