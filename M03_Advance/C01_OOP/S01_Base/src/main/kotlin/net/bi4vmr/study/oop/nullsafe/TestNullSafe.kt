@@ -94,34 +94,98 @@ fun example05() {
  * 示例：非空断言
  */
 fun example06() {
+    // 测试变量，值可以随意修改。
     var str: String? = null
     // 字符串为空时，终止进程。
     runBlocking {
         if (str == null) {
+            println("变量为空，终止进程！")
             exitProcess(1)
         }
     }
 
-    // 代码运行至此处时字符串不可能为空，但前文判断跨作用域了，编译器仍然认为字符串可能为空。
-    println(str!!.length)
+    // 该语句无法编译通过
+    // println("字符数量：${str.length}")
+
+    // 该语句可以编译通过
+    println("字符数量：${str!!.length}")
 }
 
+/*
+ * 示例： `requireNotNull()` 方法。
+ */
 fun example07() {
-    var str: String? = null
+    // 测试变量，值可以随意修改。
+    var str: String? = "Test String"
     // 字符串为空时，终止进程。
     runBlocking {
         if (str == null) {
+            println("变量为空，终止进程！")
             exitProcess(1)
         }
     }
 
-    // 代码运行至此处时字符串不可能为空，但前文判断跨作用域了，编译器仍然认为字符串可能为空。
-    val Nullnull = requireNotNull(str) { "inpossbo null value" }
-    // 转换为非空变量
-    println(Nullnull.length)
-
-    // 代码运行至此处时字符串不可能为空，但前文判断跨作用域了，编译器仍然认为字符串可能为空。
-    requireNotNull(str) { "inpossbo null value" }
-    // 转换为非空变量
-    println(str.length)
+    // 将变量转换为非空变量，并设置变量为空时的错误消息。
+    val nonNullStr = requireNotNull(str) { "预期之外的空值，请检查业务逻辑！" }
+    // 使用非空变量
+    println("字符数量：${nonNullStr.length}")
+    println("存在内容？：${nonNullStr.isNotEmpty()}")
 }
+
+/**
+ * 示例八：为枚举类新增自定义属性与方法。
+ *
+ * 在本示例中，我们使用枚举表示一周中的七天，并添加一些自定义属性与方法。
+ */
+/*
+class MyProvider : ContentProvider() {
+
+    // 延迟加载非空变量
+    private val cacheDir: File by lazy {
+        // 该语句将在变量 `cacheDir` 首次被调用时执行。
+        requireContext().cacheDir
+    }
+
+    // 此方法由系统在创建实例时调用，随后 `requireContext()` 方法可用。
+    override fun onCreate() {}
+
+    // 业务方法
+    fun listCacheFiles() {
+        // 此处为首次访问 `cacheDir` 变量， `by lazy {}` 中的语句被执行。
+        cacheDir.list()
+    }
+}
+*/
+
+
+/**
+ * 示例八：为枚举类新增自定义属性与方法。
+ *
+ * 在本示例中，我们使用枚举表示一周中的七天，并添加一些自定义属性与方法。
+ */
+/*
+class MyProvider : ContentProvider() {
+
+    // 声明非空变量但先不初始化
+    private lateinit var mCacheDir: File
+
+    // 此方法由系统在创建实例时调用，随后 `requireContext()` 方法可用。
+    override fun onCreate() {
+        // 具备条件时初始化非空变量
+        mCacheDir = requireContext().cacheDir
+    }
+
+    // 业务方法
+    fun listCacheFiles() {
+        // `mCacheDir` 变量在系统回调 `onCreate()` 方法时已被初始化，因此可以正常使用。
+        mCacheDir.list()
+
+        // 如果不希望访问未初始化的 `lateinit` 变量导致异常，我们也可以主动判断其是否已初始化。
+        if (::mCacheDir.isInitialized) {
+            println("`lateinit` 变量已初始化。")
+        } else {
+            println("`lateinit` 变量未初始化，不可访问！")
+        }
+    }
+}
+*/
