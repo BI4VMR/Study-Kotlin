@@ -1,7 +1,7 @@
 package net.bi4vmr.study.oop.base
 
 /**
- * 类的示例 - 人类。
+ * 类的示例：人类。
  *
  * @author BI4VMR
  */
@@ -14,6 +14,6 @@ class Person {
 
     /* 方法 */
     fun speak() {
-        println("我是${name}，年龄${age}岁，性别为${sex}")
+        println("我是${name}，年龄${age}岁，性别为${sex}。")
     }
 }

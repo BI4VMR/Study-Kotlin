@@ -1,7 +1,7 @@
 package net.bi4vmr.study.oop.base
 
 /**
- * 类的示例 - 人类。
+ * 类的示例：人类。
  *
  * @author BI4VMR
  */

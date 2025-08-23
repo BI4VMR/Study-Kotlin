@@ -4,11 +4,12 @@ import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
 /**
- * 测试代码 - 空值安全。
+ * 测试代码：空值安全。
  */
 fun main() {
     example07()
 }
+
 
 /*
  * 示例：Kotlin的类型安全
@@ -91,7 +92,9 @@ fun example05() {
 }
 
 /*
- * 示例：非空断言
+ * 示例<X>：非空断言。
+ *
+ * 在本示例中，我们了解非空断言的使用方法。
  */
 fun example06() {
     // 测试变量，值可以随意修改。
@@ -112,7 +115,9 @@ fun example06() {
 }
 
 /*
- * 示例： `requireNotNull()` 方法。
+ * 示例<X>："requireNotNull()"方法。
+ *
+ * 在本示例中，我们了解非空断言的使用方法。
  */
 fun example07() {
     // 测试变量，值可以随意修改。

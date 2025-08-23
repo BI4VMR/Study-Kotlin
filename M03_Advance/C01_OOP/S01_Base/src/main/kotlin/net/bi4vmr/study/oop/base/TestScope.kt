@@ -7,10 +7,17 @@ package net.bi4vmr.study.oop.base
  * @since 1.0.0
  */
 fun main() {
+
+    /**
+     * 示例二：全局变量与默认值。
+     * <p>
+     * 在本示例中，我们定义一个测试类并声明若干全局变量，并在控制台上输出它们的值。
+     */
     // 创建测试类的对象
     val test = TestScope()
     test.example01()
 }
+
 
 class TestScope {
 
@@ -27,8 +34,10 @@ class TestScope {
         println("y:[${y}]")
     }
 
-    /*
-     * 示例：局部变量。
+    /**
+     * 示例三：局部变量。
+     * <p>
+     * 在本示例中，我们在一个方法内定义变量，并尝试在另一个方法中访问它。
      */
     fun function1() {
         // 声明局部变量"x"
