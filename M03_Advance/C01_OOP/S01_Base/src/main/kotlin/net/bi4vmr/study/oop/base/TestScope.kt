@@ -15,7 +15,7 @@ fun main() {
      */
     // 创建测试类的对象
     val test = TestScope()
-    test.example01()
+    test.example02()
 }
 
 
@@ -28,7 +28,7 @@ class TestScope {
     /*
      * 示例：全局变量。
      */
-    fun example01() {
+    fun example02() {
         // 访问全局变量
         println("x:[${x}]")
         println("y:[${y}]")
