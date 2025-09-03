@@ -1,6 +1,4 @@
-package net.bi4vmr.study.oop;
-
-import net.bi4vmr.study.oop.base.TestCompanion;
+package net.bi4vmr.study.oop.base;
 
 /**
  * TODO 添加描述
@@ -10,6 +8,10 @@ import net.bi4vmr.study.oop.base.TestCompanion;
 public class TestCompanionJava {
 
     public static void main(String[] args) {
+        exam();
+    }
+
+    static void exam() {
         // 变量"x"未添加"@JvmStatic"注解时，此时只能通过Companion类访问。
         TestCompanion.Companion.getX();
 

@@ -7,45 +7,64 @@ package net.bi4vmr.study.oop.base
  * @since 1.0.0
  */
 fun main() {
-
-    /**
-     * 示例二：全局变量与默认值。
-     * <p>
-     * 在本示例中，我们定义一个测试类并声明若干全局变量，并在控制台上输出它们的值。
-     */
-    // 创建测试类的对象
-    val test = TestScope()
-    test.example02()
+    example02()
 }
 
 
+/**
+ * 示例二：全局变量的基本应用。
+ *
+ * 在本示例中，我们定义测试类并声明若干全局变量，然后在方法中访问它们。
+ */
+fun example02() {
+    // 创建测试类的对象
+    val instance = TestScope("ABC")
+    // 访问全局变量
+    instance.useGlobalVariables()
+}
+
 class TestScope {
 
-    // 声明全局变量
+    // 声明全局变量并指定初始值
     val x: Int = 1
-    val y: String = "ABC"
 
-    /*
-     * 示例：全局变量。
-     */
-    fun example02() {
-        // 访问全局变量
-        println("x:[${x}]")
-        println("y:[${y}]")
+    // 声明全局变量但由构造方法指定初始值
+    val y: String
+
+    constructor(value: String) {
+        // 使用构造方法的参数为全局变量设置初始值。
+        y = value
     }
 
-    /**
-     * 示例三：局部变量。
-     * <p>
-     * 在本示例中，我们在一个方法内定义变量，并尝试在另一个方法中访问它。
-     */
+    // 访问全局变量
+    fun useGlobalVariables() {
+        println("x:[$x]")
+        println("y:[$y]")
+    }
+
+    // 局部变量测试方法一
     fun function1() {
-        // 声明局部变量"x"
-        val x = 0
+        // 声明局部变量 `temp`
+        val temp = 0
     }
 
+    // 局部变量测试方法二
     fun function2() {
-        // 此方法无法访问"function1()"方法中的局部变量"x"，编译器会提示错误。
-        // println(x)
+        // 此处无法访问 `function1()` 方法中的局部变量 `temp` ，编译器会提示错误。
+        // println(temp)
     }
+}
+
+
+/**
+ * 示例三：局部变量的基本应用。
+ *
+ * 在本示例中，我们定义一个方法并声明局部变量，然后在另一个方法中访问它。
+ */
+fun example03() {
+    // 创建测试类的对象
+    val instance = TestScope("ABC")
+    // 访问局部变量
+    instance.function1()
+    instance.function2()
 }

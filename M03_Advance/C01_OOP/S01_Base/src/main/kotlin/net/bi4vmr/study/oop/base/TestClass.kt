@@ -7,7 +7,7 @@ package net.bi4vmr.study.oop.base
  * @since 1.0.0
  */
 fun main() {
-    example04()
+    example01()
 }
 
 
@@ -43,7 +43,7 @@ fun example01() {
  * <p>
  * 在本示例中，我们定义Person类描述“人类”，并创建一些对象。
  */
-fun example02() {
+fun example0233() {
     // 使用主要构造方法创建对象
     val zhangsan = Person2("张三", 18)
     zhangsan.speak()
@@ -52,7 +52,7 @@ fun example02() {
 /*
  * 示例：使用次要构造方法初始化对象。
  */
-fun example03() {
+fun example0333() {
     // 使用次要构造方法创建对象
     val lisi = Person3("李四", 20, '女')
     lisi.speak()
@@ -61,7 +61,7 @@ fun example03() {
 /*
  * 示例：在主要构造方法中声明全局变量。
  */
-fun example04() {
+fun example04333() {
     // 使用次要构造方法创建对象
     val lisi = Person4("李四", 20, '女')
     lisi.speak()
