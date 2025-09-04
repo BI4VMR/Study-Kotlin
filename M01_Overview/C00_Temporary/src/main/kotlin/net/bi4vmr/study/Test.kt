@@ -1,7 +1,26 @@
 package net.bi4vmr.study
 
-fun main() {
-    example03()
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+val mutex = Mutex()
+var counter = 0
+
+fun main() = runBlocking {
+    val jobs = List(10) { // 启动10个协程
+        launch(Dispatchers.Default) {
+            repeat(10) { // 每个协程递增计数器1000次
+                mutex.withLock { // 自动加锁/解锁
+                    println("th: ${Thread.currentThread().name} mutex isLocked:${mutex.isLocked}")
+                    delay(10L)
+                    counter++
+                }
+            }
+        }
+    }
+    jobs.forEach { it.join() }
+    println("Final counter: $counter") // 正确输出10000
 }
 
 /**
