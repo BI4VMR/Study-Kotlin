@@ -1,9 +1,10 @@
 package net.bi4vmr.study.oop.base
 
 /**
- * 类的示例：人类。
+ * 示例类：人类。
  *
- * @author BI4VMR
+ * @author bi4vmr@outlook.com
+ * @since 1.0.0
  */
 class Person4 constructor(
     val name: String,
