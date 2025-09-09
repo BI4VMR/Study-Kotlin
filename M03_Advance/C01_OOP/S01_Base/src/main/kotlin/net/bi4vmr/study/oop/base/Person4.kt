@@ -9,11 +9,21 @@ package net.bi4vmr.study.oop.base
 class Person4 constructor(
     val name: String,
     val age: Int,
-    private val sex: Char
+    private val sex: Char = '男'
 ) {
+
+    /* 初始化块 */
+    init {
+        println("初始化块...")
+    }
+
+    /* 次要构造方法 */
+    constructor(name: String) : this(name, 18) {
+        println("次要构造方法...")
+    }
 
     /* 方法 */
     fun speak() {
-        println("我是${name}，年龄${age}岁，性别为${sex}")
+        println("我是${name}，年龄${age}岁，性别为${sex}。")
     }
 }

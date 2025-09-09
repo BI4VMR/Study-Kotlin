@@ -7,7 +7,7 @@ package net.bi4vmr.study.oop.base
  * @since 1.0.0
  */
 fun main() {
-    example01()
+    example06()
 }
 
 
@@ -46,20 +46,30 @@ fun example04() {
     zhangsan.speak()
 }
 
-/*
- * 示例：使用次要构造方法初始化对象。
+
+/**
+ * 示例五：在主要构造方法中声明全局变量。
+ *
+ * 在本示例中，我们对前文“示例四”所定义的Person类进行修改，在构造方法中定义与参数同名的全局变量。
  */
-fun example0333() {
-    // 使用次要构造方法创建对象
-    val lisi = Person3("李四", 20, '女')
+fun example05() {
+    // 创建对象，可选参数使用默认值。
+    val lisi = Person3("李四", 20)
     lisi.speak()
+
+    // 创建对象，可选参数使用指定值。
+    val alice = Person3("Alice", 22, '女')
+    alice.speak()
 }
 
-/*
- * 示例：在主要构造方法中声明全局变量。
+
+/**
+ * 示例六：使用次要构造方法初始化对象。
+ *
+ * 在本示例中，我们对前文“示例五”所定义的Person类进行修改，添加次要构造方法。
  */
-fun example04333() {
+fun example06() {
     // 使用次要构造方法创建对象
-    val lisi = Person4("李四", 20, '女')
+    val lisi = Person4("李四")
     lisi.speak()
 }

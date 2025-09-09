@@ -7,16 +7,16 @@ package net.bi4vmr.study.oop.base
  * @since 1.0.0
  */
 fun main() {
-    example00()
+    example07()
 }
 
 
 /**
- * 示例二：全局变量与默认值。
- * <p>
- * 在本示例中，我们定义一个测试类并声明若干全局变量，并在控制台上输出它们的值。
+ * 示例七：伴生对象的基本应用。
+ *
+ * 在本示例中，我们定义测试类并声明伴生对象，然后访问其中的变量与方法。
  */
-fun example00() {
+fun example07() {
     // 访问伴生对象中的属性
     println("访问属性：${TestCompanion.x}")
 
@@ -26,16 +26,38 @@ fun example00() {
 
 class TestCompanion {
 
-    // 伴生对象
+    // 声明伴生对象
     companion object {
+
         // 声明变量
-        @JvmStatic
         val x: String = "TEST"
 
         // 声明方法
-        @JvmStatic
         fun avg(a: Int, b: Int): Double {
             return ((a + b) / 2.0)
         }
+    }
+}
+
+/**
+ * 示例八："c"的基本应用。
+ *
+ * 在本示例中，我们定义测试类并声明伴生对象，然后访问其中的变量与方法。
+ */
+fun example08() {
+    // 访问伴生对象中的属性
+    println("访问属性：${TestCompanion.x}")
+}
+
+class TestCompanion2 {
+
+    // 声明伴生对象
+    companion object {
+
+        // 声明变量
+        val x: String = "TEST"
+
+        // 声明常量
+        const val PI: Float = 3.141593F
     }
 }
