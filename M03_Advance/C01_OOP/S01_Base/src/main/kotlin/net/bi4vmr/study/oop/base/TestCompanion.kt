@@ -81,18 +81,20 @@ class TestCompanion2 {
 
 
 /**
- * 示例九：与Java交互。
+ * 示例九："@JvmStatic"注解。
  *
- * 在本示例中，我们比较"const"常量与普通常量的区别。
+ * 在本示例中，我们为变量与方法添加 `@JvmStatic` 注解，并在Java代码中访问它们。
  */
-class TestCompanion2 {
+class TestCompanion3 {
 
     companion object {
 
-        // 声明"const"常量
-        const val PI: Float = 3.141593F
+        @JvmStatic
+        val x: String = "TEST"
 
-        // 声明普通常量
-        val X: String = "TEST"
+        @JvmStatic
+        fun avg(a: Int, b: Int): Double {
+            return ((a + b) / 2.0)
+        }
     }
 }
