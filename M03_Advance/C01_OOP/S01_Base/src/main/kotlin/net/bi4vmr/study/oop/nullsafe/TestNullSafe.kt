@@ -7,17 +7,19 @@ import kotlin.system.exitProcess
  * 测试代码：空值安全。
  */
 fun main() {
-    example07()
+    example17()
 }
 
 
-/*
- * 示例：Kotlin的类型安全
+/**
+ * 示例十：定义与访问可空变量。
+ *
+ * 在本示例中，我们定义一些可空变量，并访问它们。
  */
-fun example01() {
-    // 声明非空字符串"str1"
+fun example10() {
+    // 声明非空字符串 `str1`
     var str1: String = "字符串内容"
-    // 声明可空字符串"str2"
+    // 声明可空字符串 `str2`
     var str2: String? = null
 
     // 将空值赋予非空字符串，该语句无法通过编译。
@@ -31,10 +33,12 @@ fun example01() {
     // str2.length
 }
 
-/*
- * 示例：判断可空变量
+/**
+ * 示例十一：空值检验。
+ *
+ * 在本示例中，我们对可空变量进行空值检验，仅当变量非空时访问它的属性与方法。
  */
-fun example02() {
+fun example11() {
     var str: String? = null
 
     // 判断字符串是否为空值
@@ -46,10 +50,12 @@ fun example02() {
     }
 }
 
-/*
- * 示例：安全调用操作符
+/**
+ * 示例十二：安全调用操作符。
+ *
+ * 在本示例中，我们使用安全调用操作符进行空值检验。
  */
-fun example03() {
+fun example12() {
     var str1: String? = "字符串内容"
     var str2: String? = null
 
@@ -58,10 +64,37 @@ fun example03() {
     println("str2的内容：" + str2?.length)
 }
 
-/*
- * 示例：使用安全调用操作符判断空值
+/**
+ * 示例十三：级联判空。
+ *
+ * 在本示例中，我们使用安全调用操作符进行空值检验。
  */
-fun example04() {
+fun example13() {
+    /*
+    val courses = student.getCourses()
+    if (courses != null) {
+        // 获取最新选择的课程
+        val latestCourse = courses.getLatestCourse()
+        if (latestCourse != null) {
+            // 获取课程的学分
+            val credit = latestCourse.getCredit()
+            println("学分：$credit")
+        }
+    }
+     */
+
+    /*
+    val credit = student?.getCourses()?.getLatestCourse()?.getCredit()
+    println("学分：$credit")
+     */
+}
+
+/**
+ * 示例十四：使用安全调用操作符检验空值。
+ *
+ * 在本示例中，我们使用安全调用操作符进行空值检验。
+ */
+fun example14() {
     var str: String? = null
 
     // 判断字符串是否为空值
@@ -78,9 +111,11 @@ fun example04() {
 }
 
 /*
- * 示例：Elvis运算符
+ * 示例十五：Elvis运算符。
+ *
+ * 在本示例中，我们了解Elvis运算符的使用方法。
  */
-fun example05() {
+fun example15() {
     var str1: String? = "字符串内容"
     var str2: String? = null
 
@@ -91,12 +126,12 @@ fun example05() {
     println("str2的长度:$length2")
 }
 
-/*
- * 示例<X>：非空断言。
+/**
+ * 示例十六：非空断言。
  *
- * 在本示例中，我们了解非空断言的使用方法。
+ * 在本示例中，我们了解非空断言的应用场景。
  */
-fun example06() {
+fun example16() {
     // 测试变量，值可以随意修改。
     var str: String? = null
     // 字符串为空时，终止进程。
@@ -114,12 +149,12 @@ fun example06() {
     println("字符数量：${str!!.length}")
 }
 
-/*
- * 示例<X>："requireNotNull()"方法。
+/**
+ * 示例十七："requireNotNull()"方法。
  *
- * 在本示例中，我们了解非空断言的使用方法。
+ * 在本示例中，我们了解 `requireNotNull()` 方法的应用场景。
  */
-fun example07() {
+fun example17() {
     // 测试变量，值可以随意修改。
     var str: String? = "Test String"
     // 字符串为空时，终止进程。
@@ -138,9 +173,9 @@ fun example07() {
 }
 
 /**
- * 示例八：为枚举类新增自定义属性与方法。
+ * 示例十八：通过 `by lazy {}` 方法延迟加载非空变量。
  *
- * 在本示例中，我们使用枚举表示一周中的七天，并添加一些自定义属性与方法。
+ * 在本示例中，我们使用 `by lazy {}` 方法延迟加载非空变量。
  */
 /*
 class MyProvider : ContentProvider() {
@@ -164,9 +199,9 @@ class MyProvider : ContentProvider() {
 
 
 /**
- * 示例八：为枚举类新增自定义属性与方法。
+ * 示例十九：通过 `lateinit` 关键字延迟加载非空变量。
  *
- * 在本示例中，我们使用枚举表示一周中的七天，并添加一些自定义属性与方法。
+ * 在本示例中，我们使用 `lateinit` 关键字延迟加载非空变量。
  */
 /*
 class MyProvider : ContentProvider() {
