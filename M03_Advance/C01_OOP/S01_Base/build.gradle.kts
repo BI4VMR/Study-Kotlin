@@ -4,4 +4,5 @@ plugins {
 
 dependencies {
     implementation(libKotlin.standardlib)
+    implementation(libKotlin.ktx.coroutines.core)
 }

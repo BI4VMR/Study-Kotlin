@@ -65,32 +65,30 @@ fun example12() {
 }
 
 /**
- * 示例十三：级联判空。
+ * 示例十三：级联判空（伪代码）。
  *
- * 在本示例中，我们使用安全调用操作符进行空值检验。
+ * 在本示例中，我们使用安全调用操作符进行级联判空。
  */
-fun example13() {
-    /*
-    val courses = student.getCourses()
-    if (courses != null) {
-        // 获取最新选择的课程
-        val latestCourse = courses.getLatestCourse()
-        if (latestCourse != null) {
-            // 获取课程的学分
-            val credit = latestCourse.getCredit()
-            println("学分：$credit")
-        }
+/* 普通写法
+val courses = student.getCourses()
+if (courses != null) {
+    // 获取最新选择的课程
+    val latestCourse = courses.getLatestCourse()
+    if (latestCourse != null) {
+        // 获取课程的学分
+        val credit = latestCourse.getCredit()
+        println("学分：$credit")
     }
-     */
-
-    /*
-    val credit = student?.getCourses()?.getLatestCourse()?.getCredit()
-    println("学分：$credit")
-     */
 }
+*/
+
+/* 简化写法
+val credit = student?.getCourses()?.getLatestCourse()?.getCredit()
+println("学分：$credit")
+*/
 
 /**
- * 示例十四：使用安全调用操作符检验空值。
+ * 示例十四：通过安全调用操作符检验空值。
  *
  * 在本示例中，我们使用安全调用操作符进行空值检验。
  */
@@ -110,10 +108,10 @@ fun example14() {
     }
 }
 
-/*
+/**
  * 示例十五：Elvis运算符。
  *
- * 在本示例中，我们了解Elvis运算符的使用方法。
+ * 在本示例中，我们了解Elvis运算符的应用场景。
  */
 fun example15() {
     var str1: String? = "字符串内容"
@@ -173,7 +171,7 @@ fun example17() {
 }
 
 /**
- * 示例十八：通过 `by lazy {}` 方法延迟加载非空变量。
+ * 示例十八：通过 `by lazy {}` 方法延迟加载变量（伪代码）。
  *
  * 在本示例中，我们使用 `by lazy {}` 方法延迟加载非空变量。
  */
@@ -199,7 +197,7 @@ class MyProvider : ContentProvider() {
 
 
 /**
- * 示例十九：通过 `lateinit` 关键字延迟加载非空变量。
+ * 示例十九：通过 `lateinit` 关键字延迟加载变量（伪代码）。
  *
  * 在本示例中，我们使用 `lateinit` 关键字延迟加载非空变量。
  */
