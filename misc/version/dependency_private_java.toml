@@ -1,0 +1,48 @@
+# 版本号
+[versions]
+all = "1.0.0"
+
+common_base = "1.0.0"
+
+io_base = "1.0.0"
+
+storage_file = "1.0.0"
+
+text_base = "1.0.0"
+text_gson = "1.0.0"
+
+math_base = "1.0.0"
+
+security_digest = "1.0.0"
+
+
+# ----- 插件 -----
+repo_public = "1.0.0"
+repo_private = "1.0.0"
+
+
+# 组件
+[libraries]
+all = { group = "net.bi4vmr.tool.java", name = "all", version.ref = "all" }
+
+common_base = { group = "net.bi4vmr.tool.java", name = "common-base", version.ref = "common_base" }
+
+io_base = { group = "net.bi4vmr.tool.java", name = "io-base", version.ref = "io_base" }
+
+storage_file = { group = "net.bi4vmr.tool.java", name = "storage-file", version.ref = "storage_file" }
+
+text_base = { group = "net.bi4vmr.tool.java", name = "text-base", version.ref = "text_base" }
+text_gson = { group = "net.bi4vmr.tool.java", name = "text-gson", version.ref = "text_gson" }
+
+math_base = { group = "net.bi4vmr.tool.java", name = "math-base", version.ref = "math_base" }
+
+security_digest = { group = "net.bi4vmr.tool.java", name = "security-digest", version.ref = "security_digest" }
+
+
+# Gradle插件
+[plugins]
+# ----- Java -----
+# Maven公开仓库
+repo_public = { id = "net.bi4vmr.gradle.plugin.repo.public", version.ref = "repo_public" }
+# Maven私有仓库
+repo_private = { id = "net.bi4vmr.gradle.plugin.repo.private", version.ref = "repo_private" }
