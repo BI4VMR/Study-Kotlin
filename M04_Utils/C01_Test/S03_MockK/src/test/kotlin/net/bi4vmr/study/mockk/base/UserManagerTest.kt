@@ -7,7 +7,7 @@ import org.junit.Assert
 import org.junit.Test
 
 /**
- * UserManager的测试类。
+ * [UserManager]功能测试。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -15,7 +15,7 @@ import org.junit.Test
 class UserManagerTest {
 
     @Test
-    fun testGetUserNames() {
+    fun test_GetUserNames() {
         // 模拟数据
         val mockDatas: Map<Long, String> = mapOf(1L to "来宾账户", 2L to "用户A", 3L to "用户B")
 
@@ -42,7 +42,7 @@ class UserManagerTest {
     }
 
     @Test
-    fun testGetUserNames2() {
+    fun test_GetUserNames2() {
         // 模拟数据
         val mockDatas: Map<Long, String> = mapOf(1L to "来宾账户", 2L to "用户A", 3L to "用户B")
 

@@ -4,7 +4,7 @@ import io.mockk.*
 import org.junit.Test
 
 /**
- * Utils的测试类。
+ * [Utils]功能测试。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -12,8 +12,8 @@ import org.junit.Test
 class UtilsTest {
 
     @Test
-    fun testMockObject() {
-        // Mock Utils中的普通方法
+    fun test_Mock_Object() {
+        // 为Utils中的普通方法启用Mock
         mockkObject(Utils)
         // 定义行为
         every { Utils.getCurrentTime() } returns 1234567890L
@@ -25,15 +25,30 @@ class UtilsTest {
     }
 
     @Test
-    fun testMockStatic() {
-        // Mock Utils中的静态方法
+    fun test_Mock_Static() {
+        // 为Utils中的静态方法启用Mock
         mockkStatic(Utils::class)
         // 定义行为
-        every { Utils.getURL() } returns "http://example.com/"
+        every { Utils.getURL() } returns "http://test.com/"
         // 调用Mock方法
         println("Utils#getURL:[${Utils.getURL()}]")
 
         // 撤销Mock（可选）
         unmockkStatic(Utils::class)
+    }
+
+    @Test
+    fun test_Mock_Companion_Object() {
+        // 为Utils2中的普通方法启用Mock
+        mockkObject(Utils2)
+
+        // 使用该语句也能启用伴生对象的Mock
+        // mockkObject(Utils2.Companion)
+
+        every { Utils2.method() } returns "Test method."
+        every { Utils2.methodStatic() } returns "Test static method."
+
+        println("Utils2#method:[${Utils2.method()}]")
+        println("Utils2#methodStatic:[${Utils2.methodStatic()}]")
     }
 }
