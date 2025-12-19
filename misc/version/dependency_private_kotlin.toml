@@ -1,0 +1,8 @@
+# 版本号
+[versions]
+common_base = "1.0.0"
+
+
+# 组件
+[libraries]
+common_base = { group = "net.bi4vmr.tool.kotlin", name = "common-base", version.ref = "common_base" }
