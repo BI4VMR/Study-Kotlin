@@ -1,9 +1,6 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.kotlin_lang
 
-import io.mockk.every
-import io.mockk.mockk
 import io.mockk.mockkConstructor
-import io.mockk.verify
 import org.junit.Test
 
 /**
@@ -12,7 +9,7 @@ import org.junit.Test
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class ConsTest {
+class ConstructorTest {
 
     @Test
     fun aaa() {

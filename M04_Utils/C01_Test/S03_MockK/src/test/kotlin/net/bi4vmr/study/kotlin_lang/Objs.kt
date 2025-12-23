@@ -1,4 +1,4 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.kotlin_lang
 
 class Car {
 
@@ -7,10 +7,10 @@ class Car {
     }
 }
 
-class Shop(){
-    var car :Car? = null
+class Shop() {
+    var car: Car? = null
 
-    fun exchange(){
+    fun exchange() {
         car = Car()
     }
 }

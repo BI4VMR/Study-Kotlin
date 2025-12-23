@@ -1,18 +1,21 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.base
 
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
-import io.mockk.unmockkAll
 import io.mockk.verify
-import org.junit.After
+import net.bi4vmr.study.injectMock
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
 /**
  * UserManager的测试类（使用注解）。
+ *
+ * 示例三：使用注解创建Mock对象。
+ *
+ * 在本示例中，我们以JUnit 4平台为例，使用MockK提供的注解创建Mock对象。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -44,15 +47,9 @@ class AnnotationTest {
     lateinit var mockDBHelper4: DBHelper
 
     @Before
-    fun setup() {
+    fun setUp() {
         // 若要使用MockK注解，需要在执行其他操作前先初始化。
         MockKAnnotations.init(this)
-    }
-
-    @After
-    fun teardown() {
-        // 撤销所有Mock
-        unmockkAll()
     }
 
     @Test

@@ -1,4 +1,4 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.kotlin_lang
 
 /**
  * 工具类。
@@ -6,12 +6,10 @@ package net.bi4vmr.study.mockk.base
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-object Utils {
+object UtilsObject {
 
     fun getCurrentTime(): Long = System.currentTimeMillis()
 
     @JvmStatic
-    fun getURL(): String {
-        return "http://192.168.1.1/"
-    }
+    fun getURL(): String = "http://192.168.1.1/"
 }

@@ -1,4 +1,4 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.base
 
 /**
  * 用户管理。

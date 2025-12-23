@@ -1,4 +1,4 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.kotlin_lang
 
 /**
  * 工具类。
@@ -6,7 +6,7 @@ package net.bi4vmr.study.mockk.base
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class Utils2 {
+class UtilsClass {
 
     companion object {
 

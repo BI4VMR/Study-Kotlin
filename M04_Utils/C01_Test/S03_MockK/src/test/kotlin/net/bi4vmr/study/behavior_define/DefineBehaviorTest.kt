@@ -1,4 +1,4 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.behavior_define
 
 import io.mockk.every
 import io.mockk.mockk
@@ -96,20 +96,6 @@ class DefineBehaviorTest {
         // 调用Mock对象的 `getCanonicalPath()` 方法并输出结果
         println("File Path:[${mockFile.canonicalPath}]")
     }
-
-
-    class DBHelper {
-
-        // 根据用户ID查询姓名
-        fun queryUserName(id: Int): String = "Real Name"
-
-        // 根据身份证号查询姓名
-        fun queryUserName(cardID: String): String = "Real Name"
-
-        // 查询所有年龄和性别符合要求的用户ID
-        fun queryUserNames(age: Int, male: Boolean): List<String> = listOf("Real Name")
-    }
-
 
     /**
      * 示例八：参数匹配器。

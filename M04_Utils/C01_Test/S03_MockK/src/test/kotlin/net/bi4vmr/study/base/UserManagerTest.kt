@@ -1,8 +1,9 @@
-package net.bi4vmr.study.mockk.base
+package net.bi4vmr.study.base
 
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import net.bi4vmr.study.injectMock
 import org.junit.Assert
 import org.junit.Test
 
@@ -14,6 +15,11 @@ import org.junit.Test
  */
 class UserManagerTest {
 
+    /**
+     * 示例一：模拟待测组件的依赖项。
+     *
+     * 在本示例中，我们创建Mock对象，并将它们注入到待测对象中，实现依赖隔离。
+     */
     @Test
     fun test_GetUserNames() {
         // 模拟数据
@@ -41,12 +47,17 @@ class UserManagerTest {
         Assert.assertTrue(mockDatas.values.containsAll(users))
     }
 
+    /**
+     * 示例二：使用宽松模式创建Mock对象。
+     *
+     * 在本示例中，我们使用宽松模式创建Mock对象，并调用未手动定义行为的Mock方法。
+     */
     @Test
     fun test_GetUserNames2() {
         // 模拟数据
         val mockDatas: Map<Long, String> = mapOf(1L to "来宾账户", 2L to "用户A", 3L to "用户B")
 
-        // 创建DBHelper的Mock对象（使用relaxed = true为没有明确定义行为的类添加默认行为）
+        // 创建DBHelper的Mock对象（使用 `relaxed = true` 为没有明确定义行为的类添加默认行为）
         val mockDBHelper: DBHelper = mockk(relaxed = true)
         // 定义行为：如果 `queryUsers()` 方法被调用，则返回模拟数据。
         every { mockDBHelper.queryUsers() } returns mockDatas
