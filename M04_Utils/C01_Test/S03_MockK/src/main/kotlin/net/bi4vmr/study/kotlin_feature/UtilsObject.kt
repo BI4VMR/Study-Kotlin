@@ -1,4 +1,4 @@
-package net.bi4vmr.study.kotlin_lang
+package net.bi4vmr.study.kotlin_feature
 
 /**
  * 工具类。

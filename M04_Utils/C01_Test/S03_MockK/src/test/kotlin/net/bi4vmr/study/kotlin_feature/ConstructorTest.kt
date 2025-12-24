@@ -1,4 +1,4 @@
-package net.bi4vmr.study.kotlin_lang
+package net.bi4vmr.study.kotlin_feature
 
 import io.mockk.mockkConstructor
 import org.junit.Test

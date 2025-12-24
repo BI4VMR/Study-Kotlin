@@ -1,4 +1,4 @@
-package net.bi4vmr.study.behavior_verify
+package net.bi4vmr.study.advance
 
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -13,6 +13,9 @@ class LogManager {
 
     // 外部依赖
     var logger: Logger = Logger.getAnonymousLogger()
+
+    var minLevel: Level = Level.INFO
+        private set
 
     // 业务方法：将一组消息分行输出
     fun printInfo(messages: List<String>) {

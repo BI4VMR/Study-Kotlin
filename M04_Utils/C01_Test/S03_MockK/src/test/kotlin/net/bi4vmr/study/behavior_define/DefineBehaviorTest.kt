@@ -141,9 +141,9 @@ class DefineBehaviorTest {
     }
 
     /**
-     * 示例十：具体值与 `eq()` 匹配器的区别。
+     * 示例十：具体值与 `eq()` 匹配器。
      *
-     * 在本示例中，我们演示字面量参数与 `eq()` 匹配器的区别。
+     * 在本示例中，我们演示参数具体值与 `eq()` 匹配器的区别。
      */
     @Test
     fun test_Parameter_ValueAndEQ() {

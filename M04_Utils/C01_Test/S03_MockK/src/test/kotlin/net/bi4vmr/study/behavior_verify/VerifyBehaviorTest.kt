@@ -15,6 +15,11 @@ import java.util.logging.Logger
  */
 class VerifyBehaviorTest {
 
+    /**
+     * 示例十一：基本的行为验证。
+     *
+     * 在本示例中，我们使用 `verify {}` 方法验证被测接口是否正确地调用了依赖组件。
+     */
     @Test
     fun test_Base() {
         // 创建Logger的Mock对象
@@ -32,13 +37,24 @@ class VerifyBehaviorTest {
             mockLogger.log(eq(Level.INFO), any<String>())
         }
 
-        verify(exactly = 2) {
+
+        // 再次执行业务方法
+        val text2: List<String> = listOf("Line1", "Line2", "Line3")
+        manager.printInfo(text2)
+
+        // 验证行为：Logger的记录方法应当被调用2次 + 3次
+        verify(exactly = 2 + text2.size) {
             mockLogger.log(eq(Level.INFO), any<String>())
         }
     }
 
+    /**
+     * 示例十二：验证一组方法的调用顺序。
+     *
+     * 在本示例中，我们使用 `verifySequence {}` 方法验证被测接口是否正确地调用了依赖组件。
+     */
     @Test
-    fun test() {
+    fun test_Sequence() {
         // 创建监听器的Mock对象
         val mockListener: LogManager.StateCallback = mockk(relaxed = true)
 
