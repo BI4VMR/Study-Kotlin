@@ -17,6 +17,13 @@ class LogManager {
     var minLevel: Level = Level.INFO
         private set
 
+    init {
+        // 注册配置变更监听器，并同步设置最小级别。
+        LogConfigTool.addConfigListener { newLevel ->
+            minLevel = newLevel
+        }
+    }
+
     // 业务方法：将一组消息分行输出
     fun printInfo(messages: List<String>) {
         messages.forEach { message ->
