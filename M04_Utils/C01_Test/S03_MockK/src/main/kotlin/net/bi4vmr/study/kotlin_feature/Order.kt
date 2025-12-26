@@ -6,15 +6,11 @@ package net.bi4vmr.study.kotlin_feature
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class Order {
+class Order(
+    private val goods: String
+) {
 
-    private val list: MutableList<String> = mutableListOf()
+    fun showInfo1(): String = goods
 
-    constructor(goods: String) {
-        list.add(goods)
-    }
-
-    fun showInfo1(): String = list.toString()
-
-    fun showInfo2(): String = list.toString()
+    fun showInfo2(): String = goods
 }

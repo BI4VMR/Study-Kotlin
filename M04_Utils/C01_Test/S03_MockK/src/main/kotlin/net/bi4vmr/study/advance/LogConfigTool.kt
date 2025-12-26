@@ -34,4 +34,16 @@ object LogConfigTool {
          */
         fun onLevelChange(level: Level)
     }
+
+    /**
+     * 业务方法：准备日志目录。
+     *
+     * @param[onComplet] 准备完成回调。 `dir` 参数表示目录路径。
+     */
+    fun prepare(onComplet: (dir: String) -> Unit) {
+        // 模拟耗时操作
+        Thread.sleep(5000L)
+        // 触发回调方法，通知调用者初始化完成。
+        onComplet.invoke("/var/log/2025-12-31/")
+    }
 }

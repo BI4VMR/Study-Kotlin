@@ -1,6 +1,7 @@
 package net.bi4vmr.study.advance
 
 import io.mockk.every
+import io.mockk.invoke
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -71,5 +72,39 @@ class CaptorTest {
         }
         // 计算平均耗时
         println("平均耗时：${slots.average()} ms。")
+    }
+
+    @Test
+    fun test_Lambda() {
+        mockkObject(LogConfigTool)
+        // 定义行为：当LogConfigTool的 `prepare()` 方法被调用时，捕获调用者传入的Lambda表达式。
+        every { LogConfigTool.prepare(captureLambda()) } answers {
+            // 获取捕获到的Lambda表达式，并立即调用它。
+            lambda<(String) -> Unit>().invoke("/mock/log/")
+        }
+
+        // 调用Mock方法，并传入Lambda作为回调实现。
+        LogConfigTool.prepare {
+            println("目录准备完成，路径：[$it]")
+        }
+    }
+
+    @Test
+    fun test_Lambda2() {
+        mockkObject(LogConfigTool)
+        // 使用CapturingSlot承载Lambda表达式
+        val slot = slot<(String) -> Unit>()
+        every { LogConfigTool.prepare(capture(slot)) } answers {
+            // 可以在 `answers {}` 代码块中调用捕获到的Lambda表达式
+            slot.invoke("/mock/log/")
+        }
+
+        // 调用Mock方法，并传入Lambda作为回调实现。
+        LogConfigTool.prepare {
+            println("目录准备完成，路径：[$it]")
+        }
+
+        // 也可以在调用发生后使用Lambda表达式，模拟异步回调。
+        slot.invoke("/mock/log2/")
     }
 }
