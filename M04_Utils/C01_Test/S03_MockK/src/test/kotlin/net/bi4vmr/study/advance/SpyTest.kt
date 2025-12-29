@@ -2,11 +2,11 @@ package net.bi4vmr.study.advance
 
 import io.mockk.every
 import io.mockk.spyk
-import net.bi4vmr.study.behavior_define.DBHelper
 import org.junit.Test
 
+
 /**
- * [LogManager]功能测试。
+ * [MemoryInfo]功能测试。
  *
  * Spy使用案例。
  *
@@ -15,19 +15,25 @@ import org.junit.Test
  */
 class SpyTest {
 
-
     /**
-     * 示例六：偏函数模拟。
+     * 示例十五：Spy模式。
      *
-     * 在本示例中，我们为Mock对象定义行为，每当指定方法被调用时，输出控制台消息。
+     * 在本示例中，我们创建MemoryInfo的Spy对象，并为 `getFreeMemory()` 方法定义行为，模拟剩余内存较低的场景。
      */
     @Test
-    fun test_Define_OriginalCall() {
-        val spyDBHelper = spyk(DBHelper())
-        every { spyDBHelper.queryUserNames(any(), any()) } answers {
-            val n = callOriginal()
-            println("Origin Value: $n")
-            ArrayList(n + "sss")
-        }
+    fun test_Base() {
+        // 创建Spy对象
+        val spyMemoryInfo = spyk(MemoryInfo())
+
+        println("初始状态...")
+        println("内存总量：${spyMemoryInfo.getTotalMemory()}")
+        println("空闲内存：${spyMemoryInfo.getFreeMemory()}")
+
+        // 定义行为：模拟剩余内存为8KB的情况
+        every { spyMemoryInfo.getFreeMemory() } returns 8 * 1024L
+
+        println("定义行为后...")
+        println("内存总量：${spyMemoryInfo.getTotalMemory()}")
+        println("空闲内存：${spyMemoryInfo.getFreeMemory()}")
     }
 }

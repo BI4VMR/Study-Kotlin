@@ -157,4 +157,26 @@ class DefineBehaviorTest {
         // 正确用法：全部使用字面量
         every { mockDBHelper.queryUserNames(20, false) } returns listOf()
     }
+
+    /**
+     * 示例六：偏函数模拟。
+     *
+     * 在本示例中，我们调用Mock对象的原始方法，对返回值进行处理后再传递给调用者。
+     */
+    @Test
+    fun test_OriginalCall() {
+        val mockDBHelper = mockk<DBHelper>()
+        every { mockDBHelper.queryUserNames(any(), any()) } answers {
+            // 调用原始方法
+            val rawList = callOriginal()
+            println("真实调用的返回值：$rawList")
+
+            // 追加一些模拟数据再作为新的返回值
+            ArrayList(rawList + "MockUser1" + "MockUser2")
+        }
+
+        // 调用Mock对象的 `queryUserNames()` 方法并输出结果
+        val result = mockDBHelper.queryUserNames(22, false)
+        println("Mock方法的返回值：$result")
+    }
 }
