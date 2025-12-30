@@ -22,7 +22,7 @@ import java.util.logging.Level
 class CaptorTest {
 
     /**
-     * 示例：捕获回调接口并模拟事件。
+     * 示例二十一：捕获回调接口并模拟事件。
      *
      * 在本示例中，我们捕获被测对象向依赖组件注册的监听器实例，并模拟事件触发。
      */
@@ -46,7 +46,7 @@ class CaptorTest {
     }
 
     /**
-     * 示例：捕获多次调用的参数。
+     * 示例二十二：捕获多次调用的参数。
      *
      * 在本示例中，我们捕获被测对象向依赖组件注册的监听器实例，并计算平均耗时。
      */
@@ -74,6 +74,11 @@ class CaptorTest {
         println("平均耗时：${slots.average()} ms。")
     }
 
+    /**
+     * 示例二十三：捕获Lambda表达式。
+     *
+     * 在本示例中，我们捕获Mock方法中的Lambda表达式，并在 `answers {}` 语句块中调用。
+     */
     @Test
     fun test_Lambda() {
         mockkObject(LogConfigTool)
@@ -89,6 +94,11 @@ class CaptorTest {
         }
     }
 
+    /**
+     * 示例二十四：捕获Lambda表达式（方法二）。
+     *
+     * 在本示例中，我们捕获Mock方法中的Lambda表达式，并在适当的时机调用。
+     */
     @Test
     fun test_Lambda2() {
         mockkObject(LogConfigTool)

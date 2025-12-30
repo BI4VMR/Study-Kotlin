@@ -13,7 +13,7 @@ import org.junit.Test
 class UtilsClassTest {
 
     /**
-     * 示例十五：模拟伴生对象中的方法。
+     * 示例十六：模拟伴生对象中的方法。
      *
      * 在本示例中，我们模拟类的伴生对象中的方法。
      */

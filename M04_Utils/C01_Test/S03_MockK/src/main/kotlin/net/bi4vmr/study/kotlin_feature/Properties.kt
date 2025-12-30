@@ -8,10 +8,7 @@ package net.bi4vmr.study.kotlin_feature
  */
 class Properties {
 
-    companion object {
-        var value2: Int = -1
-    }
+    var name: String = "Real User"
 
-    var value1: Int = -1
-    private var value111: Int = -1
+    var age: Int = 20
 }

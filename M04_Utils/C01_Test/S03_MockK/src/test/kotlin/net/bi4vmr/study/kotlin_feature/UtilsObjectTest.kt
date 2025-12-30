@@ -17,7 +17,7 @@ import org.junit.Test
 class UtilsObjectTest {
 
     /**
-     * 示例十三：模拟Object中的普通方法。
+     * 示例十四：模拟Object中的普通方法。
      *
      * 在本示例中，我们模拟Object中的非静态方法。
      */
@@ -38,7 +38,7 @@ class UtilsObjectTest {
     }
 
     /**
-     * 示例十四：模拟Object中的静态方法。
+     * 示例十五：模拟Object中的静态方法。
      *
      * 在本示例中，我们模拟Object中的JVM静态方法。
      */

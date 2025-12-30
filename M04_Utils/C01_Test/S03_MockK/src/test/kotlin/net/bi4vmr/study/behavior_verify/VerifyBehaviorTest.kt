@@ -16,7 +16,7 @@ import java.util.logging.Logger
 class VerifyBehaviorTest {
 
     /**
-     * 示例十一：基本的行为验证。
+     * 示例十二：基本的行为验证。
      *
      * 在本示例中，我们使用 `verify {}` 方法验证被测接口是否正确地调用了依赖组件。
      */
@@ -49,7 +49,7 @@ class VerifyBehaviorTest {
     }
 
     /**
-     * 示例十二：验证一组方法的调用顺序。
+     * 示例十三：验证一组方法的调用顺序。
      *
      * 在本示例中，我们使用 `verifySequence {}` 方法验证被测接口是否正确地调用了依赖组件。
      */
