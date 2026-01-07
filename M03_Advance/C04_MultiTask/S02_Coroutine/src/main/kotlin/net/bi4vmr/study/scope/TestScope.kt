@@ -1,11 +1,17 @@
 package net.bi4vmr.study.scope
 
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 测试代码：协程环境。
@@ -14,18 +20,57 @@ import kotlinx.coroutines.launch
  * @since 1.0.0
  */
 fun main() {
-    example01()
+    example02()
 }
 
 
 /**
- * 示例：基本应用。
+ * 示例一：创建协程作用域。
  *
- * 在本示例中，我们创建一个协程。
+ * 在本示例中，我们创建一些协程作用域，并指定上下文。
  */
 fun example01() {
+    // 常见的上下文
+    val scopeA = CoroutineScope(Dispatchers.Default)
+    println("ScopeA: ${scopeA.coroutineContext}")
+
+    // 额外指定名称和SupervisorJob
+    val scopeB = CoroutineScope(Dispatchers.IO + CoroutineName("A") + SupervisorJob())
+    println("ScopeB: ${scopeB.coroutineContext}")
+
+    // EmptyCoroutineContext
+    val scopeC = CoroutineScope(EmptyCoroutineContext)
+    println("ScopeC: ${scopeC.coroutineContext}")
 }
 
+
+/**
+ * 示例二：修改协程上下文。
+ *
+ * 在本示例中，我们创建协程作用域，并对上下文进行修改。
+ */
+fun example02() {
+    val scope = CoroutineScope(Dispatchers.IO + CoroutineName("A") + SupervisorJob())
+    println("Scope: ${scope.coroutineContext}")
+
+    // 通过KEY获取Context中的元素
+    val job = scope.coroutineContext[Job]
+    println("获取元素：$job")
+
+    // 替换同KEY元素生成新的Context
+    val newContext1 = scope.coroutineContext + Dispatchers.Default
+    println("替换元素：$newContext1")
+
+    // 添加元素生成新的Context
+    val newContext2 = scope.coroutineContext + CoroutineExceptionHandler { _: CoroutineContext, e: Throwable ->
+        println("捕获到异常：${e.message}")
+    }
+    println("新增元素：$newContext2")
+
+    // 移除元素生成新的Context
+    val newContext3 = scope.coroutineContext.minusKey(CoroutineName)
+    println("移除元素：$newContext3")
+}
 
 /*
  * 示例：编码风格。

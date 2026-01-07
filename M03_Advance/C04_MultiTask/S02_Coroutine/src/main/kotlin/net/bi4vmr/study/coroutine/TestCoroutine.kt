@@ -1,22 +1,28 @@
 package net.bi4vmr.study.coroutine
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 测试代码 - 协程。
+ * 测试代码：协程基础。
  *
- * @author BI4VMR@outlook.com
+ * @author bi4vmr@outlook.com
  */
 fun main() {
-    example01()
+    example04()
 }
 
 /**
- * 示例：基本应用。
+ * 示例一：创建基本的协程。
  *
- * 在本示例中，我们创建一个协程。
+ * 在本示例中，我们创建一个协程，模拟耗时任务并在控制台上显示相关信息。
  */
 fun example01() {
     /*
@@ -37,8 +43,10 @@ fun example01() {
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：挂起与恢复 - 挂起函数。
+/**
+ * 示例二：挂起函数。
+ *
+ * 在本示例中，我们定义一个挂起函数，并在协程环境中调用它。
  */
 fun example02() {
     // 定义挂起函数
@@ -50,7 +58,7 @@ fun example02() {
     }
 
     CoroutineScope(Dispatchers.Default).launch {
-        // 在协程任务中调用挂起函数，并获取返回值。
+        // 在协程环境中调用挂起函数，并获取返回值。
         val value = task()
         println("Task return value is $value.")
     }
@@ -59,8 +67,10 @@ fun example02() {
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：挂起与恢复 - 挂起与恢复机制。
+/**
+ * 示例三：挂起与恢复机制。
+ *
+ * 在本示例中，我们同时开启多个协程，测试协程任务与工作线程之间的关系。
  */
 fun example03() {
     // 挂起函数示例
@@ -84,8 +94,10 @@ fun example03() {
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：协程的生命周期。
+/**
+ * 示例四：协程的生命周期。
+ *
+ * 在本示例中，我们创建一个协程，并尝试访问协程任务的三个公开属性。
  */
 fun example04() {
     // 启动协程任务，并声明变量保存Job对象。
@@ -109,8 +121,10 @@ fun example04() {
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：取消任务（未挂起状态）。
+/**
+ * 示例五：中断未挂起的任务。
+ *
+ * 在本示例中，我们创建一个具有循环任务的协程，并在主线程发起中断请求。
  */
 fun example05() {
     // 启动一个协程，循环输出日志信息。
@@ -136,8 +150,10 @@ fun example05() {
     Thread.sleep(5000L)
 }
 
-/*
- * 示例：取消任务（已挂起状态）。
+/**
+ * 示例六：中断已挂起的任务。
+ *
+ * 在本示例中，我们创建一个协程，并在任务进入挂起状态时，从主线程发起中断请求。
  */
 fun example06() {
     // 启动一个协程，循环输出日志信息。

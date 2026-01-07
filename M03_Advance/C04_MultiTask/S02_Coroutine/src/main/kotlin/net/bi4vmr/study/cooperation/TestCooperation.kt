@@ -1,21 +1,28 @@
 package net.bi4vmr.study.cooperation
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 
 /**
- * 测试代码 - 任务调度。
+ * 测试代码：任务调度。
  *
- * @author BI4VMR@outlook.com
+ * @author bi4vmr@outlook.com
  */
 fun main() {
     example05()
 }
 
 /**
- * 示例：顺序执行任务。
+ * 示例一：顺序执行任务。
  */
 fun example01() {
     // 测试方法：延时特定秒数。
