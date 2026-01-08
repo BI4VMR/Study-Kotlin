@@ -14,10 +14,12 @@ import java.time.format.DateTimeFormatter
  * 测试代码：协程基础。
  *
  * @author bi4vmr@outlook.com
+ * @since 1.0.0
  */
 fun main() {
     example04()
 }
+
 
 /**
  * 示例一：创建基本的协程。

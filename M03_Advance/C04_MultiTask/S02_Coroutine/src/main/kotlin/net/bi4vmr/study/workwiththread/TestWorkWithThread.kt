@@ -1,6 +1,12 @@
 package net.bi4vmr.study.workwiththread
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
@@ -9,13 +15,15 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * 测试代码 - 与线程交互。
+ * 测试代码：线程交互。
  *
- * @author BI4VMR。
+ * @author bi4vmr@outlook.com
+ * @since 1.0.0
  */
 fun main() {
-    example06()
+    example05()
 }
+
 
 /**
  * 网络请求回调接口。
@@ -50,7 +58,9 @@ fun request(result: Boolean, callback: NetCallback) {
 }
 
 /**
- * 示例：使用接口回调风格的API。
+ * 示例一：接口回调风格的API。
+ *
+ * 在本示例中，我们定义一个接口回调风格的模拟网络请求API，并演示它的调用方法。
  */
 fun example01() {
     println("Mock request start. Time:[${getTime()}]")
@@ -88,25 +98,26 @@ private suspend fun requestSuspend(result: Boolean): String {
 }
 
 /**
- * 示例：使用协程风格的API（请求成功）。
+ * 示例二：协程风格的API。
+ *
+ * 在本示例中，我们使用 `suspendCoroutine()` 方法将回调接口 `request()` 转换为挂起函数。
  */
 fun example02() {
-    CoroutineScope(Dispatchers.IO).launch {
+    runBlocking {
         println("Mock request start. Time:[${getTime()}]")
         // 声明变量以便接收请求成功的结果
         val data = requestSuspend(true)
         println("Request success. Time:[${getTime()}] Data:[$data]")
     }
-
-    // 阻塞主线程5秒，避免协程提前终止。
-    Thread.sleep(5000L)
 }
 
 /**
- * 示例：使用协程风格的API（请求失败）。
+ * 示例三：反馈异常状态。
+ *
+ * 在本示例中，我们通过捕获 `requestSuspend()` 方法可能发生的异常，处理请求失败事件。
  */
 fun example03() {
-    CoroutineScope(Dispatchers.IO).launch {
+    runBlocking {
         try {
             println("Mock request start. Time:[${getTime()}]")
             // 模拟请求失败的情况
@@ -117,9 +128,6 @@ fun example03() {
             println("Request failure. Time:[${getTime()}] Info:[${e.message}]")
         }
     }
-
-    // 阻塞主线程5秒，避免协程提前终止。
-    Thread.sleep(5000L)
 }
 
 /**
@@ -150,7 +158,9 @@ private suspend fun requestSuspend2(result: Boolean): String {
 }
 
 /**
- * 示例：模拟网络请求（中途取消任务）。
+ * 示例四：处理中断请求。
+ *
+ * 在本示例中，我们为前文“示例二”中的 `requestSuspend()` 方法添加中断处理功能。
  */
 fun example04() {
     val job: Job = CoroutineScope(Dispatchers.IO).launch {
@@ -196,7 +206,9 @@ fun requestCallback(result: Boolean, callback: NetCallback) {
 }
 
 /**
- * 示例：将协程API转换为接口回调风格的API。
+ * 示例五：将协程API转换为接口回调API。
+ *
+ * 在本示例中，我们使用 `runBlocking()` 方法将前文“示例二”中的挂起函数 `requestSuspend()` 转换为接口回调形式。
  */
 fun example05() {
     println("Mock request start. Time:[${getTime()}]")
@@ -209,21 +221,6 @@ fun example05() {
             println("OnFailure. Time:[${getTime()}] Info:[$message]")
         }
     })
-}
-
-/**
- * 示例：开启一个协程，使主线程等待协程执行完毕再结束。
- */
-fun example06() {
-    runBlocking {
-        // 启动协程后调用"join()"方法，使主线程等待协程执行完毕。
-        CoroutineScope(Dispatchers.Default).launch {
-            println("Task start.")
-            delay(2000)
-            println("Task end.")
-        }.join()
-    }
-    println("Main thread end.")
 }
 
 /**
