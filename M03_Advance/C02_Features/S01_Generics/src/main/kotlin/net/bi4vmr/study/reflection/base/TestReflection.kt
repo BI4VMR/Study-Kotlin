@@ -3,7 +3,7 @@ package net.bi4vmr.study.reflection.base
 import kotlin.reflect.KClass
 
 /**
- * 测试代码：反射。
+ * 示例代码：反射。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

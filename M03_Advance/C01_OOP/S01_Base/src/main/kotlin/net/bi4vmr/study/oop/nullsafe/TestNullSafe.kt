@@ -4,7 +4,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
 /**
- * 测试代码：空值安全。
+ * 示例代码：空值安全。
  */
 fun main() {
     example17()

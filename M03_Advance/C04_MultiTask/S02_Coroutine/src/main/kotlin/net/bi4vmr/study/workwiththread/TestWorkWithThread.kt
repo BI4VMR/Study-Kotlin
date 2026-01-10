@@ -15,7 +15,7 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * 测试代码：线程交互。
+ * 示例代码：线程交互。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

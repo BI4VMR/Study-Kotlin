@@ -1,7 +1,7 @@
 package net.bi4vmr.study.oop.base;
 
 /**
- * 测试代码：伴生对象。
+ * 示例代码：伴生对象。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

@@ -1,7 +1,7 @@
 package net.bi4vmr.study.oop.base
 
 /**
- * 测试代码：变量的作用域。
+ * 示例代码：变量的作用域。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

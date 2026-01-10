@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 
 /**
- * 测试代码：任务调度。
+ * 示例代码：任务调度。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
