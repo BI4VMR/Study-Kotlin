@@ -114,12 +114,8 @@ class UserManagerV2(
     fun updateCurrentUID() {
         // 方法内部不要单独创建作用域
         scope.launch {
-            println("UpdateCurrentUID start.")
-
             // 模拟耗时操作...
             delay(1000L)
-
-            println("UpdateCurrentUID end.")
         }
     }
 
