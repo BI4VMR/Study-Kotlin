@@ -5,7 +5,6 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -14,7 +13,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.supervisorScope
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -25,29 +23,17 @@ import kotlin.coroutines.EmptyCoroutineContext
  * @since 1.0.0
  */
 fun main() {
-    // example04_3()
+    example03_2()
 
-    val job = GlobalScope.launch {
-        println("coroutineContext: $coroutineContext")
-        delay(100L)
-        println("Glo1 end")
-    }
+    // val job = GlobalScope.launch {
+    //     println("coroutineContext: $coroutineContext")
+    //     delay(100L)
+    //     println("Glo1 end")
+    // }
     // println()
     // job.cancel()
 
     // Thread.sleep(1000L)
-}
-
-suspend fun ss() {
-    // 用于获取调用该挂起函数的作用域
-    coroutineScope {
-        // 可以获取Context
-        coroutineContext
-        currentCoroutineContext()
-
-        // 可以开启新的协程
-        launch { }
-    }
 }
 
 
@@ -101,11 +87,81 @@ fun example02() {
 
 
 /**
- * 示例三：作用域名称。
+ * 示例三：SupervisorJob和普通Job的区别。
+ *
+ * 在本示例中，我们使用SupervisorJob和普通Job分别创建协程作用域，并比较二者的异常处理行为。
+ */
+fun example03() = runBlocking {
+    // 创建作用域但未使用SupervisorJob，默认为普通Job。
+    val scope = CoroutineScope(Dispatchers.Default)
+    val job1 = scope.launch {
+        println("Normal task start.")
+        delay(100L)
+        println("Normal task end.")
+    }
+
+    val job2 = scope.launch {
+        println("Exception task start.")
+        delay(50L)
+        throw IllegalStateException("Mock Error!")
+    }
+
+    job1.join()
+    job2.join()
+    println("Root task end. Normal job cancelled:[${job1.isCancelled}]")
+}
+
+fun example03_2() = runBlocking {
+    // 创建作用域且使用SupervisorJob
+    val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    val job1 = scope.launch {
+        println("Normal task start.")
+        delay(100L)
+        println("Normal task end.")
+    }
+
+    val job2 = scope.launch {
+        println("Exception task start.")
+        delay(50L)
+        throw IllegalStateException("Mock Error!")
+    }
+
+    job1.join()
+    job2.join()
+    println("Root task end. Normal job cancelled:[${job1.isCancelled}]")
+}
+
+
+/**
+ * 示例四：全局异常处理器。
+ *
+ * 在本示例中，我们为作用域注册全局异常处理器，并在此处记录日志。
+ */
+fun example04() = runBlocking {
+    // 异常处理器实现
+    val exceptionHandler = CoroutineExceptionHandler { context, exception ->
+        println("捕获到协程异常：[${exception.message}]")
+    }
+
+    // 创建作用域并注册异常处理器
+    val scope = CoroutineScope(Dispatchers.Default + SupervisorJob() + exceptionHandler)
+    val job = scope.launch {
+        println("Exception task start.")
+        delay(50L)
+        throw IllegalStateException("Mock Error!")
+    }
+
+    job.join()
+    println("Root task end.")
+}
+
+
+/**
+ * 示例五：作用域名称。
  *
  * 在本示例中，我们创建协程作用域并指定名称，然后在协程中获取并输出消息。
  */
-fun example03() = runBlocking {
+fun example05() = runBlocking {
     // 未指定CoroutineName的作用域
     CoroutineScope(EmptyCoroutineContext).launch {
         val name = coroutineContext[CoroutineName]?.name
@@ -120,105 +176,19 @@ fun example03() = runBlocking {
 }
 
 
-/**
- * 示例三：作用域名称。
- *
- * 在本示例中，我们创建协程作用域并指定名称，然后在协程中获取并输出消息。
- */
-fun example04() = runBlocking {
-    // 创建作用域但未使用SupervisorJob，默认为普通Job。
-    val scope = CoroutineScope(Dispatchers.Default)
-    val job1 = scope.launch {
-        println("Normal task start.")
-        delay(100L)
-        println("Normal task end.")
-    }
+suspend fun foo() {
+    // 获取调用该挂起函数的作用域
+    coroutineScope {
+        // 通过属性获取当前协程的Context
+        coroutineContext
+        // 通过方法获取当前协程的Context
+        currentCoroutineContext()
 
-    val job2 = scope.launch {
-        println("Error task start.")
-        delay(50L)
-        throw IllegalStateException("Mock Error!")
-    }
-
-    job1.join()
-    job2.join()
-    println("Root task end. Job1 cancelled:[${job1.isCancelled}]")
-}
-
-fun example04_2() = runBlocking {
-    // 创建作用域且使用SupervisorJob
-    val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val job1 = scope.launch {
-        println("Normal task start.")
-        delay(100L)
-        println("Normal task end.")
-    }
-
-    val job2 = scope.launch {
-        println("Error task start.")
-        delay(50L)
-        throw IllegalStateException("Mock Error!")
-    }
-
-    job1.join()
-    job2.join()
-    println("Root task end. Job1 cancelled:[${job1.isCancelled}]")
-}
-
-fun example04_3() = runBlocking {
-    val handler = CoroutineExceptionHandler { _, exception ->
-        println("Caught exception: ${exception.message}")
-    }
-    // 创建作用域且使用SupervisorJob
-    val scope = CoroutineScope(Dispatchers.Default + SupervisorJob() + handler)
-    val job1 = scope.launch {
-        println("Normal task start.")
-        delay(100L)
-
+        // 此处可以开启新的子协程
         launch {
-            println("Error task start.")
-            delay(50L)
-            throw IllegalStateException("Mock Error!")
-        }.join()
-
-        println("Normal task end.")
+            println("Sub task.")
+        }
     }
-
-    // val job2 = scope.launch {
-    //     println("Error task start.")
-    //     delay(50L)
-    //     throw IllegalStateException("Mock Error!")
-    // }
-
-    job1.join()
-    // job2.join()
-    println("Root task end. Job1 cancelled:[${job1.isCancelled}]")
-}
-
-fun example04_44() = runBlocking {
-    val handler = CoroutineExceptionHandler { _, exception ->
-        println("Caught exception: ${exception.message}")
-    }
-    supervisorScope {
-
-    }
-    // 创建作用域且使用SupervisorJob
-    val scope = CoroutineScope(Dispatchers.Default + SupervisorJob() + handler)
-    val job1 = scope.launch {
-        println("Normal task start.")
-        delay(100L)
-        println("Normal task end.")
-    }
-
-    val job2 = scope.launch {
-        println("Error task start.")
-        delay(50L)
-        throw IllegalStateException("Mock Error!")
-    }
-
-    job1.join()
-    job2.join()
-    println("Root task end. Job1 cancelled:[${job1.isCancelled}]")
 }
 
 
