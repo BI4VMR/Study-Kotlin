@@ -7,4 +7,5 @@ dependencies {
     implementation(libKotlin.ktx.coroutines.core)
     implementation(libJava.okhttps.core)
     implementation(libJava.gson)
+    implementation(privateLibJava.io.base)
 }
