@@ -15,9 +15,9 @@ import java.time.format.DateTimeFormatter
 import kotlin.system.exitProcess
 
 fun main() {
-    val file = File("C:\\Link\\S1-Data\\Archive\\个人资源库\\原创照片\\日志・2025・制品（边框）")
+    // val file = File("C:\\Link\\S1-Data\\Archive\\个人资源库\\原创照片\\事件・20251105_月球观测・制品")
+    val file = File("C:\\Users\\bi4vmr\\Pictures\\原创照片\\事件・20251105_月球观测・制品")
     // val file2 = File("C:\\Users\\bi4vmr\\Downloads\\1.txt")
-    val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
 
     if (!file.isDirectory || !file.canRead()) {
         println("❌ 目录不可用")
@@ -76,29 +76,18 @@ fun setFileCreationTimeWindows(file: File, dateTime: LocalDateTime) {
 fun parseDateTimeFromFilename(filename: String): LocalDateTime? {
 
     // 去掉扩展名
-
     val nameWithoutExt = filename.substringBeforeLast('.')
 
-
     // 检查是否以 8位数字 + _ + 6位数字 开头
-
     if (nameWithoutExt.length < 15) return null
 
     val prefix = nameWithoutExt.substring(0, 15) // "20251129_130931"
 
-
-
     if (!prefix.matches(Regex("""\d{8}_\d{6}"""))) return null
 
-
     return try {
-
         LocalDateTime.parse(prefix, DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
-
     } catch (e: Exception) {
-
         null
-
     }
-
 }

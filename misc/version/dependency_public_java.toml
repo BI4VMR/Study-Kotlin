@@ -1,7 +1,7 @@
 # 版本号
 [versions]
 # ----- 实用工具 -----
-apachecommons-io = "1.3.2"
+apacheCommons-io = "1.3.2"
 slf4j-simple = "2.0.9"
 gson = "2.10.1"
 
@@ -22,6 +22,11 @@ okhttp3-bom = "4.12.0"
 retrofit2-bom = "2.11.0"
 
 okhttps-core = "4.0.3"
+
+
+# ----- 媒体工具 -----
+apacheCommons-imaging = "1.0.0-alpha6"
+drewnoakes-metadataExtractor = "2.19.0"
 
 
 # ----- JavaEE框架 -----
@@ -46,7 +51,7 @@ spring-dependency = "1.1.7"
 # ----- 实用工具 -----
 # < Apache通用工具 >
 # IO
-apachecommons-io = { group = "org.apache.commons", name = "commons-io", version.ref = "apachecommons-io" }
+apacheCommons-io = { group = "org.apache.commons", name = "commons-io", version.ref = "apacheCommons-io" }
 
 # < SLF4J >
 # SLF4J・Simple
@@ -99,6 +104,14 @@ okhttps-core = { group = "cn.zhxu", name = "okhttps", version.ref = "okhttps-cor
 okhttps-gson = { group = "cn.zhxu", name = "okhttps-gson", version.ref = "okhttps-core" }
 # Jackson支持
 okhttps-jackson = { group = "cn.zhxu", name = "okhttps-jackson", version.ref = "okhttps-core" }
+
+
+# ----- 媒体工具 -----
+# < 元数据处理工具 >
+# Apache・媒体元数据工具
+apacheCommons-imaging = { group = "org.apache.commons", name = "commons-imaging", version.ref = "apacheCommons-imaging" }
+# Drewnoakes・媒体元数据工具
+drewnoakes-metadataExtractor = { group = "com.drewnoakes", name = "metadata-extractor", version.ref = "drewnoakes-metadataExtractor" }
 
 
 # ----- JavaEE框架 -----

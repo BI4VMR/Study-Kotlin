@@ -8,4 +8,6 @@ dependencies {
     implementation(libJava.okhttps.core)
     implementation(libJava.gson)
     implementation(privateLibJava.io.base)
+    implementation(libJava.drewnoakes.metadataExtractor)
+    implementation(libJava.apacheCommons.imaging)
 }
