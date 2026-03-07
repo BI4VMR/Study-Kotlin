@@ -1,7 +1,7 @@
 package net.bi4vmr.study.troubleshooting
 
 /**
- * 案例一：TODO 添加详情。
+ * 案例一：模拟方法时，出现类型不匹配错误。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
