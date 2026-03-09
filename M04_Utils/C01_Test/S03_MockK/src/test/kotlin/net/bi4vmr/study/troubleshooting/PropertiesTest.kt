@@ -14,10 +14,12 @@ class PropertiesTest {
 
     @Test
     fun test() {
-        // 尝试为 `getState()` 方法设置模拟返回值。
-        val mockObj = mockk<Properties>()
+        // 创建模拟对象
+        val mockObj: Properties = mockk<Properties>()
 
         /*
+         * 尝试为 `getState()` 方法设置模拟返回值。
+         *
          * 执行失败，因为 `state` 属性生成了与 `getState()` 方法同名的Getter方法，JVM允许同名不同返回值的方法在字节码中共存，但MockK
          * 无法指定目标方法，导致Mock失败。
          */
