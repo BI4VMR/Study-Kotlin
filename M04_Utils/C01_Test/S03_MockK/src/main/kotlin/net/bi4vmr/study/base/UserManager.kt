@@ -21,13 +21,9 @@ class UserManager {
     // 获取所有用户名称（新增了日志记录的步骤）
     fun getUserNames2(): List<String> {
         mDBHelper.saveLog("GetUserNames")
+
         return mDBHelper.queryUsers()
             .values
             .toList()
-    }
-
-    // 获取用户数量
-    fun getUserCount(): Int {
-        return mDBHelper.queryUserCount()
     }
 }

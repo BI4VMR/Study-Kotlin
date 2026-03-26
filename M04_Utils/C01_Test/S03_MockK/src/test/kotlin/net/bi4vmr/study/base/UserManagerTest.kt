@@ -3,7 +3,7 @@ package net.bi4vmr.study.base
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import net.bi4vmr.study.injectMock
+import net.bi4vmr.study.setFieldValue
 import org.junit.Assert
 import org.junit.Test
 
@@ -32,7 +32,7 @@ class UserManagerTest {
 
         // 构造待测类的对象，并注入Mock对象作为依赖。
         val manager = UserManager()
-        mockDBHelper.injectMock(manager, "mDBHelper")
+        manager.setFieldValue("mDBHelper", mockDBHelper)
 
         // 调用待测方法
         val users = manager.getUserNames()
@@ -66,7 +66,7 @@ class UserManagerTest {
 
         // 构造待测类的对象，并注入Mock对象作为依赖。
         val manager = UserManager()
-        mockDBHelper.injectMock(manager, "mDBHelper")
+        manager.setFieldValue("mDBHelper", mockDBHelper)
 
         // 调用待测方法
         val users = manager.getUserNames2()
