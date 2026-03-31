@@ -15,9 +15,9 @@ import java.time.format.DateTimeFormatter
 import kotlin.system.exitProcess
 
 fun main() {
-    // val file = File("C:\\Link\\S1-Data\\Archive\\个人资源库\\原创照片\\事件・20251105_月球观测・制品")
-    val file = File("C:\\Users\\bi4vmr\\Pictures\\原创照片\\事件・20251105_月球观测・制品")
-    // val file2 = File("C:\\Users\\bi4vmr\\Downloads\\1.txt")
+    // val file = File("C:\\Link\\S1-Data\\Archive\\个人资源库\\原创照片\\日志_2024_原始")
+    // val file = File("C:\\Users\\bi4vmr\\Pictures\\原创照片\\地点_南京_长江北岸_原始")
+    val file = File("C:\\Users\\bi4vmr\\Download\\")
 
     if (!file.isDirectory || !file.canRead()) {
         println("❌ 目录不可用")
