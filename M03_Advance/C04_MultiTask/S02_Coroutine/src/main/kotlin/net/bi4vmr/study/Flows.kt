@@ -1,55 +1,43 @@
 package net.bi4vmr.study
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
-val flow = MutableStateFlow(111)
+// val flow = MutableStateFlow(0)
+val flow = MutableSharedFlow<Int>(extraBufferCapacity = 100)
 
-var count = 0
-val mutex: Mutex = Mutex()
+val collecterReady = CompletableDeferred<Unit>()
 
 fun main() {
-    // CoroutineScope(Dispatchers.Default).launch {
-    //     delay(1000L)
-    //     flow.value = 111
-    //     delay(1000L)
-    //     flow.emit(111)
-    // }
-    //
-    // CoroutineScope(Dispatchers.Default).launch {
-    //     flow.collect {
-    //         println("$it")
-    //     }
-    // }
-    //
-    // runBlocking {
-    //     delay(5000L)
-    // }
+//     CoroutineScope(Dispatchers.IO).launch {
+//         flow.collect {
+//             println("flow changed: $it")
+//         }
+//     }
+//
+//     repeat(10) {
+//         flow.value += 1
+//     }
 
-    suspend fun change(caller: String) {
-        delay(10L)
-        mutex.withLock {
-            count++
-            println("$caller -> $count  T:[${Thread.currentThread().name}]")
+    CoroutineScope(Dispatchers.IO).launch {
+        collecterReady.complete(Unit)
+        flow.collect {
+            println("flow changed: $it")
         }
-
     }
 
-    runBlocking {
-        CoroutineScope(Dispatchers.IO).launch {
-            repeat(10) {
-                change("A")
-            }
-        }
+    // 等待收集器准备就绪再发出数据
+    runBlocking { collecterReady.await() }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            repeat(10) {
-                change("B")
-            }
-        }
-
-        delay(3000L)
+    repeat(10) {
+       val i =  flow.tryEmit(1)
+        println("emit result $i")
     }
+
+    Thread.sleep(1000L)
 }
