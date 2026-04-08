@@ -1,8 +1,11 @@
 package net.bi4vmr.study
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 // val flow = MutableStateFlow(0)
@@ -22,16 +25,30 @@ fun main() = runBlocking {
 //     }
 
 
-    flow {
+    val f = flow {
         println("e1 thread name ${Thread.currentThread().name}")
         emit(1)
 
         println("e2 thread name ${Thread.currentThread().name}")
         emit(2)
-    }.collect {
-        println("collect thread name ${Thread.currentThread().name}")
-        println(it)
     }
+
+    val t = CoroutineScope(Dispatchers.Default)
+    t.launch {
+        f.collect {
+            println("1 collect thread name ${Thread.currentThread().name}")
+            println("1 接收到的值：$it")
+        }
+    }
+
+
+    t.launch {
+        f.collect {
+            println("2 collect thread name ${Thread.currentThread().name}")
+            println("2 接收到的值：$it")
+        }
+    }
+
 
     // CoroutineScope(Dispatchers.IO).launch {
     //     collecterReady.complete(Unit)
@@ -47,6 +64,6 @@ fun main() = runBlocking {
     //    val i =  flow.tryEmit(1)
     //     println("emit result $i")
     // }
-    //
-    // Thread.sleep(1000L)
+
+    Thread.sleep(1000L)
 }
