@@ -4,5 +4,4 @@ plugins {
 
 dependencies {
     implementation(libKotlin.standardlib)
-    implementation(libKotlin.reflect)
 }
