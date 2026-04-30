@@ -1,5 +1,6 @@
 package net.bi4vmr.study.base
 
+import java.io.Serializable
 import java.math.BigDecimal
 import kotlin.reflect.full.memberProperties
 
@@ -10,7 +11,7 @@ import kotlin.reflect.full.memberProperties
  * @since 1.0.0
  */
 fun main() {
-    example04()
+    example05()
 }
 
 
@@ -109,7 +110,7 @@ fun <F> arrayToList(array: Array<F>): MutableList<F> {
 
 /**
  * 示例四：类型擦除。
- * <p>
+ *
  * 在本示例中，我们通过反射获取泛型变量的类型，观察类型擦除的效果。
  */
 fun example04() {
@@ -121,4 +122,66 @@ fun example04() {
         .forEach {
             println("变量名称：[${it.name}] 变量类型：[${it.returnType}]")
         }
+}
+
+
+/**
+ * 示例五：泛型约束。
+ *
+ * 在本示例中，我们编写一个泛型方法，将数值型对象的数值转换为文本并返回。
+ */
+fun example05() {
+    // 泛型参数为Integer，是Number的子类，编译通过。
+    val int = 100
+    val text = getText(int)
+    println(text)
+
+
+    // 泛型参数为String，非Number的子类，编译失败。
+    // val text2 = getText("一些文本")
+}
+
+/**
+ * 输出数值型对象值的文本。
+ *
+ * @param[input] 输入对象。
+ * @return 数值的文本形式。
+ */
+fun <N> getText(input: N): String where N : Number, N : Serializable {
+    // `input` 的类型被限制为 `Number` 的子类，因此我们可以调用 `doubleValue()` 方法来获取数值。
+    val value = input.toDouble()
+    return value.toString()
+}
+
+
+/**
+ * 示例：数组是协变的。
+ *
+ * Java代码，仅供参考。
+ */
+fun exampleNoTitle01() {
+
+    // 声明String数组
+    // String[] array = {"A", "B", "C"};
+
+    // Object是String的父类，因此可以将String数组赋值给Object数组。
+    // Object[] array2 = array;
+
+    // 但仍不可写入非String数据，JVM会检查传入元素是否与数组匹配，并抛出ArrayStoreException异常。
+    // array2[0] = 100;
+}
+
+
+/**
+ * 示例：泛型是非协变的。
+ */
+fun exampleNoTitle02() {
+    // 声明字符串列表
+    val list: MutableList<String> = mutableListOf("A", "B", "C")
+
+    // Any是String的父类，但不能将MutableList<String>赋值给MutableList<Any>，编译器会提示错误。
+    // val list2: MutableList<Any> = list
+
+    // 因为前一条语句编译失败，可以防止我们进一步写出其他错误的代码。
+    // list2.add(100)
 }
