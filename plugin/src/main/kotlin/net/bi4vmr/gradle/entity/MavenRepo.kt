@@ -8,6 +8,8 @@ package net.bi4vmr.gradle.entity
  */
 data class MavenRepo(
     val name: String,
+    val host: String,
+    val port: Int,
     val url: String,
     val description: String? = null,
     val username: String? = null,

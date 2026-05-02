@@ -17,7 +17,6 @@ pluginManagement {
         mavenCentral()
         google()
     }
-
 }
 
 // 所有模块的依赖配置

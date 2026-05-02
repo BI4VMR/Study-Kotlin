@@ -2,6 +2,7 @@ package net.bi4vmr.gradle.plugin
 
 import net.bi4vmr.gradle.data.MavenRepos
 import net.bi4vmr.gradle.entity.MavenRepo
+import net.bi4vmr.gradle.util.LogUtil
 import net.bi4vmr.gradle.util.NetUtil
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -21,28 +22,33 @@ class PrivateRepoPlugin : Plugin<Project> {
 
         const val NAME: String = "net.bi4vmr.gradle.plugin.repo.private"
 
+        // 全局保存首次网络测试结果，避免每个子模块应用本插件都测试网络导致速度缓慢。
         private var netTestResult: MavenRepo? = null
     }
 
     override fun apply(target: Project) {
-        // 如果网络测试结果为空，则先进行测试；否则根据测试结果选择仓库。
+        // 检查仓库是否可用
         if (netTestResult == null) {
-            if (NetUtil.scanByTCP("172.16.5.1", 8081)) {
-                println("Current host is in private network, add LAN repositories.")
+            if (NetUtil.scanByTCP(MavenRepos.PRIVATE_LAN.host, MavenRepos.PRIVATE_LAN.port)) {
+                LogUtil.info("Use LAN address to connect private repositories.")
                 netTestResult = MavenRepos.PRIVATE_LAN
-            } else if (NetUtil.scanByTCP("127.0.0.1", 8081)) {
-                println("Current host is not in private network, add LOCAL repositories.")
+            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_HOSTNAME.host, MavenRepos.PRIVATE_HOSTNAME.port)) {
+                LogUtil.info("Use Hostname to connect private repositories.")
+                netTestResult = MavenRepos.PRIVATE_HOSTNAME
+            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_DYNV6.host, MavenRepos.PRIVATE_DYNV6.port)) {
+                LogUtil.info("Use DynV6 domain to connect private repositories.")
+                netTestResult = MavenRepos.PRIVATE_DYNV6
+            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_LOCAL.host, MavenRepos.PRIVATE_LOCAL.port)) {
+                LogUtil.info("Private repositories are not reachable, use local repositories.")
                 netTestResult = MavenRepos.PRIVATE_LOCAL
             } else {
-                println("Current host is not in private network, add MAVEN_LOCAL repository.")
+                LogUtil.info("Both private and local repositories are not reachable, use Maven local repository.")
                 netTestResult = MavenRepos.PRIVATE_MAVEN_LOCAL
             }
-
-            // 插件配置阶段为单线程执行，不必考虑同步问题。
-            addRepo(target.repositories, requireNotNull(netTestResult))
-        } else {
-            addRepo(target.repositories, requireNotNull(netTestResult))
         }
+
+        // 插件配置阶段为单线程执行，不必考虑全局变量的同步问题。
+        addRepo(target.repositories, requireNotNull(netTestResult))
     }
 
     private fun addRepo(handler: RepositoryHandler, repo: MavenRepo) {
