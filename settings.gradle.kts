@@ -57,12 +57,13 @@ include(":M02_Syntax:C06_Exception")
 // ----- 高级特性 -----
 include(":M03_Advance:C01_OOP:S01_Base")
 include(":M03_Advance:C01_OOP:S06_EnumClass")
-include(":M03_Advance:C04_MultiTask:S01_Thread")
-include(":M03_Advance:C04_MultiTask:S02_Coroutine")
-include(":M03_Advance:C04_MultiTask:S03_Tool")
 include(":M03_Advance:C02_Features:S01_Generics")
 include(":M03_Advance:C02_Features:S02_Annotation")
 include(":M03_Advance:C02_Features:S03_Reflection")
+include(":M03_Advance:C02_Features:S04_Functional")
+include(":M03_Advance:C04_MultiTask:S01_Thread")
+include(":M03_Advance:C04_MultiTask:S02_Coroutine")
+include(":M03_Advance:C04_MultiTask:S03_Tool")
 
 // ----- 实用工具 -----
 include(":M04_Utils:C01_Test:S01_Base")
