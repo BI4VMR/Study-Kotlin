@@ -1,7 +1,5 @@
 package net.bi4vmr.study.lambda
 
-import java.util.function.Consumer
-
 /**
  * 示例代码：基本应用。
  *
@@ -9,7 +7,7 @@ import java.util.function.Consumer
  * @since 1.0.0
  */
 fun main() {
-    example02()
+    example05()
 }
 
 
@@ -22,7 +20,6 @@ fun example01() {
     // 创建测试列表
     val list = mutableListOf(1, 2, 3, 4, 5)
 
-
     // 设置排序规则，将所有元素降序排列。
     list.sortWith(object : Comparator<Int> {
 
@@ -31,7 +28,6 @@ fun example01() {
             return o2.compareTo(o1)
         }
     })
-
 
     // 输出排序后的结果
     list.forEach { println(it) }
@@ -45,13 +41,13 @@ fun example01() {
  */
 fun example02() {
     // 创建测试列表
-    val list = mutableListOf(1, 2, 3, 4, 5)
+    val list = mutableListOf(1, 2, 3, 4, 5, 0)
 
 
     // 设置排序规则，将所有元素降序排列。
     list.sortWith({ o1, o2 -> o2.compareTo(o1) })
 
-    // Lambda优化：如果Lambda表达式是函数的最后一个参数，可以将其移到括号外面。
+    // Lambda优化：如果Lambda表达式是方法的最后一个参数，可以将其移到括号外面。
     list.sortWith { o1, o2 -> o2.compareTo(o1) }
 
 
@@ -111,31 +107,71 @@ fun example04() {
 
 
 /**
- * 示例六： `this` 关键字。
+ * 示例五： `this` 关键字。
  * <p>
- * 在本示例中，我们比较匿名内部类与Lambda表达式中 `this` 关键字的含义。
+ * 在本示例中，我们辨析Lambda表达式与匿名内部类中 `this` 关键字的区别。
  */
 fun example05() {
-    Test().test()
+    Test().testThis()
 }
 
 class Test() {
-    fun test() {
-        // 将Lambda表达式的引用保存在变量中
-        val task: () -> Unit = { println(this) }
-        task.invoke()
+
+    fun testThis() {
+        // 测试类实例的 `this` 引用
+        println(this)
 
 
-        val c: Consumer<String> = object : Consumer<String> {
+        // Lambda表达式中的 `this` 指向包含它的实例，即 `TestBase` 的实例。
+        val lambda: () -> Unit = { println("this in lambda: $this") }
+        lambda.invoke()
+
+
+        // 匿名内部类中的 `this` 指向类的实例，可以访问其属性。
+        val object1: Runnable = object : Runnable {
 
             // 匿名内部类可以拥有属性
-            private val name = "Consumer"
+            private val name = "Runnable"
 
-            override fun accept(t: String) {
-                // `this` 指向匿名内部类实例，可以访问其属性。
-                println(this.name)
+            override fun run() {
+                println("this in annonymous class: $this")
+                // `this` 可以访问匿名内部类的属性
+                println("get name by this: ${this.name}")
             }
         }
-        c.accept("Hello, World!")
+        object1.run()
+    }
+}
+
+
+/**
+ * 示例七：捕获外部变量。
+ * <p>
+ * 在本示例中，我们尝试在Lambda表达式中访问和修改外部变量。
+ */
+fun example06() {
+    Test2().testCapture()
+}
+
+class Test2 {
+
+    fun testCapture() {
+        // 定义一个局部变量
+        var num = 0
+
+        // 定义Lambda表达式，尝试访问和修改外部变量。
+        val lambda: () -> Unit = {
+            // 访问外部变量
+            println("Read `num` in lambda:[$num]")
+
+            // 修改外部变量
+            num++
+        }
+
+        // 执行Lambda表达式
+        lambda()
+
+        // 在Lambda表达式外部访问修改后的变量值
+        println("Read `num` outside lambda:[$num]")
     }
 }
