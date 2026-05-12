@@ -35,7 +35,7 @@ fun example01() {
 
 
 /**
- * 示例二：将整数列表中的元素倒序排列（使用Lambda表达式）。
+ * 示例二：将整数列表中的元素倒序排列（Lambda表达式）。
  *
  * 在本示例中，我们定义一个整数列表，并将其中的元素倒序排列。
  */
@@ -119,7 +119,7 @@ class Test() {
 
     fun testThis() {
         // 测试类实例的 `this` 引用
-        println(this)
+        println("this in test class: $this")
 
 
         // Lambda表达式中的 `this` 指向包含它的实例，即 `TestBase` 的实例。
@@ -145,9 +145,9 @@ class Test() {
 
 
 /**
- * 示例七：捕获外部变量。
+ * 示例六：捕获外部变量。
  * <p>
- * 在本示例中，我们尝试在Lambda表达式中访问和修改外部变量。
+ * 在本示例中，我们尝试在Lambda表达式中访问与修改外部变量。
  */
 fun example06() {
     Test2().testCapture()
