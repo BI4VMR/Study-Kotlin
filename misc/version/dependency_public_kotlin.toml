@@ -15,6 +15,8 @@ mockk = "1.13.17"
 plugin_ksp = "1.9.21-1.0.16"
 plugin_dokka = "1.9.20"
 plugin_kover = "0.9.1"
+# Compose Desktop（与 Kotlin 1.9.21 匹配）
+plugin_compose = "1.6.2"
 
 
 # 组件
@@ -62,3 +64,5 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "plugin_ksp" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "plugin_dokka" }
 # Kover（测试代码覆盖率检测工具）
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "plugin_kover" }
+# Compose Desktop
+compose = { id = "org.jetbrains.compose", version.ref = "plugin_compose" }
