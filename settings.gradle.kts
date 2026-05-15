@@ -52,10 +52,19 @@ include("M01_Overview:C01_HelloWorld")
 
 // ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")
+include(":M02_Syntax:C02_Operator")
+include(":M02_Syntax:C03_Control")
+include(":M02_Syntax:C04_Method")
+include(":M02_Syntax:C05_Array")
 include(":M02_Syntax:C06_Exception")
+include(":M02_Syntax:C07_Terminal")
 
 // ----- 高级特性 -----
 include(":M03_Advance:C01_OOP:S01_Base")
+include(":M03_Advance:C01_OOP:S02_Encapsulation")
+include(":M03_Advance:C01_OOP:S03_Inherit")
+include(":M03_Advance:C01_OOP:S04_Polymorphism")
+include(":M03_Advance:C01_OOP:S05_Interface")
 include(":M03_Advance:C01_OOP:S06_EnumClass")
 include(":M03_Advance:C02_Features:S01_Generics")
 include(":M03_Advance:C02_Features:S02_Annotation")

@@ -1,9 +1,9 @@
-package net.bi4vmr.study.struct
+package net.bi4vmr.study
 
 import java.math.BigDecimal
 
 /**
- * 测试代码 - Kotlin文档注释。
+ * 测试代码：文档注释。
  *
  * @since 1.0.0
  * @author bi4vmr@outlook.com
