@@ -26,4 +26,5 @@ dependencies {
     // Compose Desktop（包含当前操作系统所需的原生库）
     implementation(compose.desktop.currentOs)
     implementation("androidx.compose.ui:ui-desktop:1.7.0")
+    implementation("com.google.android.tools:ddmlib:r13")
 }
