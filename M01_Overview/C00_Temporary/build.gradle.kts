@@ -23,7 +23,7 @@ dependencies {
     implementation("com.google.android.tools:ddmlib:r13")
 
     implementation("org.bytedeco:javacv:1.5.10")
-    implementation("org.bytedeco:ffmpeg-platform:8.0.1-1.5.13")
+    implementation("org.bytedeco:ffmpeg-platform:6.1.1-1.5.10")
 
     // JOGL：OpenGL Java 绑定，用于 GPU 端 YUV→RGB 转换（替代 CPU sws_scale）
     // jogl-all-main 包含所有模块：jogl + nativewindow + newt（含 GLCanvas 等公共 API）
