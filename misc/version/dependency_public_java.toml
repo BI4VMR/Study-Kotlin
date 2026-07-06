@@ -2,8 +2,10 @@
 [versions]
 # ----- 实用工具 -----
 apacheCommons-io = "1.3.2"
-slf4j-simple = "2.0.9"
+slf4j = "2.0.18"
+uuidCreator = "6.1.1"
 gson = "2.10.1"
+ddmlib = "r13"
 
 
 # ----- 数据存储 -----
@@ -25,6 +27,11 @@ okhttps-core = "4.0.3"
 
 
 # ----- 媒体工具 -----
+javacv = "1.5.10"
+javacv-ffmpeg = "6.1.1-1.5.10"
+javacv-opencv = "4.9.0-1.5.10"
+javacv-openblas = "0.3.26-1.5.10"
+opencv = "4.9.0-0"
 apacheCommons-imaging = "1.0.0-alpha6"
 drewnoakes-metadataExtractor = "2.19.0"
 
@@ -54,27 +61,40 @@ spring-dependency = "1.1.7"
 apacheCommons-io = { group = "org.apache.commons", name = "commons-io", version.ref = "apacheCommons-io" }
 
 # < SLF4J >
-# SLF4J・Simple
-slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j-simple" }
+# SLF4J・API（SLF4J接口声明，不包括具体实现，编写库时应当使用。）
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+# SLF4J・NOP（SLF4J的空实现，不输出任何消息，用于屏蔽日志输出。）
+slf4j-nop = { group = "org.slf4j", name = "slf4j-nop", version.ref = "slf4j" }
+# SLF4J・Simple（SLF4J的简单实现，功能较少，通常仅用于调试场景。）
+slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 
+# < ID生成器 >
+# UUID Creator
+uuidCreator = { group = "com.github.f4b6a3", name = "uuid-creator", version.ref = "uuidCreator" }
+
+# < JSON >
 # GSON
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
+# < ADB >
+# DDMLib
+ddmlib = { group = "com.google.android.tools", name = "ddmlib", version.ref = "ddmlib" }
+
 
 # ----- 数据存储 -----
-# <JDBC驱动>
+# < JDBC驱动 >
 # SQLite
 jdbc_sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "jdbc_sqlite" }
 # MariaDB
 jdbc_mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version.ref = "jdbc_mariadb" }
 
-# <数据库工具>
+# < 数据库工具 >
 # MyBatis
 mybatis-core = { group = "org.mybatis", name = "mybatis", version.ref = "mybatis" }
 # MyBatis・SpringBoot支持
 mybatis-springboot-starter = { group = "org.mybatis.spring.boot", name = "mybatis-spring-boot-starter", version.ref = "mybatis-springboot-starter" }
 
-# <数据库连接池>
+# < 数据库连接池 >
 # Druid・核心
 druid-core = { group = "com.alibaba", name = "druid", version.ref = "druid" }
 # Druid・SpringBoot支持
@@ -107,6 +127,21 @@ okhttps-jackson = { group = "cn.zhxu", name = "okhttps-jackson", version.ref = "
 
 
 # ----- 媒体工具 -----
+# < JavaCV >
+# JavaCV・全量（包括FFmpeg/OpenCV/OpenBLAS等组件及各平台Native库，体积巨大，一般仅用于实验。）
+javacv-platform = { group = "org.bytedeco", name = "javacv-platform", version.ref = "javacv" }
+# JavaCV・核心（仅包含接口声明，必须配合以下具体的组件才能使用。）
+javacv-api = { group = "org.bytedeco", name = "javacv", version.ref = "javacv" }
+# JavaCV・FFmpeg
+javacv-ffmpeg = { group = "org.bytedeco", name = "ffmpeg", version.ref = "javacv-ffmpeg" }
+# JavaCV・OpenCV（需要同时声明OpenBLAS的依赖项，否则运行时会报错。）
+javacv-opencv = { group = "org.bytedeco", name = "opencv", version.ref = "javacv-opencv" }
+# JavaCV・OpenBLAS
+javacv-openblas = { group = "org.bytedeco", name = "openblas", version.ref = "javacv-openblas" }
+
+# < OpenCV >
+opencv = { group = "org.openpnp", name = "opencv", version.ref = "opencv" }
+
 # < 元数据处理工具 >
 # Apache・媒体元数据工具
 apacheCommons-imaging = { group = "org.apache.commons", name = "commons-imaging", version.ref = "apacheCommons-imaging" }
