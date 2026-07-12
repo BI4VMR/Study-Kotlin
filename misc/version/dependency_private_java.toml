@@ -1,8 +1,7 @@
 # 版本号
 [versions]
 common_base = "1.0.0"
-
-io_base = "1.0.0"
+common_reflect = "1.0.0"
 
 storage_file = "1.0.0"
 
@@ -17,6 +16,7 @@ security_digest = "1.0.0"
 
 
 # ----- 插件 -----
+java_version = "1.0.0"
 repo_public = "1.0.0"
 repo_private = "1.0.0"
 publish_private = "1.0.0"
@@ -25,8 +25,7 @@ publish_private = "1.0.0"
 # 组件
 [libraries]
 common_base = { group = "net.bi4vmr.tool.java", name = "common-base", version.ref = "common_base" }
-
-io_base = { group = "net.bi4vmr.tool.java", name = "io-base", version.ref = "io_base" }
+common_reflect = { group = "net.bi4vmr.tool.java", name = "common-reflect", version.ref = "common_reflect" }
 
 storage_file = { group = "net.bi4vmr.tool.java", name = "storage-file", version.ref = "storage_file" }
 
@@ -43,6 +42,8 @@ security_digest = { group = "net.bi4vmr.tool.java", name = "security-digest", ve
 # Gradle插件
 [plugins]
 # ----- Java -----
+# Java版本配置
+java_version = { id = "net.bi4vmr.gradle.plugin.java.version", version.ref = "java_version" }
 # Maven公开仓库
 repo_public = { id = "net.bi4vmr.gradle.plugin.repo.public", version.ref = "repo_public" }
 # Maven私有仓库

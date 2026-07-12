@@ -10,11 +10,12 @@ plugins {
 // }
 
 dependencies {
+    implementation(privateLibJava.common.base)
+
     implementation(libKotlin.standardlib)
     implementation(libKotlin.ktx.coroutines.core)
     implementation(libJava.okhttps.core)
     implementation(libJava.gson)
-    implementation(privateLibJava.io.base)
     implementation(libJava.drewnoakes.metadataExtractor)
     implementation(libJava.apacheCommons.imaging)
     // Compose Desktop（包含当前操作系统所需的原生库）

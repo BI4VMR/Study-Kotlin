@@ -128,8 +128,10 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "plugin_ksp" }
 # ----- Compose Multiplatform -----
 # Compose Multiplatform
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "plugin_compose" }
-# Compose注解处理器（仅基于Kotlin v2.0之后的Compose Multiplatform版本需要声明）
+# Compose Multiplatform 编译器（仅基于Kotlin v2.0之后的Compose Multiplatform版本需要声明）
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+# Kotlin Multiplatform
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 
 
 # ----- 其他插件 -----
