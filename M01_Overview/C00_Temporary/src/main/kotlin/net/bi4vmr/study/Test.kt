@@ -1,6 +1,6 @@
 package net.bi4vmr.study
 
-import java.awt.Toolkit
+import net.bi4vmr.tool.java.external.adb.ADBController
 
 /**
  * TODO 添加描述。
@@ -9,6 +9,12 @@ import java.awt.Toolkit
  * @since 1.0.0
  */
 fun main() {
-    val i = Toolkit.getDefaultToolkit().screenResolution
-    println(i)
+    // val i = Toolkit.getDefaultToolkit().screenResolution
+    // println(i)
+    println("-----init")
+    ADBController.init()
+    ADBController.getDevices().forEach {
+        println(it)
+    }
+    ADBController.terminate()
 }

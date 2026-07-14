@@ -25,9 +25,4 @@ dependencies {
 
     implementation("org.bytedeco:javacv:1.5.10")
     implementation("org.bytedeco:ffmpeg-platform:6.1.1-1.5.10")
-
-    // JOGL：OpenGL Java 绑定，用于 GPU 端 YUV→RGB 转换（替代 CPU sws_scale）
-    // jogl-all-main 包含所有模块：jogl + nativewindow + newt（含 GLCanvas 等公共 API）
-    implementation("org.jogamp.jogl:jogl-all-main:2.6.0")
-    implementation("org.jogamp.gluegen:gluegen-rt-main:2.6.0")
 }
