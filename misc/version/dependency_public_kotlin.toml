@@ -1,7 +1,7 @@
 # 版本号
 [versions]
 # ----- 核心组件 -----
-kotlin = "2.2.20"
+kotlin = "2.4.10"
 ktx_coroutines = "1.11.0"
 ktx_serial-json = "1.11.0"
 
@@ -11,7 +11,7 @@ sqldelight = "2.3.2"
 
 
 # ----- 网络通讯 -----
-ktor = "3.5.0"
+ktor = "3.5.1"
 
 
 # ----- 图形界面 -----
@@ -30,8 +30,7 @@ mockk = "1.13.17"
 
 
 # ----- Gradle插件 -----
-plugin_ksp = "2.2.20-2.0.4"
-# Compose Desktop（与 Kotlin 2.2.20 匹配）
+plugin_ksp = "2.2.21-2.0.5"
 plugin_compose = "1.11.1"
 plugin_dokka = "2.2.0"
 plugin_kover = "0.9.8"

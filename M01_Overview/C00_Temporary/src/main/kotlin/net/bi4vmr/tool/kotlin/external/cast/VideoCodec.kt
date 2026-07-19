@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.scrcpy
+package net.bi4vmr.tool.kotlin.external.cast
 
 import org.bytedeco.ffmpeg.global.avcodec.*
 

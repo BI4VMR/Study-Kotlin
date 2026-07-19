@@ -1,10 +1,10 @@
-package net.bi4vmr.tool.kotlin.external.scrcpy
+package net.bi4vmr.tool.kotlin.external.cast
 
 import net.bi4vmr.tool.java.common.base.CLIUtil
-import net.bi4vmr.tool.java.external.adb.ADBDevice
-import net.bi4vmr.tool.java.external.adb.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.scrcpy.video.VideoDecoder
-import net.bi4vmr.tool.kotlin.external.scrcpy.video.VideoProtocolParser
+import net.bi4vmr.tool.kotlin.external.adb.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.cast.video.VideoDecoder
+import net.bi4vmr.tool.kotlin.external.cast.video.VideoProtocolParser
 import java.io.File
 import java.io.IOException
 import java.net.Socket
@@ -137,6 +137,7 @@ object ScreenCastManager {
                     "scid=000$localPort"
                 ).joinToString(" ")
                 val serverProcess = device.run(cmd, true)
+                    ?: throw IOException("Start Scrcpy server process failed!")
                 context.serverProcess = serverProcess
 
                 // 在子线程消耗服务端进程的输出流，防止阻塞。

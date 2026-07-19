@@ -1,8 +1,20 @@
 # 版本号
 [versions]
 common_base = "1.0.0"
+common_reflect = "1.0.0"
+
+finance_base = "1.0.0"
+
+external_adb = "1.0.0"
 
 
 # 组件
 [libraries]
 common_base = { group = "net.bi4vmr.tool.kotlin", name = "common-base", version.ref = "common_base" }
+common_reflect = { group = "net.bi4vmr.tool.kotlin", name = "common-reflect", version.ref = "common_reflect" }
+
+finance_base = { group = "net.bi4vmr.tool.kotlin", name = "finance-base", version.ref = "finance_base" }
+
+external_adb-core = { group = "net.bi4vmr.tool.kotlin", name = "external-adb", version.ref = "external_adb" }
+external_adb-ktx = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-ktx", version.ref = "external_adb" }
+external_adb-cast = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast", version.ref = "external_adb" }

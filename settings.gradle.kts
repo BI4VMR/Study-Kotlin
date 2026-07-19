@@ -37,6 +37,11 @@ dependencyResolutionManagement {
         create("privateLibJava") {
             from(files("misc/version/dependency_private_java.toml"))
         }
+
+        // 私有组件(Kotlin)
+        create("privateLibKotlin") {
+            from(files("misc/version/dependency_private_kotlin.toml"))
+        }
     }
 }
 
