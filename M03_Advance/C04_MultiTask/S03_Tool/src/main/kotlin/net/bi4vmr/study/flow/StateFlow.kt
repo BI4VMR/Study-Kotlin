@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 示例：StateFlow。
@@ -21,45 +22,44 @@ fun main() {
 /**
  * 示例三： StateFlow 的基本应用。
  *
- * 在本示例中，我们定义一个Flow通告状态，然后接收状态并显示在控制台上。
+ * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
  */
 fun example03() {
-    // 定义可写入的StateFlow，初始值为 `100` 。
-    val flow = MutableStateFlow(100)
+    // 定义 StateFlow ，用于管理开关状态，初始值为 `false` 。
+    val stateFlow: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
-    // 可以访问 `value` 属性获取当前的值
-    println("初始值：${flow.value}")
+    // 可以访问 `value` 属性获取 StateFlow 容器中当前的值。
+    println("当前的值：${stateFlow.value}")
 
-    // 开启协程接收Flow中的数据
+    // 创建协程监听 StateFlow 中的消息
     val scope = CoroutineScope(Dispatchers.IO)
-    scope.launch {
+    val listenJob = scope.launch {
         // 调用 `collect` 方法监听Flow中的数据
-        flow.collect { value ->
-            // 每当新数据到达时，该语句被执行一次。
-            println("Flow change. Value:[$value]")
+        stateFlow.collect { value ->
+            println("监听协程收到消息：$value")
         }
     }
 
 
+    // 连续变化测试
     runBlocking {
-        // 测试线程等待接收线程启动再开始发送数据
-        delay(250)
+        // 测试线程等待接收协程启动再开始发送数据
+        delay(250.milliseconds)
 
-        // 发送一些数据(1 - 3)
-        (1..3).forEach {
-            println("主线程发送数据：[$it]")
-            flow.emit(it)
-        }
+        // 更新状态
+        println("测试线程发送状态：`true`")
+        stateFlow.value = true
+        println("测试线程发送状态：`false`")
+        stateFlow.value = false
+        println("测试线程发送状态：`true`")
+        stateFlow.value = true
+    }
 
-        delay(250)
 
-        // 再发送一次当前的值
-        val current = flow.value
-        println("主线程发送数据：[$current]")
-        flow.value = current
-
-        // 测试线程等待接收线程处理完毕再结束整个程序
-        delay(250)
+    // 测试线程等待接收协程处理完毕再结束整个程序
+    runBlocking {
+        delay(250.milliseconds)
+        listenJob.cancel()
     }
 }
 
