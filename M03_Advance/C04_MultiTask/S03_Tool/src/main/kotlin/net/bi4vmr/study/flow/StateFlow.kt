@@ -64,6 +64,11 @@ fun example03() {
 }
 
 
+/**
+ * 示例四： StateFlow 的基本应用。
+ *
+ * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
+ */
 data class Student(
     var id: String = "",
     var name: String = "",
@@ -71,7 +76,12 @@ data class Student(
 )
 
 
-fun a() {
+/**
+ * 示例四：错误示范：原地更新。
+ *
+ * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
+ */
+fun example0001() {
     val initData = Student("1", "张三", 20)
     // 定义可写入的StateFlow，初始值为 `100` 。
     val stateFlow: MutableStateFlow<Student> = MutableStateFlow(initData)
