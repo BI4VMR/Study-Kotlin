@@ -15,16 +15,16 @@ import kotlin.time.Duration.Companion.milliseconds
  * @since 1.0.0
  */
 fun main() {
-    example03()
+    example06()
 }
 
 
 /**
- * 示例三： StateFlow 的基本应用。
+ * 示例四： StateFlow 的基本应用。
  *
  * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
  */
-fun example03() {
+fun example04() {
     // 定义 StateFlow ，用于管理开关状态，初始值为 `false` 。
     val stateFlow: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
@@ -65,49 +65,119 @@ fun example03() {
 
 
 /**
- * 示例四： StateFlow 的基本应用。
+ * 示例五： StateFlow 的更新方法。
  *
- * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
+ * 在本示例中，我们了解 StateFlow 的常见错误用法，并实施正确的用法。
  */
 data class Student(
-    var id: String = "",
+    val id: String = "",
     var name: String = "",
     var age: Int = 0
 )
 
 
-/**
- * 示例四：错误示范：原地更新。
- *
- * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
- */
-fun example0001() {
+fun example05() {
     val initData = Student("1", "张三", 20)
-    // 定义可写入的StateFlow，初始值为 `100` 。
+    // 定义 StateFlow ，初始值为 `initData` 。
     val stateFlow: MutableStateFlow<Student> = MutableStateFlow(initData)
 
 
     // 开启协程接收Flow中的数据
     val scope = CoroutineScope(Dispatchers.IO)
-    scope.launch {
-        // 调用 `collect` 方法监听Flow中的数据
+    val listenJob = scope.launch {
         stateFlow.collect { value ->
-            // 每当新数据到达时，该语句被执行一次。
-            println("Flow change. Value:[$value]")
+            println("监听协程收到消息：$value")
         }
     }
 
 
+    /* 错误示范：直接修改原对象的属性 */
     runBlocking {
         // 测试线程等待接收线程启动再开始发送数据
-        delay(250)
+        delay(250.milliseconds)
 
         // 直接修改 Flow 容器中对象的属性
-        initData.name = "李四"
-        // 使用原对象更新 Flow
-        stateFlow.value = initData
+        initData.age = 21
 
-        // 测试线程等待接收线程处理完毕再结束整个程序
-        delay(250)
+        // 读取当前 Flow 容器中的对象
+        println("Flow 当前存储的状态：${stateFlow.value}")
+
+        // 使用原对象更新 Flow
+        println("测试线程更新状态（原对象）：$initData")
+        stateFlow.value = initData
+    }
+
+
+    /* 正确示范：创建新对象并提交更新 */
+    runBlocking {
+        // 创建新对象，指明需要更新的属性，并复制其他属性。
+        val newData = initData.copy(age = 22)
+
+        // 使用新对象更新 Flow
+        println("测试线程更新状态（新对象）：$newData")
+        stateFlow.value = newData
+    }
+
+
+    // 测试线程等待接收协程处理完毕再结束整个程序
+    runBlocking {
+        delay(250.milliseconds)
+        listenJob.cancel()
+    }
+}
+
+
+fun example06() {
+    val initList: MutableList<Student> = mutableListOf(
+        Student("1", "张三", 20),
+        Student("2", "李四", 21)
+    )
+    val stateFlow: MutableStateFlow<List<Student>> = MutableStateFlow(initList)
+
+
+    // 开启协程接收Flow中的数据
+    val scope = CoroutineScope(Dispatchers.IO)
+    val listenJob = scope.launch {
+        stateFlow.collect { list ->
+            println("----- 监听协程收到消息，列表长度：${list.size} -----")
+            list.forEach { student -> println("$student") }
+            println("----- 监听协程收到消息，完毕。 -----")
+        }
+    }
+
+
+    /* 错误示范：直接修改原列表 */
+    runBlocking {
+        // 测试线程等待接收线程启动再开始发送数据
+        delay(250.milliseconds)
+
+        // 直接修改 Flow 容器中的列表项
+        initList[1].name = "李田所"
+        initList[1].age = 24
+
+        // 使用原列表更新 Flow
+        println("测试线程更新状态（原列表）：$initList")
+        stateFlow.value = initList
+    }
+
+
+    /* 正确示范：创建新列表与新对象并提交更新 */
+    runBlocking {
+        // 创建新列表
+        val newList = initList.toMutableList()
+        // 创建新对象，替换列表中的旧数据。
+        val newData = newList[1].copy(age = 25)
+        newList[1] = newData
+
+        // 使用新对象更新 Flow
+        println("测试线程更新状态（新列表）：$newList")
+        stateFlow.value = newList
+    }
+
+
+    // 测试线程等待接收协程处理完毕再结束整个程序
+    runBlocking {
+        delay(250.milliseconds)
+        listenJob.cancel()
     }
 }
