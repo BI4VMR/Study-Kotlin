@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onEmpty
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -38,7 +39,6 @@ fun example0111() {
         println("Download end. Thread Name:[${Thread.currentThread().name}]")
     }
 
-
     /* 使用 Flow */
     val scope = CoroutineScope(Dispatchers.IO)
     // 接收者 A
@@ -47,7 +47,12 @@ fun example0111() {
             .onStart {
                 println("OnStart.")
             }
-            .onEmpty {  }
+            .onEach {
+                println("OnEach.")
+            }
+            .onEmpty {
+                println("OnEmpty.")
+            }
             .collect {
                 println("Progress change. Value:[$it] Thread Name:[${Thread.currentThread().name}]")
             }

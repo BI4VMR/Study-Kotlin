@@ -74,7 +74,7 @@ fun example02() {
 
 
 /**
- * 示例三： SharedFlow 的缓存控制。
+ * 示例三： SharedFlow 的缓存行为。
  *
  * 在本示例中，我们测试 SharedFlow 的缓存策略，了解它们的行为差异。
  */
@@ -83,7 +83,7 @@ fun example03() {
     val sharedFlow: MutableSharedFlow<Int> = MutableSharedFlow(
         replay = 1,
         extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.SUSPEND
+        onBufferOverflow = BufferOverflow.DROP_LATEST
     )
 
 

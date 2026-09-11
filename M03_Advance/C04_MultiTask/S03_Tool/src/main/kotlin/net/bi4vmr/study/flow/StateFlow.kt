@@ -19,7 +19,7 @@ fun main() {
 }
 
 
-/**
+/*
  * 示例四： StateFlow 的基本应用。
  *
  * 在本示例中，我们定义 StateFlow 用于维护某个功能的开关状态。
@@ -64,11 +64,13 @@ fun example04() {
 }
 
 
-/**
- * 示例五： StateFlow 的更新方法。
+/*
+ * 示例五：数据更新。
  *
- * 在本示例中，我们了解 StateFlow 的常见错误用法，并实施正确的用法。
+ * 在本示例中，我们了解 StateFlow 的常见错误用法，并将其改正。
  */
+
+// 数据实体类
 data class Student(
     val id: String = "",
     var name: String = "",
@@ -95,28 +97,26 @@ fun example05() {
     runBlocking {
         // 测试线程等待接收线程启动再开始发送数据
         delay(250.milliseconds)
-
-        // 直接修改 Flow 容器中对象的属性
-        initData.age = 21
-
-        // 读取当前 Flow 容器中的对象
-        println("Flow 当前存储的状态：${stateFlow.value}")
-
-        // 使用原对象更新 Flow
-        println("测试线程更新状态（原对象）：$initData")
-        stateFlow.value = initData
     }
+
+    // 直接修改 Flow 容器中对象的属性
+    initData.age = 21
+
+    // 读取当前 Flow 容器中的对象
+    println("Flow 当前存储的状态：${stateFlow.value}")
+
+    // 使用原对象更新 Flow
+    println("测试线程更新状态（原对象）：$initData")
+    stateFlow.value = initData
 
 
     /* 正确示范：创建新对象并提交更新 */
-    runBlocking {
-        // 创建新对象，指明需要更新的属性，并复制其他属性。
-        val newData = initData.copy(age = 22)
+    // 创建新对象，指明需要更新的属性，并复制其他属性。
+    val newData = initData.copy(age = 22)
 
-        // 使用新对象更新 Flow
-        println("测试线程更新状态（新对象）：$newData")
-        stateFlow.value = newData
-    }
+    // 使用新对象更新 Flow
+    println("测试线程更新状态（新对象）：$newData")
+    stateFlow.value = newData
 
 
     // 测试线程等待接收协程处理完毕再结束整个程序
@@ -127,6 +127,11 @@ fun example05() {
 }
 
 
+/*
+ * 示例六：列表更新。
+ *
+ * 在本示例中，我们了解 StateFlow 内容为列表时的更新方式。
+ */
 fun example06() {
     val initList: MutableList<Student> = mutableListOf(
         Student("1", "张三", 20),
@@ -150,29 +155,27 @@ fun example06() {
     runBlocking {
         // 测试线程等待接收线程启动再开始发送数据
         delay(250.milliseconds)
-
-        // 直接修改 Flow 容器中的列表项
-        initList[1].name = "李田所"
-        initList[1].age = 24
-
-        // 使用原列表更新 Flow
-        println("测试线程更新状态（原列表）：$initList")
-        stateFlow.value = initList
     }
+
+    // 直接修改 Flow 容器中的列表项
+    initList[1].name = "李田所"
+    initList[1].age = 24
+
+    // 使用原列表更新 Flow
+    println("测试线程更新状态（原列表）：$initList")
+    stateFlow.value = initList
 
 
     /* 正确示范：创建新列表与新对象并提交更新 */
-    runBlocking {
-        // 创建新列表
-        val newList = initList.toMutableList()
-        // 创建新对象，替换列表中的旧数据。
-        val newData = newList[1].copy(age = 25)
-        newList[1] = newData
+    // 创建新列表
+    val newList = initList.toMutableList()
+    // 创建新对象，替换列表中的旧数据。
+    val newData = newList[1].copy(age = 25)
+    newList[1] = newData
 
-        // 使用新对象更新 Flow
-        println("测试线程更新状态（新列表）：$newList")
-        stateFlow.value = newList
-    }
+    // 使用新对象更新 Flow
+    println("测试线程更新状态（新列表）：$newList")
+    stateFlow.value = newList
 
 
     // 测试线程等待接收协程处理完毕再结束整个程序
