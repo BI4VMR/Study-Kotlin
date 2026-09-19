@@ -1,6 +1,6 @@
-package net.bi4vmr.tool.kotlin.external.cast.video
+package net.bi4vmr.tool.kotlin.external.androidcast.video
 
-import net.bi4vmr.tool.kotlin.external.cast.ScreenCastContext
+import net.bi4vmr.tool.kotlin.external.androidcast.ScreenCastContext
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import java.io.DataInputStream
 import java.io.IOException

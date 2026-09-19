@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.cast
+package net.bi4vmr.tool.kotlin.external.androidcast
 
 /**
  * 屏幕投射事件监听器。

@@ -1,23 +1,43 @@
 package net.bi4vmr.study
 
-import net.bi4vmr.tool.java.common.base.TextUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBController.getADBExecName
+import net.bi4vmr.tool.kotlin.image.exif.EXIFTag
+import net.bi4vmr.tool.kotlin.image.exif.EXIFTool
 import java.io.File
 
 fun main() {
     // val i = Toolkit.getDefaultToolkit().screenResolution
     // println(i)
+    val f = File("D:\\Download\\20250124_141240_DSC0080.JPG")
+    // val map: Map<Tag, String> = ExifTool().getImageMeta(f, Tag.FOCAL_LENGTH)
+    // map.forEach { tag, string ->
+    //     println("tag -> $tag")
+    //     println("value -> $string")
+    // }
 
-    val adbName = getADBExecName()
+    // EXIFTool.readTag(f, EXIFTag.ISO)
+    //     ?.let {
+    //         println(it)
+    //     }
 
-    // 尝试获取 `ANDROID_HOME` 环境变量
-    val androidHome = System.getenv("ANDROID_HOME")
-    if (TextUtil.isNotBlank(androidHome)) {
-        val test = File("$androidHome${File.separator}platform-tools", adbName)
-        if (test.exists()) {
-            println("good ${test}")
-        }
-    }
+    val i = EXIFTool.writeCustomTag(f,"aaa","田所浩二")
+    println("write : $i")
+
+
+    EXIFTool.readCustomTag(f, "aaa")
+        ?.let {
+                println(it)
+            }
+
+    // val adbName = getADBExecName()
+    //
+    // // 尝试获取 `ANDROID_HOME` 环境变量
+    // val androidHome = System.getenv("ANDROID_HOME")
+    // if (TextUtil.isNotBlank(androidHome)) {
+    //     val test = File("$androidHome${File.separator}platform-tools", adbName)
+    //     if (test.exists()) {
+    //         println("good ${test}")
+    //     }
+    // }
 
     // 尝试从命令反推文件位置
     // val cmd = if (SystemUtil.isWindows()) arrayOf("where", adbFileName)

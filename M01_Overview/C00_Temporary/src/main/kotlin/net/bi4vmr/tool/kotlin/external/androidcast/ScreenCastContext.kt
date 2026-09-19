@@ -1,8 +1,8 @@
-package net.bi4vmr.tool.kotlin.external.cast
+package net.bi4vmr.tool.kotlin.external.androidcast
 
 import net.bi4vmr.tool.kotlin.external.adb.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.cast.video.VideoDecoder
+import net.bi4vmr.tool.kotlin.external.androidcast.video.VideoDecoder
 import java.net.Socket
 
 /**

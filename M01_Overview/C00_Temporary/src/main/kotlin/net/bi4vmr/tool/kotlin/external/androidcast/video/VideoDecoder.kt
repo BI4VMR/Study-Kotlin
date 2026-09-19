@@ -1,7 +1,7 @@
-package net.bi4vmr.tool.kotlin.external.cast.video
+package net.bi4vmr.tool.kotlin.external.androidcast.video
 
-import net.bi4vmr.tool.kotlin.external.cast.ScreenCastContext
-import net.bi4vmr.tool.kotlin.external.cast.ScreenCastEventListener
+import net.bi4vmr.tool.kotlin.external.androidcast.ScreenCastContext
+import net.bi4vmr.tool.kotlin.external.androidcast.ScreenCastEventListener
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext.FF_THREAD_FRAME
 import org.bytedeco.ffmpeg.avcodec.AVPacket
