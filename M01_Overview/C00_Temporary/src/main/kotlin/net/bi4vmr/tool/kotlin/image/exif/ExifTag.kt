@@ -1,19 +1,25 @@
 package net.bi4vmr.tool.kotlin.image.exif
 
 /**
- * EXIF 常用标签。
+ * Exif 常用标签。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-enum class EXIFTag(val title: String) {
+enum class ExifTag(
+
+    /**
+     * Exif 标准名称。
+     */
+    val shortName: String
+) {
 
     /**
      * 光圈 F 值。
      *
      * 示例： `6.3` 、 `8` 。
      */
-    APERTURE("FNumber"),
+    F_NUMBER("FNumber"),
 
     /**
      * 快门速度。
@@ -50,14 +56,19 @@ enum class EXIFTag(val title: String) {
      */
     FOCUS_MODE("FocusMode"),
 
-    EXPOSURE_PROGRAM("ExposureProgram"),
+    /**
+     * 设备厂商。
+     *
+     * 示例： `NIKON Corporation` 、 `Xiaomi` 。
+     */
+    MAKE("Make"),
 
     /**
-     * 设备名称。
+     * 设备型号。
      *
-     * 示例： `NIKON Z 30`
+     * 示例： `NIKON Z 30` 、 `23049RAD8C` 。
      */
-    DEVICE("Model"),
+    MODEL("Model"),
 
     /**
      * 镜头名称。
@@ -86,6 +97,27 @@ enum class EXIFTag(val title: String) {
      * 示例： `+08:00` 。
      */
     OFFSET_TIME("OffsetTime"),
+
+    /**
+     * GPS 纬度。
+     *
+     * 示例： `32 deg 1' 23.45" N` （原始数值为 `32.012345` ）。
+     */
+    GPS_LATITUDE("GPSLatitude"),
+
+    /**
+     * GPS 经度。
+     *
+     * 示例： `120 deg 36' 12.34" E` （原始数值为 `120.361234` ）。
+     */
+    GPS_LONGITUDE("GPSLongitude"),
+
+    /**
+     * GPS 高度。
+     *
+     * 示例： `20 m Above Sea Level` （原始数值为 `20` ）。
+     */
+    GPS_ALTITUDE("GPSAltitude"),
 
     /**
      * 艺术家。

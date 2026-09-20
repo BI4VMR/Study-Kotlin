@@ -1,10 +1,8 @@
-package net.bi4vmr.tool.kotlin.external.androidcast
+package net.bi4vmr.tool.kotlin.external.adb
 
 import net.bi4vmr.tool.java.common.base.CLIUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.androidcast.video.VideoDecoder
-import net.bi4vmr.tool.kotlin.external.androidcast.video.VideoProtocolParser
+import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
+import net.bi4vmr.tool.kotlin.external.adb.video.VideoProtocolParser
 import java.io.File
 import java.io.IOException
 import java.net.Socket
