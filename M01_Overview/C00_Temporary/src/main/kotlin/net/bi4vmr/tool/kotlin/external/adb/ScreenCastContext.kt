@@ -1,5 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb
 
+import net.bi4vmr.tool.kotlin.external.adb.video.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
 import java.net.Socket
 
@@ -36,6 +37,11 @@ internal data class ScreenCastContext(
     val videoCodec: VideoCodec,
 
     /**
+     * 音频编码类型。
+     */
+    val audioCodec: AudioCodec,
+
+    /**
      * 任务控制线程。
      */
     var taskThread: Thread? = null,
@@ -56,9 +62,24 @@ internal data class ScreenCastContext(
     var videoSocket: Socket? = null,
 
     /**
+     * Socket：音频转发通道。
+     */
+    var audioSocket: Socket? = null,
+
+    /**
      * 视频解码器。
      */
     var videoDecoder: VideoDecoder? = null,
+
+    /**
+     * 音频解码器。
+     */
+    var audioDecoder: AudioDecoder? = null,
+
+    /**
+     * 音频解析线程。
+     */
+    var audioThread: Thread? = null,
 
     /**
      * JVM关闭时的清理线程。

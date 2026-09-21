@@ -1,6 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb
 
 import net.bi4vmr.tool.java.common.base.CLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.video.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.video.AudioProtocolParser
 import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
 import net.bi4vmr.tool.kotlin.external.adb.video.VideoProtocolParser
 import java.io.File
@@ -64,6 +66,9 @@ object ScreenCastManager {
         videoCodec: VideoCodec = VideoCodec.H264,
         bitRate: Int = 8_000_000,
         maxFPS: Int = 360,
+        enableAudio: Boolean = true,
+        audioCodec: AudioCodec = AudioCodec.OPUS,
+        audioBitRate: Int = 128_000,
         remoteControl: Boolean = false,
         debug: Boolean = false
     ) {
@@ -74,7 +79,7 @@ object ScreenCastManager {
         }
 
 
-        val context = ScreenCastContext(device, listener, display, videoCodec)
+        val context = ScreenCastContext(device, listener, display, videoCodec, audioCodec)
 
         synchronized(tasks) {
             if (tasks.containsKey(listener)) {
@@ -129,7 +134,9 @@ object ScreenCastManager {
                     "video_bit_rate=$bitRate",
                     "max_fps=$maxFPS",
                     // "max_size=1920",
-                    "audio=false",
+                    "audio=$enableAudio",
+                    if (enableAudio) "audio_codec=${audioCodec.cli}" else "",
+                    if (enableAudio) "audio_bit_rate=$audioBitRate" else "",
                     "control=$remoteControl",
                     "log_level=verbose",
                     "scid=000$localPort"
@@ -150,9 +157,17 @@ object ScreenCastManager {
                 // TODO 应当重试来连接
                 Thread.sleep(2000)
 
+                // 视频通道（第一个TCP连接，服务端会发送0x00握手字节）。
                 val videoSocket = Socket("127.0.0.1", localPort)
                 videoSocket.tcpNoDelay = true
                 context.videoSocket = videoSocket
+
+                // 音频通道（第二个TCP连接），若不需要音频则跳过。
+                if (enableAudio) {
+                    val audioSocket = Socket("127.0.0.1", localPort)
+                    audioSocket.tcpNoDelay = true
+                    context.audioSocket = audioSocket
+                }
 
                 // 清除ADB转发配置不会打断已建立的TCP连接，因此客户端连接后就可以调用本方法，不必等到终止投屏时再调用。
                 device.stopForward(localPort)
@@ -161,6 +176,24 @@ object ScreenCastManager {
                     println("clean up")
                     clearContext(context)
                 })
+
+                // 启动音频解码与解析线程
+                if (enableAudio) {
+                    val audioDecoder = AudioDecoder()
+                    audioDecoder.init(context)
+                    context.audioDecoder = audioDecoder
+                    val audioThread = thread {
+                        try {
+                            AudioProtocolParser.parse(context)
+                        } catch (e: Exception) {
+                            // 用户主动停止投屏或服务端关闭时，音频流会抛异常，此时不需要上报。
+                            if (!Thread.currentThread().isInterrupted) {
+                                listener.onError(e)
+                            }
+                        }
+                    }
+                    context.audioThread = audioThread
+                }
 
                 val videoDecoder = VideoDecoder()
                 videoDecoder.init(context)
@@ -189,11 +222,14 @@ object ScreenCastManager {
     private fun clearContext(context: ScreenCastContext) {
         context.apply {
             videoDecoder?.release()
+            audioDecoder?.release()
             runCatching { videoSocket?.close() }
+            runCatching { audioSocket?.close() }
             CLIUtil.stopProcess(serverProcess)
             forwardPort?.let { device.stopForward(it) }
 
             taskThread?.interrupt()
+            audioThread?.interrupt()
 
             clearThread?.let { Runtime.getRuntime().removeShutdownHook(it) }
             clearThread = null
