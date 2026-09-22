@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.video
+package net.bi4vmr.tool.kotlin.external.adb.audio
 
 import net.bi4vmr.tool.kotlin.external.adb.ScreenCastContext
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE

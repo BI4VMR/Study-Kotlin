@@ -1,6 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb
 
-import net.bi4vmr.tool.kotlin.external.adb.video.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.audio.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.audio.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.video.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
 import java.net.Socket
 

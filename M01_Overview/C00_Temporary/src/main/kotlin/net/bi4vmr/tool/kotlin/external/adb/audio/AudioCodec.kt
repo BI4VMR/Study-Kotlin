@@ -1,6 +1,6 @@
-package net.bi4vmr.tool.kotlin.external.adb
+package net.bi4vmr.tool.kotlin.external.adb.audio
 
-import org.bytedeco.ffmpeg.global.avcodec.*
+import org.bytedeco.ffmpeg.global.avcodec
 
 /**
  * 音频编码类型。
@@ -20,9 +20,9 @@ enum class AudioCodec(
      */
     val ffID: Int
 ) {
-    OPUS("opus", AV_CODEC_ID_OPUS),
+    OPUS("opus", avcodec.AV_CODEC_ID_OPUS),
 
-    AAC("aac", AV_CODEC_ID_AAC),
+    AAC("aac", avcodec.AV_CODEC_ID_AAC),
 
-    FLAC("flac", AV_CODEC_ID_FLAC);
+    FLAC("flac", avcodec.AV_CODEC_ID_FLAC);
 }

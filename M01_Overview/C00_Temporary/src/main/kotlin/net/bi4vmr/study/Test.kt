@@ -1,5 +1,6 @@
 package net.bi4vmr.study
 
+import net.bi4vmr.tool.kotlin.image.exif.ExifTag
 import net.bi4vmr.tool.kotlin.image.exif.ExifTool
 import java.io.File
 
@@ -7,16 +8,21 @@ fun main() {
     // val i = Toolkit.getDefaultToolkit().screenResolution
     // println(i)
     val f = File("C:\\Users\\bi4vmr\\Download\\IMG_20260609_131435.jpg")
-    // val map: Map<Tag, String> = ExifTool().getImageMeta(f, Tag.FOCAL_LENGTH)
-    // map.forEach { tag, string ->
-    //     println("tag -> $tag")
-    //     println("value -> $string")
-    // }
+    val f2 = File("C:\\Users\\bi4vmr\\Download\\1")
+    val f3 = File("C:\\Users\\bi4vmr\\Download\\2")
+
 
     // EXIFTool.readTag(f, EXIFTag.ISO)
     //     ?.let {
     //         println(it)
     //     }
+    //
+    // ExifTool.readAllTags(f)
+    //     .forEach { (k, v) ->
+    //         println("$k -> $v")
+    //     }
+
+    ExifTool.deleteTags(f2, arrayOf(ExifTag.GPS_LATITUDE,ExifTag.GPS_LONGITUDE),f3)
 
     // val i = ExifTool.writeCustomTag(f,"aaa","田所浩二")
     // println("write : $i")
@@ -27,7 +33,7 @@ fun main() {
     //         println("$k -> $v")
     //     }
     // ExifTool.clearTag(f)
-    ExifTool.clearTag(f, null,false)
+    // ExifTool.deleteTags(f2, arrayOf(ExifTag.F_NUMBER), f3)
 
     // val adbName = getADBExecName()
     //

@@ -1,6 +1,6 @@
-package net.bi4vmr.tool.kotlin.external.adb
+package net.bi4vmr.tool.kotlin.external.adb.video
 
-import org.bytedeco.ffmpeg.global.avcodec.*
+import org.bytedeco.ffmpeg.global.avcodec
 
 /**
  * 视频编码类型。
@@ -20,9 +20,9 @@ enum class VideoCodec(
      */
     val ffID: Int
 ) {
-    H264("h264", AV_CODEC_ID_H264),
+    H264("h264", avcodec.AV_CODEC_ID_H264),
 
-    H265("h265", AV_CODEC_ID_HEVC),
+    H265("h265", avcodec.AV_CODEC_ID_HEVC),
 
-    AV1("av1", AV_CODEC_ID_AV1);
+    AV1("av1", avcodec.AV_CODEC_ID_AV1);
 }
