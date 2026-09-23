@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.image.exif
+package net.bi4vmr.tool.kotlin.image.exif.constant
 
 /**
  * Exif 常用标签。

@@ -6,6 +6,8 @@ import net.bi4vmr.tool.kotlin.image.exif.ExifTool.readTag
 import net.bi4vmr.tool.kotlin.image.exif.ExifTool.readTags
 import net.bi4vmr.tool.kotlin.image.exif.ExifTool.writeTag
 import net.bi4vmr.tool.kotlin.image.exif.ExifTool.writeTags
+import net.bi4vmr.tool.kotlin.image.exif.constant.ExifTag
+import net.bi4vmr.tool.kotlin.image.exif.util.ExifToolExecutableUtil
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -21,6 +23,16 @@ import java.io.File
 object ExifTool {
 
     private val logger: Logger = LoggerFactory.getLogger("ExifTool")
+
+    /**
+     * ExifTool 可执行文件。
+     */
+    private var executableFile: File? = null
+
+    /**
+     * 是否自动侦测 ExifTool 可执行文件位置。
+     */
+    private var detectExecutable: Boolean = true
 
     /**
      * 键值对分隔符。
@@ -43,8 +55,8 @@ object ExifTool {
      * @param[tags] 标签名称数组。默认值为空数组。若数组内容为空，则读取所有标签。
      * @param[rawValue] 是否显示原始值。默认值为 `false` 。 `true` 表示以原始格式输出； `false` 表示以人类可读格式输出，具体样式可参考
      * [ExifTag] 中各标签的注释。
-     * @return Map 键为标签名称；值为标签的值，当指定的标签不存在时值为空。内部实现为 [LinkedHashMap] ，元素顺序始终与 [tags] 一致。如果文件
-     * 或标签不存在，则返回空集合。
+     * @return Map 键为标签名称；值为标签的值，当指定的标签不存在时值为空。内部实现为 [LinkedHashMap] ，元素顺序始终与 [tags] 一致。
+     * 如果文件或标签不存在，则返回空集合。
      */
     @JvmStatic
     @JvmOverloads
@@ -116,8 +128,8 @@ object ExifTool {
      * @param[tags] 标签数组。默认值为空数组。若数组内容为空，则读取所有标签。
      * @param[rawValue] 是否显示原始值。默认值为 `false` 。 `true` 表示以原始格式输出； `false` 表示以人类可读格式输出，具体样式可参考
      * [ExifTag] 中各标签的注释。
-     * @return Map 键为标签；值为标签的值，当指定的标签不存在时值为空。内部实现为 [LinkedHashMap] ，元素顺序始终与 [tags] 一致。如果文件或标
-     * 签不存在，则返回空集合。
+     * @return Map 键为标签；值为标签的值，当指定的标签不存在时值为空。内部实现为 [LinkedHashMap] ，元素顺序始终与 [tags] 一致。
+     * 如果文件或标签不存在，则返回空集合。
      */
     @JvmStatic
     @JvmOverloads
@@ -455,5 +467,42 @@ object ExifTool {
     fun clearTags(input: File, output: File? = null): Boolean {
         logger.debug("ClearTag. Input:[{}] Output:[{}]", input, output)
         return deleteCustomTags(input, emptyArray(), output)
+    }
+
+
+    /*
+     * ----- 可执行文件管理 -----
+     */
+
+    /**
+     * 是否自动侦测可执行文件位置。
+     *
+     * @return `true` 表示自动侦测； `false` 表示使用用户指定的路径。
+     */
+    @JvmStatic
+    fun isAutoDetectExecutable(): Boolean = detectExecutable
+
+    /**
+     * 获取当前 ExifTool 可执行文件。
+     *
+     * @return 可执行文件。如果当前采用自动侦测但没有找到可执行文件，则返回空值。
+     */
+    @JvmStatic
+    fun getExecutableFile(): File? = executableFile
+
+    /**
+     * 设置 ExifTool 可执行文件路径。
+     *
+     * @param[path] 可执行文件路径。若为空值则启用自动侦测。
+     */
+    @JvmStatic
+    fun setExecutableFile(path: String? = null) {
+        if (path == null) {
+            executableFile = ExifToolExecutableUtil.detectExecutable()
+            detectExecutable = true
+        } else {
+            executableFile = File(path)
+            detectExecutable = false
+        }
     }
 }
