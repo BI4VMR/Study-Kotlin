@@ -1,7 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.video
 
-import net.bi4vmr.tool.kotlin.external.adb.ScreenCastContext
-import net.bi4vmr.tool.kotlin.external.adb.ScreenCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
+import net.bi4vmr.tool.kotlin.external.adb.ADBCastEventListener
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext.FF_THREAD_FRAME
 import org.bytedeco.ffmpeg.avcodec.AVPacket
@@ -22,9 +22,9 @@ internal class VideoDecoder {
     private var avPacket: AVPacket? = null
     private var avFrame: AVFrame? = null
 
-    private var listener: ScreenCastEventListener? = null
+    private var listener: ADBCastEventListener? = null
 
-    fun init(context: ScreenCastContext) {
+    fun init(context: ADBCastContext) {
         listener = context.listener
 
         val codec = avcodec_find_decoder(context.videoCodec.ffID)

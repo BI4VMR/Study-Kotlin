@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.video
 
-import net.bi4vmr.tool.kotlin.external.adb.ScreenCastContext
+import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import java.io.DataInputStream
 import java.io.IOException
@@ -40,7 +40,7 @@ internal object VideoProtocolParser {
      *    <数据长度> 字节的 H264/H265 裸码流
      * </pre>
      */
-    fun parse(context: ScreenCastContext) {
+    fun parse(context: ADBCastContext) {
         val listener = requireNotNull(context.listener) { "Listener must exist!" }
         val socket = requireNotNull(context.videoSocket) { "Video socket must exist!" }
         val stream = DataInputStream(socket.getInputStream())

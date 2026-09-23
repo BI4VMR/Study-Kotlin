@@ -6,7 +6,7 @@ package net.bi4vmr.tool.kotlin.external.adb
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-interface ScreenCastEventListener {
+interface ADBCastEventListener {
 
     /**
      * 事件：画面尺寸变化。

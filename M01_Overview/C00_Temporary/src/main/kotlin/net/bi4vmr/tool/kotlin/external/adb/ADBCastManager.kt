@@ -19,7 +19,7 @@ import kotlin.concurrent.thread
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-object ScreenCastManager {
+object ADBCastManager {
 
     private const val FORWARD_START_PORT: Int = 32768
 
@@ -42,7 +42,7 @@ object ScreenCastManager {
     /**
      * 投屏任务列表。
      */
-    private val tasks: MutableMap<ScreenCastEventListener, ScreenCastContext> = mutableMapOf()
+    private val tasks: MutableMap<ADBCastEventListener, ADBCastContext> = mutableMapOf()
 
     /**
      * ADB转发端口。
@@ -63,7 +63,7 @@ object ScreenCastManager {
     @JvmOverloads
     fun start(
         device: ADBDevice,
-        listener: ScreenCastEventListener,
+        listener: ADBCastEventListener,
         display: DisplayInfo? = null,
         videoCodec: VideoCodec = VideoCodec.H264,
         bitRate: Int = 8_000_000,
@@ -81,7 +81,7 @@ object ScreenCastManager {
         }
 
 
-        val context = ScreenCastContext(device, listener, display, videoCodec, audioCodec)
+        val context = ADBCastContext(device, listener, display, videoCodec, audioCodec)
 
         synchronized(tasks) {
             if (tasks.containsKey(listener)) {
@@ -211,7 +211,7 @@ object ScreenCastManager {
         }.also { context.taskThread = it }
     }
 
-    fun stop(listener: ScreenCastEventListener) {
+    fun stop(listener: ADBCastEventListener) {
         synchronized(tasks) {
             tasks.remove(listener)
                 ?.let {
@@ -221,7 +221,7 @@ object ScreenCastManager {
     }
 
     // 清理相关资源
-    private fun clearContext(context: ScreenCastContext) {
+    private fun clearContext(context: ADBCastContext) {
         context.apply {
             videoDecoder?.release()
             audioDecoder?.release()

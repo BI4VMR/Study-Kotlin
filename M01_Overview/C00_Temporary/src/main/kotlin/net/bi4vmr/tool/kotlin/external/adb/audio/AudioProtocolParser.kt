@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.audio
 
-import net.bi4vmr.tool.kotlin.external.adb.ScreenCastContext
+import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import java.io.DataInputStream
 import java.io.IOException
@@ -33,7 +33,7 @@ internal object AudioProtocolParser {
      *   <数据长度> 字节的编码数据
      * </pre>
      */
-    fun parse(context: ScreenCastContext) {
+    fun parse(context: ADBCastContext) {
         val socket = requireNotNull(context.audioSocket) { "Audio socket must exist!" }
         val stream = DataInputStream(socket.getInputStream())
 

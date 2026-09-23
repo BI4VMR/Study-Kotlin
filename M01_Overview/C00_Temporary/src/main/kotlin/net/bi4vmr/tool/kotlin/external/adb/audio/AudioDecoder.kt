@@ -1,7 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.audio
 
-import net.bi4vmr.tool.kotlin.external.adb.ScreenCastContext
-import net.bi4vmr.tool.kotlin.external.adb.ScreenCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
+import net.bi4vmr.tool.kotlin.external.adb.ADBCastEventListener
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVPacket
 import org.bytedeco.ffmpeg.avutil.AVChannelLayout
@@ -32,9 +32,9 @@ internal class AudioDecoder {
     private var outChannels: Int = 2
     private var outSampleRate: Int = 48000
 
-    private var listener: ScreenCastEventListener? = null
+    private var listener: ADBCastEventListener? = null
 
-    fun init(context: ScreenCastContext) {
+    fun init(context: ADBCastContext) {
         listener = context.listener
 
         val codec = avcodec_find_decoder(context.audioCodec.ffID)
@@ -133,9 +133,12 @@ internal class AudioDecoder {
             val outSamples = swr_get_out_samples(swr, nbSamples)
             val outBytesCount = outSamples * outChannels * 2
             val outBytes = BytePointer(outBytesCount.toLong())
-            val outPlanes = PointerPointer<BytePointer>(outBytes)
+            // `out` 参数类型为 `uint8_t **`，需要构造一个指针数组，并将输出缓冲区指针写入第一个元素。
+            val outPlanes = PointerPointer<BytePointer>(1L)
+            outPlanes.put(0, outBytes)
             val samplesConverted = swr_convert(swr, outPlanes, outSamples, frame.data(), nbSamples)
             if (samplesConverted <= 0) {
+                outPlanes.deallocate()
                 outBytes.deallocate()
                 break
             }
@@ -143,6 +146,7 @@ internal class AudioDecoder {
             val bytesCount = samplesConverted * outChannels * 2
             val pcm = ByteArray(bytesCount)
             outBytes.get(pcm)
+            outPlanes.deallocate()
             outBytes.deallocate()
 
             listener?.onAudioData(pcm, outChannels, outSampleRate)

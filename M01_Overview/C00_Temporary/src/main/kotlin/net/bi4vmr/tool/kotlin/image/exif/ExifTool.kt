@@ -27,11 +27,13 @@ object ExifTool {
     /**
      * ExifTool 可执行文件。
      */
+    @Volatile
     private var executableFile: File? = null
 
     /**
      * 是否自动侦测 ExifTool 可执行文件位置。
      */
+    @Volatile
     private var detectExecutable: Boolean = true
 
     /**
@@ -41,6 +43,12 @@ object ExifTool {
      */
     private val tagSplitRegex: Regex = ": ".toRegex()
 
+
+    init {
+        val detectPath = ExifToolExecutableUtil.detectExecutable()
+        logger.debug("ExifTool init, detect executable file. Path:[{}]", detectPath)
+        executableFile = detectPath
+    }
 
     /*
      * ----- 读取标签 -----
@@ -79,9 +87,14 @@ object ExifTool {
             return emptyMap()
         }
 
+        val execFile = executableFile
+        if (execFile == null || !execFile.canExecute()) {
+            logger.error("ExifTool executable file not found or can not execute! Path:[{}]", execFile)
+            return emptyMap()
+        }
 
         val cmdBuilder = StringBuilder()
-        cmdBuilder.append("exiftool ")
+        cmdBuilder.append("${execFile.absolutePath} ")
         // 短格式（ Tag 单词之间不含空格； Tag 与分隔符之间不含空格。）
         cmdBuilder.append("-S ")
         // 是否返回原始数据
@@ -196,9 +209,14 @@ object ExifTool {
             return emptyMap()
         }
 
+        val execFile = executableFile
+        if (execFile == null || !execFile.canExecute()) {
+            logger.error("ExifTool executable file not found or can not execute! Path:[{}]", execFile)
+            return emptyMap()
+        }
 
         val cmdBuilder = StringBuilder()
-        cmdBuilder.append("exiftool ")
+        cmdBuilder.append("${execFile.absolutePath} ")
         // 短格式（ Tag 单词之间不含空格； Tag 与分隔符之间不含空格。）
         cmdBuilder.append("-S ")
         // 是否返回原始数据
@@ -272,9 +290,15 @@ object ExifTool {
             }
         }
 
+        val execFile = executableFile
+        if (execFile == null || !execFile.canExecute()) {
+            logger.error("ExifTool executable file not found or can not execute! Path:[{}]", execFile)
+            return false
+        }
+
 
         val cmdBuilder = StringBuilder()
-        cmdBuilder.append("exiftool ")
+        cmdBuilder.append("${execFile.absolutePath} ")
         if (output != null) {
             // 指定输出目录
             cmdBuilder.append("-o \"${output.absolutePath}\" ")
@@ -383,8 +407,15 @@ object ExifTool {
             }
         }
 
+        val execFile = executableFile
+        if (execFile == null || !execFile.canExecute()) {
+            logger.error("ExifTool executable file not found or can not execute! Path:[{}]", execFile)
+            return false
+        }
+
+
         val cmdBuilder = StringBuilder()
-        cmdBuilder.append("exiftool ")
+        cmdBuilder.append("${execFile.absolutePath} ")
         if (output != null) {
             // 指定输出目录
             cmdBuilder.append("-o \"${output.absolutePath}\" ")

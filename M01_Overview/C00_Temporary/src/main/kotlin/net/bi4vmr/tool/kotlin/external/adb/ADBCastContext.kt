@@ -14,22 +14,22 @@ import java.net.Socket
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-internal data class ScreenCastContext(
+internal data class ADBCastContext(
 
     /**
-     * ADB设备。
+     * ADB 设备。
      */
     val device: ADBDevice,
 
     /**
      * 事件监听器。
      */
-    val listener: ScreenCastEventListener,
+    val listener: ADBCastEventListener,
 
     /**
      * 屏幕信息。
      *
-     * 空值表示使用默认屏幕。
+     * 空值表示使用主屏幕。
      */
     val display: DisplayInfo?,
 
