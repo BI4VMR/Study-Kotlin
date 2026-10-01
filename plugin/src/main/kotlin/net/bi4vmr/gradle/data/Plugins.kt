@@ -15,6 +15,12 @@ import net.bi4vmr.gradle.plugin.PublicRepoPlugin
  */
 object Plugins {
 
+    /*
+     * ----- Gradle 内置插件 -----
+     */
+
+    const val JAVA: String = "java"
+
     const val JAVA_LIBRARY: String = "java-library"
 
     const val JAVA_APPLICATION: String = "java-application"
@@ -23,11 +29,23 @@ object Plugins {
 
     const val JACOCO: String = "jacoco"
 
+
+    /*
+     * ----- 第三方插件 -----
+     */
+
+    const val KOTLIN_JVM: String = "org.jetbrains.kotlin.jvm"
+
     const val ANDROID_LIBRARY = "com.android.library"
 
     const val ANDROID_APPLICATION = "com.android.application"
 
     const val ANDROID_KOTLIN = "org.jetbrains.kotlin.android"
+
+
+    /*
+     * ----- 自定义插件 -----
+     */
 
     const val JAVA_VERSION: String = JavaVersionPlugin.NAME
 

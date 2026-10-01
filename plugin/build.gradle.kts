@@ -18,6 +18,10 @@ repositories {
     google()
 }
 
+dependencies {
+    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0")
+}
+
 gradlePlugin {
     plugins {
 
