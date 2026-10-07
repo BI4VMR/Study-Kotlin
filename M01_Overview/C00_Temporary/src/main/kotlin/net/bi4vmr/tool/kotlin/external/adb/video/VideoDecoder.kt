@@ -101,7 +101,7 @@ internal class VideoDecoder {
             frame.data(1).get(uData)
             frame.data(2).get(vData)
 
-            listener?.onNewFrame(yData, yStride, uData, uStride, vData, vStride)
+            listener?.onNewFrame(yData, yStride, uData, uStride, vData, vStride, 0, 0)
         }
     }
 

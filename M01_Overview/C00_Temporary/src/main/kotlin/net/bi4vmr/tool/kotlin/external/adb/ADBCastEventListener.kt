@@ -1,5 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb
 
+import net.bi4vmr.tool.kotlin.external.adb.control.InputController
+
 /**
  * 屏幕投射事件监听器。
  *
@@ -18,26 +20,68 @@ interface ADBCastEventListener {
      */
     fun onSizeChange(width: Int, height: Int)
 
-    fun onNewFrame(yData: ByteArray, yStride: Int, uData: ByteArray, uStride: Int, vData: ByteArray, vStride: Int)
-
     /**
-     * 音频数据回调。
+     * 事件回调：视频帧到达。
      *
-     * @param pcmData  S16 交错格式的 PCM 数据。
-     * @param channels 声道数。
-     * @param sampleRate 采样率。
-     */
-    fun onAudioData(pcmData: ByteArray, channels: Int, sampleRate: Int)
-
-    /**
-     * 事件：发生错误。
-     */
-    fun onError(error: Exception)
-
-    /**
-     * 事件：已解析标题。
+     * 每一帧被解码后触发。
      *
-     * Scrcpy 服务端以设备型号作为标题，可用于界面显示。
+     * @param[yData] Y分量数据。
+     * @param[yStride] Y分量行跨度（单位：字节）。
+     * @param[uData] U分量数据。
+     * @param[uStride] U分量行跨度（单位：字节）。
+     * @param[vData] V分量数据。
+     * @param[vStride] V分量行跨度（单位：字节）。
+     * @param[width] 帧宽度。
+     * @param[height] 帧高度。
+     */
+    fun onNewFrame(
+        yData: ByteArray,
+        yStride: Int,
+        uData: ByteArray,
+        uStride: Int,
+        vData: ByteArray,
+        vStride: Int,
+        width: Int,
+        height: Int
+    )
+
+    /**
+     * 事件回调：视频通道就绪。
+     *
+     * 当首帧到达时触发，界面层可以用来控制加载状态，发起投屏时显示加载动画，收到该回调时退出加载动画。
+     */
+    fun onVideoReady() {
+        // 可选，默认不进行任何操作。
+    }
+
+    fun onAudioData(pcmData: ByteArray, channels: Int, sampleRate: Int) {
+        // 可选，默认不进行任何操作。
+    }
+
+    /**
+     * 事件回调：控制通道就绪。
+     *
+     * @param[controller] 输入控制器实例。
+     */
+    fun onControlReady(controller: InputController) {
+        // 可选，默认不进行任何操作。
+    }
+
+    /**
+     * 事件回调：错误消息。
+     *
+     * @param[error] 异常信息。
+     */
+    fun onError(error: Exception) {
+        // 可选，默认不进行任何操作。
+    }
+
+    /**
+     * 事件回调：标题已解析。
+     *
+     * 视频通道在初始化时将发送设备型号，可以作为窗口标题使用。
+     *
+     * @param[title] 标题。
      */
     fun onTitleResolve(title: String) {
         // 可选，默认不进行任何操作。

@@ -2,6 +2,8 @@ package net.bi4vmr.tool.kotlin.external.adb
 
 import net.bi4vmr.tool.kotlin.external.adb.audio.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.audio.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.video.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
 import java.net.Socket
@@ -27,11 +29,9 @@ internal data class ADBCastContext(
     val listener: ADBCastEventListener,
 
     /**
-     * 屏幕信息。
-     *
-     * 空值表示使用主屏幕。
+     * 屏幕 ID 。
      */
-    val display: DisplayInfo?,
+    val displayID: String,
 
     /**
      * 视频编码类型。
@@ -49,7 +49,7 @@ internal data class ADBCastContext(
     var taskThread: Thread? = null,
 
     /**
-     * ADB转发端口。
+     * ADB 转发端口。
      */
     var forwardPort: Int? = null,
 
@@ -59,19 +59,19 @@ internal data class ADBCastContext(
     var serverProcess: Process? = null,
 
     /**
-     * Socket：视频转发通道。
+     * Socket ：视频转发通道。
      */
     var videoSocket: Socket? = null,
-
-    /**
-     * Socket：音频转发通道。
-     */
-    var audioSocket: Socket? = null,
 
     /**
      * 视频解码器。
      */
     var videoDecoder: VideoDecoder? = null,
+
+    /**
+     * Socket ：音频转发通道。
+     */
+    var audioSocket: Socket? = null,
 
     /**
      * 音频解码器。
@@ -84,7 +84,33 @@ internal data class ADBCastContext(
     var audioThread: Thread? = null,
 
     /**
-     * JVM关闭时的清理线程。
+     * Socket ：控制转发通道。
+     */
+    var controlSocket: Socket? = null,
+
+    /**
+     * 输入控制器。
+     */
+    var inputController: InputController? = null,
+
+    /**
+     * 进程结束时的清理线程。
      */
     var clearThread: Thread? = null,
+
+    /**
+     * 服务端异常。
+     *
+     * 优先向上层汇报服务端异常，如果服务端已出现异常，则忽略后续的客户端线程终止等异常。
+     */
+    @Volatile
+    var serverError: Exception? = null,
+
+    /**
+     * 任务是否已被停止。
+     *
+     * 当调用 [ScreenCastManager.stop] 后置为 `true`，用于抑制资源清理引发的异常回调。
+     */
+    @Volatile
+    var stopped: Boolean = false
 )

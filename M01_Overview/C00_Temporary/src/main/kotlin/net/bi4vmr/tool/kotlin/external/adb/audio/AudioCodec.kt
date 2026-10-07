@@ -16,13 +16,22 @@ enum class AudioCodec(
     val cli: String,
 
     /**
-     * FFmpeg解码器ID。
+     * FFmpeg 解码器 ID 。
      */
     val ffID: Int
 ) {
-    OPUS("opus", avcodec.AV_CODEC_ID_OPUS),
-
+    /**
+     * AAC 编码。
+     */
     AAC("aac", avcodec.AV_CODEC_ID_AAC),
 
+    /**
+     * OPUS 编码。
+     */
+    OPUS("opus", avcodec.AV_CODEC_ID_OPUS),
+
+    /**
+     * FLAC 编码。
+     */
     FLAC("flac", avcodec.AV_CODEC_ID_FLAC);
 }
