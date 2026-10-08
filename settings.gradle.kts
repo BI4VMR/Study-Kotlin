@@ -54,6 +54,10 @@ includeBuild("plugin")
 // ----- 基础知识 -----
 include("M01_Overview:C00_Temporary")
 include("M01_Overview:C01_HelloWorld")
+// TODO Test
+include(":M01_Overview:C02_AdbMqtt:Protocol")
+include(":M01_Overview:C02_AdbMqtt:Agent")
+include(":M01_Overview:C02_AdbMqtt:Client")
 
 // ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")

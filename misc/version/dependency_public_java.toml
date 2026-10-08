@@ -26,6 +26,8 @@ retrofit2-bom = "2.11.0"
 
 okhttps-core = "4.0.3"
 
+hivemq-mqtt = "1.3.7"
+
 
 # ----- 媒体工具 -----
 javacv = "1.5.10"
@@ -129,6 +131,10 @@ okhttps-core = { group = "cn.zhxu", name = "okhttps", version.ref = "okhttps-cor
 okhttps-gson = { group = "cn.zhxu", name = "okhttps-gson", version.ref = "okhttps-core" }
 # Jackson支持
 okhttps-jackson = { group = "cn.zhxu", name = "okhttps-jackson", version.ref = "okhttps-core" }
+
+# < HiveMQ MQTT Client >
+# 核心
+hivemq-mqtt = { group = "com.hivemq", name = "hivemq-mqtt-client", version.ref = "hivemq-mqtt" }
 
 
 # ----- 媒体工具 -----
