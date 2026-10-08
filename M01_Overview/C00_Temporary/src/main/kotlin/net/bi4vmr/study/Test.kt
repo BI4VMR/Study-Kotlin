@@ -24,11 +24,11 @@ fun main() {
             println("D -> $it")
             ADBCastManager.start(
                 it, object : ADBCastEventListener {
-                    override fun onSizeChange(width: Int, height: Int) {
+                    override fun onVideoSizeChange(width: Int, height: Int) {
                         println("onSizeChange: width=$width, height=$height")
                     }
 
-                    override fun onNewFrame(
+                    override fun onVideoFrame(
                         yData: ByteArray,
                         yStride: Int,
                         uData: ByteArray,
@@ -41,7 +41,16 @@ fun main() {
                         // TODO("Not yet implemented")
                     }
 
+                    override fun onVideoError(error: Exception) {
+                        println("onVideoError. ${error.message}")
+                    }
+
+                    override fun onVideoReady() {
+                        println("onVideoReady")
+                    }
+
                     override fun onAudioData(pcmData: ByteArray, channels: Int, sampleRate: Int) {
+                        println("onAudioData -> ${pcmData.size}")
                         line ?: run {
                             val format = AudioFormat(sampleRate.toFloat(), 16, channels, true, false)
                             line = AudioSystem.getSourceDataLine(format).apply {
@@ -52,11 +61,11 @@ fun main() {
                         line?.write(pcmData, 0, pcmData.size)
                     }
 
-                    override fun onError(error: Exception) {
-                        error.printStackTrace()
+                    override fun onAudioError(error: Exception) {
+                        println("onAudioError. ${error.message}")
                     }
-                },
-                debug = true
+                }
             )
         }
+        ?: println("No devices found")
 }

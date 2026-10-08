@@ -3,7 +3,6 @@ package net.bi4vmr.tool.kotlin.external.adb.video
 import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import java.io.DataInputStream
-import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
@@ -45,21 +44,10 @@ internal object VideoProtocolParser {
         val socket = requireNotNull(context.videoSocket) { "Video socket must exist!" }
         val stream = DataInputStream(socket.getInputStream())
 
-        /*
-         * 握手
-         *
-         * 服务端在TunnelForward模式下会先发送 `0x00` 用于握手。
-         */
-        val first = stream.readByte()
-        if (first != 0.toByte()) {
-            throw IOException("Unexpected handshake byte! We expect 0x00, but got [0x${first.toString(16)}].")
-        }
-
-
         /* 读取设备名称 */
         val nameData = ByteArray(64)
         stream.readFully(nameData)
-        // 截取数组中非0的部分
+        // 截取数组中非 0 的部分
         val nameLength = nameData.indexOfFirst { it == 0.toByte() }
         val name = String(nameData, 0, nameLength, StandardCharsets.UTF_8)
         listener.onTitleResolve(name)
@@ -88,10 +76,11 @@ internal object VideoProtocolParser {
                 val height = ByteBuffer.wrap(headerData, 8, 4)
                     .order(ByteOrder.BIG_ENDIAN)
                     .int
-                listener.onSizeChange(width, height)
+                listener.onVideoSizeChange(width, height)
+                context.inputController?.updateFrameSize(width, height)
             } else {
                 /* 媒体包 */
-                // 解析PTS和标志位
+                // 解析 PTS 和标志位
                 val ptsAndFlags = ByteBuffer.wrap(headerData, 0, 8)
                     .order(ByteOrder.BIG_ENDIAN)
                     .getLong()
@@ -105,6 +94,7 @@ internal object VideoProtocolParser {
                     .order(ByteOrder.BIG_ENDIAN)
                     .getInt()
 
+                // 按长度读取媒体数据
                 val datas = ByteArray(dataLength)
                 stream.readFully(datas)
                 videoDecoder.decode(datas, pts, keyFrame)

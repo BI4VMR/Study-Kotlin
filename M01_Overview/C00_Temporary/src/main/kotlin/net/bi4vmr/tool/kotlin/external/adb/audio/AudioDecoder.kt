@@ -17,7 +17,7 @@ import org.bytedeco.javacpp.PointerPointer
 /**
  * 音频解码器。
  *
- * <p>解码目标统一为 48kHz 双声道 S16 交错格式的 PCM 数据，便于上层直接播放。</p>
+ * 解码目标统一为 48kHz 双声道 S16 交错格式的 PCM 数据，便于上层直接播放。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

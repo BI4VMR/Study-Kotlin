@@ -24,6 +24,9 @@ internal class VideoDecoder {
 
     private var listener: ADBCastEventListener? = null
 
+    private var firstFrameArrived: Boolean = false
+
+
     fun init(context: ADBCastContext) {
         listener = context.listener
 
@@ -71,7 +74,7 @@ internal class VideoDecoder {
         val sendResult = avcodec_send_packet(mediaCtx, packet)
         av_packet_unref(packet)
         if (sendResult != 0) {
-            // 发送SPS/PPS配置包会返回非 `0` 的值，但不影响后续使用，因此这种情况不输出日志。
+            // 发送 SPS/PPS 配置包会返回非 `0` 的值，但不影响后续使用，因此这种情况不输出日志。
             if (pts != AV_NOPTS_VALUE) {
                 println("Send packet to codec failed! Code:[$sendResult]")
             }
@@ -84,11 +87,17 @@ internal class VideoDecoder {
             // 非 `0` 表示出错或没有新的数据，停止本数据包的解码工作。
             if (receiveResult != 0) break
 
+            // 发送首帧到达通告
+            if (!firstFrameArrived) {
+                firstFrameArrived = true
+                listener?.onVideoReady()
+            }
+
             val width = frame.width()
             val height = frame.height()
             if (width <= 0 || height <= 0) break
 
-            // 解析YUV数据
+            // 解析 YUV 数据
             val yStride: Int = frame.linesize(0)
             val uStride: Int = frame.linesize(1)
             val vStride: Int = frame.linesize(2)
@@ -101,7 +110,7 @@ internal class VideoDecoder {
             frame.data(1).get(uData)
             frame.data(2).get(vData)
 
-            listener?.onNewFrame(yData, yStride, uData, uStride, vData, vStride, 0, 0)
+            listener?.onVideoFrame(yData, yStride, uData, uStride, vData, vStride, width, height)
         }
     }
 

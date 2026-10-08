@@ -2,6 +2,8 @@ package net.bi4vmr.tool.kotlin.external.adb.audio
 
 import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -14,6 +16,11 @@ import java.nio.ByteOrder
  * @since 1.0.0
  */
 internal object AudioProtocolParser {
+
+    /**
+     * 日志工具。
+     */
+    private val logger: Logger = LoggerFactory.getLogger(AudioProtocolParser::class.java)
 
     /**
      * 音频流解析与解码。
@@ -41,14 +48,18 @@ internal object AudioProtocolParser {
         val codecId = stream.readInt()
         if (codecId == 0) {
             // 服务端无法捕获音频，流被显式禁用，仅继续播放视频。
-            println("Audio stream is explicitly disabled by the device!")
+            // 对应服务端 Streamer.writeDisableStream(false) ，此情况下设备端通常仍在外放。
+            logger.warn("Audio stream is explicitly disabled by the device!")
+            context.listener.onAudioError(
+                IOException("Audio stream is explicitly disabled by the device! (Server failed to capture audio.)")
+            )
             return
         }
         if (codecId == 1) {
             throw IOException("Audio stream configuration error on the device!")
         }
         // 本工具在启动服务端时已指定编码，因此无需从协议中解析编码。
-
+        logger.info("Audio stream is enabled. Codec id:[0x{}]", codecId.toString(16))
 
         /* 解析每帧数据 */
         val audioDecoder = requireNotNull(context.audioDecoder) { "Audio decoder must exist!" }

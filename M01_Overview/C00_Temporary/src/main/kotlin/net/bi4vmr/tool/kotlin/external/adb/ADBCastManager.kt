@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.File
 import java.io.IOException
-import java.io.OutputStream
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -136,14 +135,12 @@ object ADBCastManager {
         maxSize: Int = -1,
         maxFPS: Int = 360,
         enableAudio: Boolean = true,
-        audioCodec: AudioCodec = AudioCodec.FLAC,
-        audioBitRate: Int = 128_000,
-        remoteControl: Boolean = false,
-        debug: Boolean = false
+        audioCodec: AudioCodec = AudioCodec.AAC,
+        audioBitRate: Int = 128_000
     ) {
         /* 参数校验 */
         if (!serverFile.canRead() || serverVersion.isBlank()) {
-            listener.onError(IllegalStateException("Scrcpy server file invalid or version not set!"))
+            listener.onVideoError(IllegalStateException("Scrcpy server file invalid or version not set!"))
             return
         }
 
@@ -151,7 +148,7 @@ object ADBCastManager {
         val context = ADBCastContext(device, listener, displayID, videoCodec, audioCodec)
         synchronized(tasks) {
             if (tasks.containsKey(listener)) {
-                listener.onError(IllegalStateException("Screen cast task already running!"))
+                listener.onVideoError(IllegalStateException("Screen cast task already running!"))
                 return
             }
 
@@ -174,7 +171,7 @@ object ADBCastManager {
 
                 /* 向 JVM 注册清理线程，当应用进程退出时同步终止 ADB 等外部进程。 */
                 val clearThread = Thread {
-                    // TODO
+                    // TODO log
                     println("clean up")
                     clearContext(context)
                 }
@@ -212,7 +209,8 @@ object ADBCastManager {
                     "audio=$enableAudio",
                     if (enableAudio) "audio_codec=${audioCodec.cli}" else "",
                     if (enableAudio) "audio_bit_rate=$audioBitRate" else "",
-                    "control=$remoteControl",
+                    // 服务端启动后不能动态调整参数，因此默认启用控制通道，由调用者决定是否转发触控事件。
+                    "control=true",
                     "log_level=verbose",
                     "scid=000$localPort"
                 ).joinToString(" ")
@@ -222,12 +220,11 @@ object ADBCastManager {
 
                 // 普通消息输出线程
                 thread {
-                    if (debug) {
-                        serverProcess.inputStream.copyTo(System.out)
-                    } else {
-                        // 在子线程消耗服务端进程的输出流，防止阻塞。
-                        serverProcess.inputStream.copyTo(OutputStream.nullOutputStream())
-                    }
+                    serverProcess.inputStream
+                        .bufferedReader()
+                        .useLines { lines ->
+                            lines.forEach { msg -> logger.debug(msg) }
+                        }
                 }
 
                 // 错误消息输出线程
@@ -235,16 +232,17 @@ object ADBCastManager {
                     serverProcess.errorStream
                         .bufferedReader()
                         .useLines { lines ->
-                            val msg = lines.joinToString("\n")
-                            // 服务端进程被关闭时错误消息会输出空内容，此处将其忽略。
-                            if (msg.isBlank()) {
-                                return@thread
-                            }
+                            lines.forEach { msg ->
+                                // 服务端进程被关闭时错误消息会输出空内容，此处将其忽略。
+                                if (msg.isBlank()) {
+                                    return@thread
+                                }
 
-                            System.err.println("Device report an error!\n$msg")
-                            val e = IllegalStateException("Device report an error!\n$msg")
-                            context.serverError = e
-                            listener.onError(e)
+                                logger.error("Device report an error! Info:[$msg]")
+                                val e = IllegalStateException("Device report an error! Info:[$msg]")
+                                context.serverError = e
+                                listener.onVideoError(e)
+                            }
                         }
                 }
 
@@ -252,14 +250,6 @@ object ADBCastManager {
                 val videoSocket = connectForHandshake(NetUtil.IP_LOOPBACK, localPort)
                 videoSocket.tcpNoDelay = true
                 context.videoSocket = videoSocket
-
-                // 循环读取视频通道数据并进行解码
-                thread {
-                    val videoDecoder = VideoDecoder()
-                    videoDecoder.init(context)
-                    context.videoDecoder = videoDecoder
-                    VideoProtocolParser.parse(context)
-                }
 
                 /*
                  * 建立音频通道（第二个 TCP 连接）
@@ -272,37 +262,48 @@ object ADBCastManager {
                     context.audioSocket = audioSocket
 
                     thread {
-                        val audioDecoder = AudioDecoder()
-                        audioDecoder.init(context)
-                        context.audioDecoder = audioDecoder
-                        val audioThread = thread {
-                            try {
-                                AudioProtocolParser.parse(context)
-                            } catch (e: Exception) {
-                                // 用户主动停止投屏或服务端关闭时，音频流会抛异常，此时不需要上报。
-                                if (!Thread.currentThread().isInterrupted) {
-                                    listener.onError(e)
+                        try {
+                            val audioDecoder = AudioDecoder()
+                            audioDecoder.init(context)
+                            context.audioDecoder = audioDecoder
+                            val audioThread = thread {
+                                try {
+                                    AudioProtocolParser.parse(context)
+                                } catch (e: Exception) {
+                                    // 用户主动停止投屏或服务端关闭时，音频流会抛异常，此时不需要上报。
+                                    if (!Thread.currentThread().isInterrupted && !context.stopped && context.serverError == null) {
+                                        listener.onAudioError(e)
+                                    }
                                 }
                             }
+                            context.audioThread = audioThread
+                        } catch (e: Exception) {
+                            // 解码器初始化失败时不能静默退出，否则音频通道将无任何回调。
+                            if (!context.stopped && context.serverError == null) {
+                                listener.onAudioError(e)
+                            }
                         }
-                        context.audioThread = audioThread
                     }
                 }
 
                 // 建立远程控制通道（第三个 TCP 连接）
-                if (remoteControl) {
-                    val controlSocket = connect(NetUtil.IP_LOOPBACK, localPort)
-                    controlSocket.tcpNoDelay = true
-                    context.controlSocket = controlSocket
+                val controlSocket = connect(NetUtil.IP_LOOPBACK, localPort)
+                controlSocket.tcpNoDelay = true
+                context.controlSocket = controlSocket
 
-                    // 创建输入控制器
-                    val inputController = InputController(controlSocket.getOutputStream())
-                    context.inputController = inputController
-                    listener.onControlReady(inputController)
-                }
+                // 创建输入控制器
+                val inputController = InputController(controlSocket.getOutputStream())
+                context.inputController = inputController
+                listener.onControlReady(inputController)
 
                 // 清除 ADB 转发配置不会打断已建立的 TCP 连接，因此客户端连接后就可以调用本方法，不必等到终止投屏时再调用。
                 device.stopForward(localPort)
+
+                // 使用主控线程循环读取视频通道数据并进行解码
+                val videoDecoder = VideoDecoder()
+                videoDecoder.init(context)
+                context.videoDecoder = videoDecoder
+                VideoProtocolParser.parse(context)
             } catch (e: Exception) {
                 /*
                  * 如果任务已经被终止，无需回调释放资源过程中出现的异常。
@@ -310,7 +311,7 @@ object ADBCastManager {
                  * 如果服务端已经汇报了异常，无需汇报客户端出现的异常。
                  */
                 if (!context.stopped && context.serverError == null) {
-                    listener.onError(e)
+                    listener.onVideoError(e)
                 }
             } finally {
                 // 清理相关资源
@@ -357,27 +358,10 @@ object ADBCastManager {
         throw IOException("No available port in [$FORWARD_PORT_START, $FORWARD_PORT_END)!")
     }
 
-    private fun connect(host: String, port: Int, retryCount: Int = 50, delay: Long = 200L): Socket {
-        repeat(retryCount) { time ->
-            try {
-                return Socket(host, port)
-            } catch (e: Exception) {
-                // 若到达预设的最大重试次数，则抛出异常；否则延时片刻进入下次循环。
-                if (time == retryCount - 1) {
-                    throw e
-                } else {
-                    Thread.sleep(delay)
-                }
-            }
-        }
-
-        // 不可达语句，前文要么连接成功返回 Socket ，要么到达最大重试次数抛出异常。
-        throw IllegalStateException("Unreachable code!")
-    }
-
     private fun connectForHandshake(host: String, port: Int, retryCount: Int = 50, delay: Long = 200L): Socket {
         repeat(retryCount) { time ->
             try {
+                // TODO log
                 println("attemp for ${time + 1} time.")
                 val socket = Socket(host, port)
                 // ADB 转发通道开启后连接不会失败，但服务端未就绪读取会出现异常，若能读出握手字节说明服务端就绪。
@@ -402,21 +386,75 @@ object ADBCastManager {
         throw IllegalStateException("Unreachable code!")
     }
 
+    private fun connect(host: String, port: Int, retryCount: Int = 50, delay: Long = 200L): Socket {
+        repeat(retryCount) { time ->
+            try {
+                // TODO log
+                println("attemp for ${time + 1} time.")
+                return Socket(host, port)
+            } catch (e: Exception) {
+                // 若到达预设的最大重试次数，则抛出异常；否则延时片刻进入下次循环。
+                if (time == retryCount - 1) {
+                    throw e
+                } else {
+                    Thread.sleep(delay)
+                }
+            }
+        }
+
+        // 不可达语句，前文要么连接成功返回 Socket ，要么到达最大重试次数抛出异常。
+        throw IllegalStateException("Unreachable code!")
+    }
+
     // 清理相关资源
     private fun clearContext(context: ADBCastContext) {
         context.apply {
-            videoDecoder?.release()
-            audioDecoder?.release()
-            runCatching { videoSocket?.close() }
-            runCatching { audioSocket?.close() }
-            CLIUtil.stopProcess(serverProcess)
             forwardPort?.let { device.stopForward(it) }
 
-            taskThread?.interrupt()
-            audioThread?.interrupt()
+            runCatching {
+                videoSocket?.close()
+                audioSocket?.close()
+                controlSocket?.close()
+            }
+            CLIUtil.stopProcess(serverProcess)
 
-            clearThread?.let { Runtime.getRuntime().removeShutdownHook(it) }
+            // 中断目标线程后需等待目标线程退出再释放解码器，否则 Native 层可能访问中断完成前残留的数据而崩溃。
+            audioThread?.let { interruptAndWait(it) }
+            taskThread?.let { interruptAndWait(it) }
+
+            videoDecoder?.release()
+            audioDecoder?.release()
+
+            runCatching {
+                clearThread?.let { Runtime.getRuntime().removeShutdownHook(it) }
+            }
             clearThread = null
+        }
+    }
+
+    /**
+     * 中断线程并使调用线程等待其退出。
+     *
+     * @param[target] 目标线程。
+     * @param[timeout] 调用者最大等待时长。
+     */
+    private fun interruptAndWait(target: Thread, timeout: Long = 2000L) {
+        val caller = Thread.currentThread()
+        if (target === caller) {
+            return
+        }
+
+        target.interrupt()
+        // 调用 `join()` 前需清除中断标记，防止立刻抛出异常。
+        val wasInterrupted = Thread.interrupted()
+        try {
+            target.join(timeout)
+        } catch (_: InterruptedException) {
+            // 目标线程中断是我们期望的结果，因此忽略该异常。
+        } finally {
+            if (wasInterrupted) {
+                caller.interrupt()
+            }
         }
     }
 }
