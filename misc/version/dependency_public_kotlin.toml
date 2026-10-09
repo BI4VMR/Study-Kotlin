@@ -71,11 +71,31 @@ sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", 
 
 # ----- 网络通讯 -----
 # < Ktor >
+# Ktor・服务端・核心
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+# Ktor・服务端・引擎（Tomcat）
+ktor-server-tomcat = { module = "io.ktor:ktor-server-tomcat", version.ref = "ktor" }
+# Ktor・服务端・引擎（Netty）
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+# Ktor・服务端・引擎（Jetty）
+ktor-server-jetty = { module = "io.ktor:ktor-server-jetty", version.ref = "ktor" }
+# Ktor・服务端・引擎（Coroutine-based I/O）
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+# Ktor・客户端・核心
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+# Ktor・客户端・引擎（Tomcat）
+ktor-client-tomcat = { module = "io.ktor:ktor-client-tomcat", version.ref = "ktor" }
+# Ktor・客户端・引擎（Netty）
+ktor-client-netty = { module = "io.ktor:ktor-client-netty", version.ref = "ktor" }
+# Ktor・客户端・引擎（Jetty）
+ktor-client-jetty = { module = "io.ktor:ktor-client-jetty", version.ref = "ktor" }
+# Ktor・客户端・引擎（Coroutine-based I/O）
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
-ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+# Ktor・客户端・日志工具
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+# Ktor・序列化・KTX-Json
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
 
 # ----- 图形界面 -----
