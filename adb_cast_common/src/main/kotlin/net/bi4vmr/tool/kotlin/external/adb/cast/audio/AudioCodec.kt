@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.audio
+package net.bi4vmr.tool.kotlin.external.adb.cast.audio
 
 import org.bytedeco.ffmpeg.global.avcodec
 

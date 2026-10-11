@@ -1,21 +1,21 @@
-package net.bi4vmr.tool.kotlin.external.adb
+package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import net.bi4vmr.tool.java.common.base.CLIUtil
 import net.bi4vmr.tool.java.common.base.FileUtil
 import net.bi4vmr.tool.java.common.base.net.NetUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastManager.FORWARD_PORT_END
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastManager.FORWARD_PORT_START
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastManager.forwardPort
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastManager.setServerFilePath
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastManager.setServerVersion
-import net.bi4vmr.tool.kotlin.external.adb.audio.AudioCodec
-import net.bi4vmr.tool.kotlin.external.adb.audio.AudioDecoder
-import net.bi4vmr.tool.kotlin.external.adb.audio.AudioProtocolParser
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.FORWARD_PORT_END
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.FORWARD_PORT_START
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.forwardPort
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.setServerFilePath
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.setServerVersion
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioProtocolParser
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
+import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoProtocolParser
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.video.VideoCodec
-import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
-import net.bi4vmr.tool.kotlin.external.adb.video.VideoProtocolParser
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
@@ -170,11 +170,7 @@ object ADBCastManager {
 
 
                 /* 向 JVM 注册清理线程，当应用进程退出时同步终止 ADB 等外部进程。 */
-                val clearThread = Thread {
-                    // TODO log
-                    println("clean up")
-                    clearContext(context)
-                }
+                val clearThread = Thread { clearContext(context) }
                 context.clearThread = clearThread
                 Runtime.getRuntime().addShutdownHook(clearThread)
 
@@ -247,7 +243,7 @@ object ADBCastManager {
                 }
 
                 // 建立视频通道（第一个 TCP 连接）
-                val videoSocket = connectForHandshake(NetUtil.IP_LOOPBACK, localPort)
+                val videoSocket = connectForHandshake(NetUtil.IP_LOOPBACK, localPort, logTag = "Video")
                 videoSocket.tcpNoDelay = true
                 context.videoSocket = videoSocket
 
@@ -257,7 +253,7 @@ object ADBCastManager {
                  * 服务端按照客户端连接顺序分配数据通道，分别为：视频 -> 音频 -> 控制，未启用音频时，第二通道为控制通道。
                  */
                 if (enableAudio) {
-                    val audioSocket = connect(NetUtil.IP_LOOPBACK, localPort)
+                    val audioSocket = connect(NetUtil.IP_LOOPBACK, localPort, logTag = "Audio")
                     audioSocket.tcpNoDelay = true
                     context.audioSocket = audioSocket
 
@@ -287,7 +283,7 @@ object ADBCastManager {
                 }
 
                 // 建立远程控制通道（第三个 TCP 连接）
-                val controlSocket = connect(NetUtil.IP_LOOPBACK, localPort)
+                val controlSocket = connect(NetUtil.IP_LOOPBACK, localPort, logTag = "Control")
                 controlSocket.tcpNoDelay = true
                 context.controlSocket = controlSocket
 
@@ -323,7 +319,6 @@ object ADBCastManager {
     fun stop(listener: ADBCastEventListener) {
         synchronized(tasks) {
             tasks.remove(listener)?.let {
-                it.stopped = true
                 clearContext(it)
             }
         }
@@ -358,11 +353,16 @@ object ADBCastManager {
         throw IOException("No available port in [$FORWARD_PORT_START, $FORWARD_PORT_END)!")
     }
 
-    private fun connectForHandshake(host: String, port: Int, retryCount: Int = 50, delay: Long = 200L): Socket {
+    private fun connectForHandshake(
+        host: String,
+        port: Int,
+        retryCount: Int = 50,
+        delay: Long = 200L,
+        logTag: String? = null
+    ): Socket {
         repeat(retryCount) { time ->
+            logger.debug("Attempt to connect${if (logTag != null) " [$logTag]" else ""} socket for [${time + 1}] time.")
             try {
-                // TODO log
-                println("attemp for ${time + 1} time.")
                 val socket = Socket(host, port)
                 // ADB 转发通道开启后连接不会失败，但服务端未就绪读取会出现异常，若能读出握手字节说明服务端就绪。
                 val first = DataInputStream(socket.getInputStream()).readByte()
@@ -386,11 +386,16 @@ object ADBCastManager {
         throw IllegalStateException("Unreachable code!")
     }
 
-    private fun connect(host: String, port: Int, retryCount: Int = 50, delay: Long = 200L): Socket {
+    private fun connect(
+        host: String,
+        port: Int,
+        retryCount: Int = 50,
+        delay: Long = 200L,
+        logTag: String? = null
+    ): Socket {
         repeat(retryCount) { time ->
+            logger.debug("Attempt to connect${if (logTag != null) " [$logTag]" else ""} socket for [${time + 1}] time.")
             try {
-                // TODO log
-                println("attemp for ${time + 1} time.")
                 return Socket(host, port)
             } catch (e: Exception) {
                 // 若到达预设的最大重试次数，则抛出异常；否则延时片刻进入下次循环。
@@ -409,13 +414,18 @@ object ADBCastManager {
     // 清理相关资源
     private fun clearContext(context: ADBCastContext) {
         context.apply {
+            if (stopped) {
+                return
+            }
+
+            logger.debug("ClearContext.")
+            stopped = true
+
             forwardPort?.let { device.stopForward(it) }
 
-            runCatching {
-                videoSocket?.close()
-                audioSocket?.close()
-                controlSocket?.close()
-            }
+            runCatching { videoSocket?.close() }
+            runCatching { audioSocket?.close() }
+            runCatching { controlSocket?.close() }
             CLIUtil.stopProcess(serverProcess)
 
             // 中断目标线程后需等待目标线程退出再释放解码器，否则 Native 层可能访问中断完成前残留的数据而崩溃。

@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.video
+package net.bi4vmr.tool.kotlin.external.adb.cast.video
 
 import org.bytedeco.ffmpeg.global.avcodec
 

@@ -1,6 +1,6 @@
-package net.bi4vmr.tool.kotlin.external.adb
+package net.bi4vmr.tool.kotlin.external.adb.cast
 
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
 
 /**
  * 屏幕投射事件监听器。

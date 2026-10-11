@@ -1,10 +1,10 @@
-package net.bi4vmr.tool.kotlin.external.adb.control
+package net.bi4vmr.tool.kotlin.external.adb.cast.control
 
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController.Companion.ACTION_DOWN
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController.Companion.ACTION_POINTER_DOWN
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController.Companion.ACTION_POINTER_UP
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController.Companion.ACTION_UP
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController.Companion.TYPE_BACK_OR_SCREEN_ON
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController.Companion.ACTION_DOWN
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController.Companion.ACTION_POINTER_DOWN
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController.Companion.ACTION_POINTER_UP
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController.Companion.ACTION_UP
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController.Companion.TYPE_BACK_OR_SCREEN_ON
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

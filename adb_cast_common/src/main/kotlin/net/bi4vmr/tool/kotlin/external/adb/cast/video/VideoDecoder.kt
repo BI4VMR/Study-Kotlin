@@ -1,7 +1,7 @@
-package net.bi4vmr.tool.kotlin.external.adb.video
+package net.bi4vmr.tool.kotlin.external.adb.cast.video
 
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastContext
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastEventListener
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext.FF_THREAD_FRAME
 import org.bytedeco.ffmpeg.avcodec.AVPacket
@@ -16,7 +16,7 @@ import org.bytedeco.ffmpeg.global.avutil.*
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-internal class VideoDecoder {
+class VideoDecoder {
 
     private var codecCtx: AVCodecContext? = null
     private var avPacket: AVPacket? = null

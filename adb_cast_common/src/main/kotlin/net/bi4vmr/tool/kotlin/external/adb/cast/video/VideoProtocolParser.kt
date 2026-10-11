@@ -1,7 +1,10 @@
-package net.bi4vmr.tool.kotlin.external.adb.video
+package net.bi4vmr.tool.kotlin.external.adb.cast.video
 
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastContext
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastContext
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioProtocolParser
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -11,34 +14,31 @@ import kotlin.experimental.and
 /**
  * 视频协议解析器。
  *
+ * Scrcpy 服务端编码逻辑在原工程的 `Streamer.java` 中；客户端解码逻辑在  `demuxer.c` 和 `decoder.c` 文件中。
+ *
+ * 客户端与服务端连接后，服务端首先发送一次设备名称与视频编码。
+ *
+ * - 设备名称为 64 字节，采用 UTF-8 编码，长度不足 64 字节的部分以 `0` 填充。
+ * - 视频编码为 4 字节整型数值。
+ *
+ * 后续数据包为视频帧数据或控制信息，包头为 12 字节。
+ *
+ * 包头首字节最高位为 `1` 时表示会话包，第二字节为视频宽度（大端， `uint32` 格式），第三字节为视频高度（大端， `uint32` 格式）。
+ *
+ * 包头首字节最高位为 `0` 时表示媒体包，前 8 字节为 PTS（大端， `uint64` 格式），第 9 - 12 字节为数据长度（大端， `uint32` 格式），
+ * 后续为指定编码的视频流。
+ *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-internal object VideoProtocolParser {
+object VideoProtocolParser {
 
     /**
-     * 视频流解析与解码，对应 C 客户端的 demuxer.c + decoder.c。
-     *
-     * <p>协议格式（对应 Android 端 Streamer.java 与 C 端 demuxer.c）：
-     * <pre>
-     * ── 握手 ──────────────────────────────────────────────
-     *  64 bytes  设备名（UTF-8, null-padded）
-     *   4 bytes  Codec ID（大端），如 0x68323634 = "h264"
-     *
-     * ── 每帧的 12 字节包头 ──────────────────────────────
-     *  若 header[0] & 0x80 == 1 → 会话包（分辨率信息）：
-     *    [0..3]  flags（高位=01, 低位00=clientResized）
-     *    [4..7]  视频宽度（大端 uint32）
-     *    [8..11] 视频高度（大端 uint32）
-     *
-     *  若 header[0] & 0x80 == 0 → 媒体包：
-     *    [0..7]  PTS + flags（大端 uint64）
-     *              bit62 = CONFIG（SPS/PPS 配置包）
-     *              bit61 = KEY_FRAME
-     *    [8..11] 数据长度（大端 uint32）
-     *    <数据长度> 字节的 H264/H265 裸码流
-     * </pre>
+     * 日志工具。
      */
+    private val logger: Logger = LoggerFactory.getLogger(AudioProtocolParser::class.java)
+
+
     fun parse(context: ADBCastContext) {
         val listener = requireNotNull(context.listener) { "Listener must exist!" }
         val socket = requireNotNull(context.videoSocket) { "Video socket must exist!" }
@@ -54,8 +54,9 @@ internal object VideoProtocolParser {
 
 
         /* 读取视频编码类型 */
-        stream.readInt()
+        val codecID = stream.readInt()
         // 本工具在启动服务端时已指定编码，因此无需从协议中解析编码。
+        logger.info("Video codec ID is [0x{}].", codecID.toString(16))
 
 
         /* 解析每帧数据 */

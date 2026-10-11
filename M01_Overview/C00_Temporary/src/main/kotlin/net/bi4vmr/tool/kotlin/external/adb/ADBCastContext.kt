@@ -1,11 +1,12 @@
 package net.bi4vmr.tool.kotlin.external.adb
 
-import net.bi4vmr.tool.kotlin.external.adb.audio.AudioCodec
-import net.bi4vmr.tool.kotlin.external.adb.audio.AudioDecoder
-import net.bi4vmr.tool.kotlin.external.adb.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.ADBCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.audio.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.audio.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.control.InputController
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.video.VideoCodec
-import net.bi4vmr.tool.kotlin.external.adb.video.VideoDecoder
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.video.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.video.VideoDecoder
 import java.net.Socket
 
 /**
@@ -26,7 +27,7 @@ internal data class ADBCastContext(
     /**
      * 事件监听器。
      */
-    val listener: ADBCastEventListener,
+    override val listener: ADBCastEventListener,
 
     /**
      * 屏幕 ID 。
@@ -36,12 +37,12 @@ internal data class ADBCastContext(
     /**
      * 视频编码类型。
      */
-    val videoCodec: VideoCodec,
+    override val videoCodec: VideoCodec,
 
     /**
      * 音频编码类型。
      */
-    val audioCodec: AudioCodec,
+    override val audioCodec: AudioCodec,
 
     /**
      * 任务控制线程。
@@ -61,22 +62,22 @@ internal data class ADBCastContext(
     /**
      * Socket ：视频转发通道。
      */
-    var videoSocket: Socket? = null,
+    override var videoSocket: Socket? = null,
 
     /**
      * 视频解码器。
      */
-    var videoDecoder: VideoDecoder? = null,
+    override var videoDecoder: VideoDecoder? = null,
 
     /**
      * Socket ：音频转发通道。
      */
-    var audioSocket: Socket? = null,
+    override var audioSocket: Socket? = null,
 
     /**
      * 音频解码器。
      */
-    var audioDecoder: AudioDecoder? = null,
+    override var audioDecoder: AudioDecoder? = null,
 
     /**
      * 音频解析线程。
@@ -91,7 +92,7 @@ internal data class ADBCastContext(
     /**
      * 输入控制器。
      */
-    var inputController: InputController? = null,
+    override var inputController: InputController? = null,
 
     /**
      * 进程结束时的清理线程。
@@ -109,8 +110,8 @@ internal data class ADBCastContext(
     /**
      * 任务是否已被停止。
      *
-     * 当调用 [ScreenCastManager.stop] 后置为 `true`，用于抑制资源清理引发的异常回调。
+     * 当调用 [net.bi4vmr.tool.kotlin.external.adb.cast.local.ADBCastManager.stop] 后置为 `true`，用于抑制资源清理引发的异常回调。
      */
     @Volatile
     var stopped: Boolean = false
-)
+) : ADBMediaContext

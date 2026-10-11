@@ -1,20 +1,8 @@
 package net.bi4vmr.study
 
-import com.sun.jndi.toolkit.url.Uri
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
-import net.bi4vmr.tool.kotlin.external.adb.ADBCastEventListener
-// import net.bi4vmr.tool.kotlin.external.adb.ADBCastManager
+import net.bi4vmr.tool.kotlin.external.adb.cast.common.ADBCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.cast.local.ADBCastManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import java.awt.Desktop
-import java.awt.Toolkit
-import java.io.FileReader
-import java.io.FileWriter
-import java.net.URI
-import java.util.Properties
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.SourceDataLine
@@ -45,7 +33,7 @@ fun main() {
     // // 所有属性集合
     // Properties().stringPropertyNames()
 
-    /*
+
     var line: SourceDataLine? = null
 
     ADBController.init()
@@ -84,7 +72,7 @@ fun main() {
                     }
 
                     override fun onAudioData(pcmData: ByteArray, channels: Int, sampleRate: Int) {
-                        println("onAudioData -> ${pcmData.size}")
+                        // println("onAudioData -> ${pcmData.size}")
                         line ?: run {
                             val format = AudioFormat(sampleRate.toFloat(), 16, channels, true, false)
                             line = AudioSystem.getSourceDataLine(format).apply {
@@ -102,5 +90,4 @@ fun main() {
             )
         }
         ?: println("No devices found")
-     */
 }
