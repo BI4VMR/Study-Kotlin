@@ -3,22 +3,21 @@ package net.bi4vmr.tool.kotlin.external.adb.cast
 import net.bi4vmr.tool.java.common.base.CLIUtil
 import net.bi4vmr.tool.java.common.base.FileUtil
 import net.bi4vmr.tool.java.common.base.net.NetUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.FORWARD_PORT_START
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.LISTENING_PORT_START
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.setServerFilePath
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.setServerVersion
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.startForward
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.startListening
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
-import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
-import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioProtocolParser
-import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
-import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
-import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoProtocolParser
+import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.*
-import java.net.InetSocketAddress
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.SecureRandom
@@ -26,78 +25,111 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 /**
- * ADB 屏幕投射管理类（远程转发）。
+ * ADB 屏幕投射管理（发送端）。
  *
- * 接收端调用 [startListening] 监听端口；发送端调用 [startForward] 连接 ADB 设备，并将音视频数据转发至接收端，同时将接收端的
- * 控制数据转发至设备。
- *
- * 发送端与接收端之间建立三条 TCP 连接，分别对应视频、音频与控制通道。每条连接建立后，发送端首先发送会话头：
- *
- * - 会话 ID ： `int64` ，大端。
- * - 通道类型： `uint8` ， `0` 为视频， `1` 为音频， `2` 为控制。
- * - 视频编码名称： `writeUTF` 格式。
- * - 音频编码名称： `writeUTF` 格式，未启用音频时为空字符串。
- *
- * 会话头之后的数据与 Scrcpy 服务端原始数据一致（不含握手字节），控制通道为双向透明转发。
+ * 开启 Scrcpy 服务端并将数据转发至 [ADBCastReceiver] 远程设备，本地不进行音视频解码与显示。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
 object ADBCastTransfer {
 
-    private const val FORWARD_PORT_START: Int = 32769
+    /**
+     * ADB 端口转发的起始端口号。
+     */
+    private const val FORWARD_PORT_START: Int = 33024 + 1
 
-    private const val FORWARD_PORT_END: Int = 40000
+    /**
+     * ADB 端口转发的结束端口号。
+     *
+     * 端口号达到该值时，回到 [FORWARD_PORT_START] 重新递增尝试。
+     */
+    private const val FORWARD_PORT_END: Int = 33280
 
+    /**
+     * 服务端 JAR 文件在 Android 设备上的存放路径。
+     */
     private const val SCRCPY_REMOTE_PATH: String = "/data/local/tmp/scrcpy-server"
 
-    private const val CHANNEL_VIDEO: Int = 0
+    /**
+     * 本地监听的起始端口号。
+     */
+    private const val LISTENING_PORT_START: Int = FORWARD_PORT_END + 1
 
-    private const val CHANNEL_AUDIO: Int = 1
+    /**
+     * 本地监听的结束端口号。
+     *
+     * 端口号达到该值时，回到 [LISTENING_PORT_START] 重新递增尝试。
+     */
+    private const val LISTENING_PORT_END: Int = 33536
 
-    private const val CHANNEL_CONTROL: Int = 2
+    /**
+     * 数据类型：视频通道。
+     */
+    private const val TYPE_VIDEO_DATA: Int = 101
 
+    /**
+     * 数据类型：视频通道错误信息。
+     */
+    private const val TYPE_VIDEO_ERROR: Int = 102
+
+    /**
+     * 数据类型：音频通道。
+     */
+    private const val TYPE_AUDIO_DATA: Int = 201
+
+    /**
+     * 数据类型：音频通道错误信息。
+     */
+    private const val TYPE_AUDIO_ERROR: Int = 202
+
+    /**
+     * 数据类型：控制通道。
+     */
+    private const val TYPE_CONTROL_DATA: Int = 301
+
+    /**
+     * 日志工具。
+     */
     private val logger: Logger = LoggerFactory.getLogger(ADBCastTransfer::class.java)
 
     private val random: SecureRandom = SecureRandom()
 
     /**
      * Scrcpy 服务端 JAR 文件路径。
+     *
+     * 可以从 [Scrcpy - Release](https://github.com/Genymobile/scrcpy/releases) 页面下载 Scrcpy 服务端 JAR 包，名称类似
+     * `scrcpy-server-v4.1` ，尾部为可变版本号，无 `.jar` 后缀。
      */
     @Volatile
     private var serverFile: File = FileUtil.FILE_INVALID
 
     /**
      * Scrcpy 服务端版本。
+     *
+     * 应当与服务端 JAR 文件匹配，例如：使用 `scrcpy-server-v4.1` 时，应当填写 `4.1` 。
      */
     @Volatile
     private var serverVersion: String = ""
 
     /**
-     * 发送端任务列表。
+     * 投屏任务列表。
      */
-    private val tasks: MutableMap<ADBCastEventListener, ADBRemoteCastContext> = mutableMapOf()
+    private val tasks: MutableSet<ADBCastTransferContext> = mutableSetOf()
 
     /**
-     * 接收端监听任务列表。
+     * 上次使用的 ADB 转发端口。
+     *
+     * 每次建立新连接时，从当前端口之后一位尝试查找可用端口。
      */
-    private val receivers: MutableMap<ADBCastEventListener, Receiver> = mutableMapOf()
-
     private val forwardPort: AtomicInteger = AtomicInteger(FORWARD_PORT_START)
 
     /**
-     * 接收端监听任务。
+     * 上次使用的本地监听端口。
+     *
+     * 每次建立新连接时，从当前端口之后一位尝试查找可用端口。
      */
-    private class Receiver(
-        val serverSocket: ServerSocket,
-        val listener: ADBCastEventListener
-    ) {
-
-        val sessions: MutableMap<Long, ADBRemoteReceiveContext> = mutableMapOf()
-
-        @Volatile
-        var stopped: Boolean = false
-    }
+    private val listeningPort: AtomicInteger = AtomicInteger(FORWARD_PORT_START)
 
 
     /**
@@ -113,6 +145,7 @@ object ADBCastTransfer {
         val jarFile = File(path)
         serverFile = jarFile
 
+        /* 尝试自动设置版本号 */
         val fileName = jarFile.name
         val startOfVersion = fileName.lastIndexOf('v')
         if (startOfVersion != -1 && startOfVersion < fileName.length - 1) {
@@ -125,68 +158,14 @@ object ADBCastTransfer {
     /**
      * 设置 Scrcpy 服务端版本。
      *
+     * 应当与 JAR 文件匹配，例如：使用 `scrcpy-server-v4.1` 时，应填写 `4.1` 。
+     *
      * @param[version] 版本号。
      * @see[setServerFilePath]
      */
     @JvmStatic
     fun setServerVersion(version: String) {
         serverVersion = version
-    }
-
-    /**
-     * 启动屏幕投射监听任务（接收端）。
-     *
-     * 监听成功后，发送端连接并开始转发数据，音视频帧与控制器通过 [listener] 回调。
-     *
-     * @param[listeningHost] 监听地址。
-     * @param[listeningPort] 监听端口，传入 `0` 表示由系统分配。
-     * @param[listener] 事件监听器。
-     * @return 实际监听的端口；监听失败时回调 [net.bi4vmr.tool.kotlin.external.adb.cast.common.ADBCastEventListener.onVideoError] 并返回 `-1` 。
-     */
-    @JvmStatic
-    fun startListening(
-        listeningHost: String,
-        listeningPort: Int,
-        listener: ADBCastEventListener
-    ): Int {
-        val serverSocket = try {
-            ServerSocket().apply {
-                reuseAddress = true
-                bind(InetSocketAddress(listeningHost, listeningPort))
-            }
-        } catch (e: Exception) {
-            listener.onVideoError(e)
-            return -1
-        }
-
-        val receiver = Receiver(serverSocket, listener)
-        synchronized(receivers) {
-            if (receivers.containsKey(listener)) {
-                runCatching { serverSocket.close() }
-                listener.onVideoError(IllegalStateException("Listening task already running!"))
-                return -1
-            }
-
-            receivers[listener] = receiver
-        }
-
-        logger.info("Listening at [$listeningHost:${serverSocket.localPort}].")
-        thread {
-            try {
-                while (!serverSocket.isClosed) {
-                    val socket = serverSocket.accept()
-                    thread { handleConnection(receiver, socket) }
-                }
-            } catch (e: Exception) {
-                if (!receiver.stopped) {
-                    listener.onVideoError(e)
-                }
-            } finally {
-                stopReceiver(listener)
-            }
-        }
-
-        return serverSocket.localPort
     }
 
     /**
@@ -198,47 +177,39 @@ object ADBCastTransfer {
      * @param[forwardPort] 接收端端口。
      * @param[deviceID] ADB 设备序列号。
      * @param[listener] 事件监听器，发送端仅使用其错误回调。
+     * @return 本地监听端口，接收端需要连接该端口以接收音视频数据。
      */
     @JvmStatic
     @JvmOverloads
-    fun startForward(
-        forwardHost: String,
-        forwardPort: Int,
-        deviceID: String,
-        listener: ADBCastEventListener,
+    fun start(
+        device: ADBDevice,
         displayID: String = "0",
         videoCodec: VideoCodec = VideoCodec.H264,
         bitRate: Int = 8_000_000,
         maxSize: Int = -1,
         maxFPS: Int = 360,
-        enableAudio: Boolean = true,
+        enableAudio: Boolean = false,
         audioCodec: AudioCodec = AudioCodec.AAC,
         audioBitRate: Int = 128_000
-    ) {
-        /* 参数校验 */
-        if (!serverFile.canRead() || serverVersion.isBlank()) {
-            listener.onVideoError(IllegalStateException("Scrcpy server file invalid or version not set!"))
-            return
-        }
+    ): Int {
+        thread {
+            val serverSocket = ServerSocket(LISTENING_PORT_START)
+            // 等待接收端连接再开始投屏
+            val socket = serverSocket.accept()
+            val outputStream = DataOutputStream(socket.getOutputStream())
 
-        val device = ADBController.getDevices().find { it.getSN() == deviceID }
-        if (device == null) {
-            listener.onVideoError(IllegalStateException("Device [$deviceID] not found!"))
-            return
-        }
-
-        /* 创建投屏任务 */
-        val context = ADBRemoteCastContext(device, listener)
-        synchronized(tasks) {
-            if (tasks.containsKey(listener)) {
-                listener.onVideoError(IllegalStateException("Screen cast task already running!"))
-                return
+            /* 参数校验 */
+            if (!serverFile.canRead() || serverVersion.isBlank()) {
+                // outputStream.writeBytes()
+                // listener.onVideoError(IllegalStateException("Scrcpy server file invalid or version not set!"))
+                return@thread
             }
 
-            tasks[listener] = context
-        }
 
-        thread {
+            /* 创建投屏任务 */
+            val context = ADBCastTransferContext(device)
+            tasks.add(context)
+
             try {
                 val fileReady = device.pushFile(serverFile, SCRCPY_REMOTE_PATH)
                 if (!fileReady) {
@@ -369,15 +340,16 @@ object ADBCastTransfer {
                 clearContext(listener, context)
             }
         }.also { context.taskThread = it }
+
+        return LISTENING_PORT_START
     }
 
     /**
      * 停止指定监听器关联的发送任务或监听任务。
      */
     @JvmStatic
-    fun stop(listener: ADBCastEventListener) {
-        synchronized(tasks) { tasks.remove(listener) }?.let { clearContext(listener, it) }
-        stopReceiver(listener)
+    fun stop(port: Int) {
+        // TODO
     }
 
     private fun connectRemote(
@@ -453,117 +425,6 @@ object ADBCastTransfer {
                 clearThread?.let { Runtime.getRuntime().removeShutdownHook(it) }
             }
             clearThread = null
-        }
-    }
-
-    /* 接收端 */
-
-    private fun stopReceiver(listener: ADBCastEventListener) {
-        val receiver = synchronized(receivers) { receivers.remove(listener) } ?: return
-        receiver.stopped = true
-        runCatching { receiver.serverSocket.close() }
-
-        val sessions = synchronized(receiver.sessions) { receiver.sessions.values.toList() }
-        sessions.forEach { clearSession(receiver, it) }
-    }
-
-    private fun handleConnection(receiver: Receiver, socket: Socket) {
-        val listener = receiver.listener
-        var context: ADBRemoteReceiveContext? = null
-        var channel = -1
-        try {
-            socket.tcpNoDelay = true
-            val input = DataInputStream(socket.getInputStream())
-            val sessionID = input.readLong()
-            channel = input.readUnsignedByte()
-            val videoCodec = VideoCodec.valueOf(input.readUTF())
-            val audioName = input.readUTF()
-            val audioCodec = if (audioName.isEmpty()) null else AudioCodec.valueOf(audioName)
-
-            val ctx = synchronized(receiver.sessions) {
-                receiver.sessions.getOrPut(sessionID) {
-                    ADBRemoteReceiveContext(sessionID, listener, videoCodec, audioCodec)
-                }
-            }
-            context = ctx
-            if (ctx.stopped || receiver.stopped) {
-                socket.close()
-                return
-            }
-
-            when (channel) {
-                CHANNEL_VIDEO -> {
-                    ctx.videoSocket = socket
-                    ctx.videoThread = Thread.currentThread()
-                    val decoder = VideoDecoder()
-                    decoder.init(ctx)
-                    ctx.videoDecoder = decoder
-                    VideoProtocolParser.parse(ctx)
-                }
-
-                CHANNEL_AUDIO -> {
-                    if (audioCodec == null) {
-                        throw IllegalStateException("Audio channel is disabled!")
-                    }
-
-                    ctx.audioSocket = socket
-                    ctx.audioThread = Thread.currentThread()
-                    val decoder = AudioDecoder()
-                    decoder.init(ctx)
-                    ctx.audioDecoder = decoder
-                    AudioProtocolParser.parse(ctx)
-                }
-
-                CHANNEL_CONTROL -> {
-                    ctx.controlSocket = socket
-                    val controller = InputController(socket.getOutputStream())
-                    ctx.inputController = controller
-                    listener.onControlReady(controller)
-
-                    // 设备可能回传控制消息，此处仅丢弃，防止发送缓冲区被占满。
-                    val buffer = ByteArray(1024)
-                    while (input.read(buffer) >= 0) {
-                        // 丢弃
-                    }
-                }
-
-                else -> throw IllegalStateException("Unknown channel type [$channel]!")
-            }
-        } catch (e: Exception) {
-            if (context?.stopped != true && !receiver.stopped) {
-                if (channel == CHANNEL_AUDIO) {
-                    listener.onAudioError(e)
-                } else {
-                    listener.onVideoError(e)
-                }
-            }
-        } finally {
-            runCatching { socket.close() }
-            // 任一通道结束则整个会话结束。
-            context?.let { clearSession(receiver, it) }
-        }
-    }
-
-    private fun clearSession(receiver: Receiver, context: ADBRemoteReceiveContext) {
-        context.apply {
-            if (stopped) {
-                return
-            }
-
-            logger.debug("ClearContext(Session).")
-            stopped = true
-            synchronized(receiver.sessions) { receiver.sessions.remove(sessionID) }
-
-            runCatching { videoSocket?.close() }
-            runCatching { audioSocket?.close() }
-            runCatching { controlSocket?.close() }
-
-            // 等待解析线程退出后再释放解码器，防止 Native 层访问已释放的资源。
-            videoThread?.let { joinThread(it) }
-            audioThread?.let { joinThread(it) }
-
-            videoDecoder?.release()
-            audioDecoder?.release()
         }
     }
 

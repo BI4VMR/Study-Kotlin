@@ -36,14 +36,14 @@ object ADBCastManager {
     /**
      * ADB 端口转发的起始端口号。
      */
-    private const val FORWARD_PORT_START: Int = 32769
+    private const val FORWARD_PORT_START: Int = 32768 + 1
 
     /**
      * ADB 端口转发的结束端口号。
      *
      * 端口号达到该值时，回到 [FORWARD_PORT_START] 重新递增尝试。
      */
-    private const val FORWARD_PORT_END: Int = 40000
+    private const val FORWARD_PORT_END: Int = 33024
 
     /**
      * 服务端 JAR 文件在 Android 设备上的存放路径。
