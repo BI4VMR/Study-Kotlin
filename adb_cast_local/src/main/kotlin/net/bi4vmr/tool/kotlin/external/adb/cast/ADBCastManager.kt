@@ -145,7 +145,12 @@ object ADBCastManager {
         }
 
         /* 创建投屏任务 */
-        val context = ADBCastContext(device, listener, displayID, videoCodec, audioCodec)
+        val context = ADBCastContext(
+            listener = listener,
+            videoCodec = videoCodec,
+            audioCodec = audioCodec,
+            device = device
+        )
         synchronized(tasks) {
             if (tasks.containsKey(listener)) {
                 listener.onVideoError(IllegalStateException("Screen cast task already running!"))

@@ -29,9 +29,6 @@ dependencies {
     implementation(libJava.slf4j.api)
     implementation(libJava.slf4j.simple)
 
-    implementation("org.bytedeco:javacv:1.5.10")
-    implementation("org.bytedeco:ffmpeg-platform:6.1.1-1.5.10")
-
     // JUnit5 BOM版本配置文件
     testImplementation(platform(libJava.junit5.bom))
     // JUnit5 平台启动器

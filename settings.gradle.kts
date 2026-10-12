@@ -59,9 +59,11 @@ include(":M01_Overview:C02_AdbMqtt:Protocol")
 include(":M01_Overview:C02_AdbMqtt:Agent")
 include(":M01_Overview:C02_AdbMqtt:Client")
 
-include(":adb_cast_common")
+include(":adb_cast_media")
 include(":adb_cast_local")
-include(":adb_cast_remote")
+include(":adb_cast_transfer")
+include(":adb_cast_receiver")
+include(":adb_cast_compose")
 
 // ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")
