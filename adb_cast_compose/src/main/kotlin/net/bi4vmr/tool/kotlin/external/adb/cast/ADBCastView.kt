@@ -1,10 +1,22 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.Text
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,11 +25,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.bi4vmr.tool.java.external.adb.ADBDevice
-import net.bi4vmr.tool.kotlin.external.scrcpy.ScreenCastEventListener
-import net.bi4vmr.tool.kotlin.external.scrcpy.ScreenCastManager
-import net.bi4vmr.tool.kotlin.external.scrcpy.control.InputController
-import net.bi4vmr.tool.kotlin.external.scrcpy.video.VideoCodec
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Shader
 
@@ -38,7 +48,7 @@ import org.jetbrains.skia.Shader
  * @param[onSwipe] 拖拽手势回调，参数为设备帧坐标(startX, startY, endX, endY)。
  */
 @Composable
-fun ScreenCastView(
+fun ADBCastView(
     device: ADBDevice,
     displayID: String = "0",
     modifier: Modifier = Modifier,
@@ -50,11 +60,16 @@ fun ScreenCastView(
     onLongClick: ((x: Int, y: Int) -> Unit)? = null,
     onSwipe: ((startX: Int, startY: Int, endX: Int, endY: Int) -> Unit)? = null
 ) {
+    // 状态管理
+    val stateManager: ADBCastStateManager = remember { ADBCastStateManager() }
+
     // 画布尺寸
     var canvasSize: IntSize by remember { mutableStateOf(IntSize.Zero) }
 
+
     // 视频帧尺寸
-    var frameSize: IntSize by remember { mutableStateOf(IntSize.Zero) }
+    // var frameSize: IntSize by stateManager.frameSize.collectAsState()
+    var frameSize: IntSize by stateManager.frameSize.collectAsState()
 
     // 有效内容区域
     val renderRect: Rect = remember(canvasSize, frameSize) {
@@ -71,20 +86,20 @@ fun ScreenCastView(
     var errorInfo: String by remember { mutableStateOf("") }
 
     // 状态
-    var state: ScreenCastState by remember { mutableStateOf(ScreenCastState.Loading) }
+    var state: ADBCastState by remember { mutableStateOf(ADBCastState.Loading) }
 
 
     // 投屏事件监听器
-    val listener: ScreenCastEventListener = remember {
-        object : ScreenCastEventListener {
+    val listener: ADBCastMediaListener = remember {
+        object : ADBCastMediaListener {
 
-            override fun onSizeChange(width: Int, height: Int) {
+            override fun onVideoSizeChange(width: Int, height: Int) {
                 frameSize = IntSize(width, height)
 
                 onVideoSizeChange?.invoke(width, height)
             }
 
-            override fun onNewFrame(
+            override fun onVideoFrame(
                 yData: ByteArray,
                 yStride: Int,
                 uData: ByteArray,
@@ -99,15 +114,15 @@ fun ScreenCastView(
             }
 
             override fun onVideoReady() {
-                state = ScreenCastState.Casting
+                state = ADBCastState.Casting
             }
 
             override fun onControlReady(controller: InputController) {
                 inputController = controller
             }
 
-            override fun onError(error: Exception) {
-                state = ScreenCastState.Error
+            override fun onVideoError(error: Exception) {
+                state = ADBCastState.Error
                 errorInfo = "${error.javaClass.simpleName}: ${error.message}"
             }
         }
@@ -115,12 +130,12 @@ fun ScreenCastView(
 
 
     DisposableEffect(device, displayID) {
-        ScreenCastManager.start(device, listener, displayID, debug = true, videoCodec = VideoCodec.H264)
+        ADBCastManager.start(device, listener, displayID)
 
         onDispose {
-            state = ScreenCastState.Loading
+            state = ADBCastState.Loading
 
-            ScreenCastManager.stop(listener)
+            ADBCastManager.stop(listener)
             inputController = null
             shader = null
             frameSize = IntSize.Zero
@@ -137,27 +152,10 @@ fun ScreenCastView(
             .onSizeChanged { canvasSize = it }
     ) {
         when (state) {
-            // 加载中
-            ScreenCastState.Loading -> {
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(64.dp),
-                        strokeWidth = 8.dp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "等待设备视频信号...",
-                        fontSize = 24.sp,
-                        color = Color.White
-                    )
-                }
-            }
-            // 正在投影
-            ScreenCastState.Casting -> {
+            /* 加载中 */
+            ADBCastState.Loading -> LoadingView()
+            /* 正在投屏 */
+            ADBCastState.Casting -> {
                 // 设备画面显示
                 SkiaShaderLayer(
                     frameSize = frameSize,
@@ -224,36 +222,52 @@ fun ScreenCastView(
                     )
                 }
             }
-            // 出现错误
-            ScreenCastState.Error -> {
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = "非常不妙！出错了！",
-                        fontSize = 24.sp,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = errorInfo,
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
-                }
-            }
+            // 出错终止
+            ADBCastState.Error -> ErrorView(info = errorInfo)
         }
     }
 }
 
 
-/**
- * 屏幕投影状态。
- */
-private enum class ScreenCastState {
-    Loading,
-    Casting,
-    Error;
+// 正在准备界面
+@Composable
+internal fun LoadingView() {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(64.dp),
+            strokeWidth = 8.dp
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "等待设备视频信号...",
+            fontSize = 24.sp,
+            color = Color.White
+        )
+    }
+}
+
+// 投屏错误界面
+@Composable
+internal fun ErrorView(info: String) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Text(
+            text = "非常不妙！出错了！",
+            fontSize = 24.sp,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = info,
+            fontSize = 18.sp,
+            color = Color.White
+        )
+    }
 }

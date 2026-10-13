@@ -16,6 +16,9 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    api(project(":adb_cast_common"))
+
+    api(privateLibKotlin.common.base)
     api(privateLibKotlin.external.adb.core)
 
     api(libJava.slf4j.api)

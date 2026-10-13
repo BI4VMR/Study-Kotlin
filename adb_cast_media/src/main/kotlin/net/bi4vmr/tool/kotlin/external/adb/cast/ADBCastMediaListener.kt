@@ -8,7 +8,7 @@ import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-interface ADBCastEventListener {
+interface ADBCastMediaListener {
 
     /**
      * 事件回调：画面尺寸变化。

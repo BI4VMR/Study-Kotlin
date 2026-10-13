@@ -21,7 +21,9 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    api(project(":adb_cast_media"))
     api(project(":adb_cast_local"))
+
     api(privateLibKotlin.external.adb.core)
 
     api(libJava.slf4j.api)

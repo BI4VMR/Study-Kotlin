@@ -16,7 +16,7 @@ import java.net.Socket
  */
 data class ADBCastContext(
 
-    override val listener: ADBCastEventListener,
+    override val listener: ADBCastMediaListener,
     override val videoCodec: VideoCodec,
     override var videoSocket: Socket? = null,
     override var videoDecoder: VideoDecoder? = null,
@@ -46,12 +46,10 @@ data class ADBCastContext(
      */
     var serverProcess: Process? = null,
 
-
     /**
      * 音频解析线程。
      */
     var audioThread: Thread? = null,
-
 
     /**
      * 进程结束时的清理线程。
@@ -73,5 +71,4 @@ data class ADBCastContext(
      */
     @Volatile
     var stopped: Boolean = false
-
 ) : ADBCastMediaContext

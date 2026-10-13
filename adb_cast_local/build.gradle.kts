@@ -16,6 +16,7 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    api(project(":adb_cast_common"))
     api(project(":adb_cast_media"))
 
     api(privateLibJava.common.base)

@@ -1,15 +1,33 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast.audio
 
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastMediaContext
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastMediaListener
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVPacket
 import org.bytedeco.ffmpeg.avutil.AVChannelLayout
 import org.bytedeco.ffmpeg.avutil.AVDictionary
 import org.bytedeco.ffmpeg.avutil.AVFrame
-import org.bytedeco.ffmpeg.global.avcodec.*
-import org.bytedeco.ffmpeg.global.avutil.*
-import org.bytedeco.ffmpeg.global.swresample.*
+import org.bytedeco.ffmpeg.global.avcodec.av_new_packet
+import org.bytedeco.ffmpeg.global.avcodec.av_packet_alloc
+import org.bytedeco.ffmpeg.global.avcodec.av_packet_free
+import org.bytedeco.ffmpeg.global.avcodec.av_packet_unref
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_decoder
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_receive_frame
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_send_packet
+import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
+import org.bytedeco.ffmpeg.global.avutil.AV_SAMPLE_FMT_S16
+import org.bytedeco.ffmpeg.global.avutil.av_channel_layout_default
+import org.bytedeco.ffmpeg.global.avutil.av_frame_alloc
+import org.bytedeco.ffmpeg.global.avutil.av_frame_free
+import org.bytedeco.ffmpeg.global.swresample.swr_alloc
+import org.bytedeco.ffmpeg.global.swresample.swr_alloc_set_opts2
+import org.bytedeco.ffmpeg.global.swresample.swr_convert
+import org.bytedeco.ffmpeg.global.swresample.swr_free
+import org.bytedeco.ffmpeg.global.swresample.swr_get_out_samples
+import org.bytedeco.ffmpeg.global.swresample.swr_init
 import org.bytedeco.ffmpeg.swresample.SwrContext
 import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.javacpp.PointerPointer
@@ -32,13 +50,13 @@ class AudioDecoder {
     private var outChannels: Int = 2
     private var outSampleRate: Int = 48000
 
-    private var listener: ADBCastEventListener? = null
+    private var listener: ADBCastMediaListener? = null
 
 
     fun init(context: ADBCastMediaContext) {
         listener = context.listener
 
-        val codec = avcodec_find_decoder(context.audioCodec.ffID)
+        val codec = avcodec_find_decoder(context.audioCodec.ffmpegID)
         val avCtx = avcodec_alloc_context3(codec) ?: throw IllegalStateException("Load codec context failed!")
 
         // 设置音频参数，对应 C 客户端 demuxer.c 中硬编码的音频属性。

@@ -401,7 +401,7 @@ object ADBCastTransfer {
         }
     }
 
-    private fun clearContext(listener: ADBCastEventListener, context: ADBRemoteCastContext) {
+    private fun clearContext(context: ADBCastTransferContext) {
         context.apply {
             if (stopped) {
                 return

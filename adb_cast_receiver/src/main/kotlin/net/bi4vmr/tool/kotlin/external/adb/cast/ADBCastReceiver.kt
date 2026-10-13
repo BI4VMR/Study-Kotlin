@@ -57,7 +57,7 @@ object ADBCastReceiver {
     /**
      * 接收端监听任务列表。
      */
-    private val receivers: MutableList<ADBCastEventListener, Receiver> = mutableMapOf()
+    private val receivers: MutableList<ADBCastMediaListener, Receiver> = mutableMapOf()
 
 
     /**
@@ -74,7 +74,7 @@ object ADBCastReceiver {
     fun start(
         host: String,
         port: Int,
-        listener: ADBCastEventListener
+        listener: ADBCastMediaListener
     ) {
         thread {
             try {
@@ -115,7 +115,7 @@ object ADBCastReceiver {
         return serverSocket.localPort
     }
 
-    private fun stopReceiver(listener: ADBCastEventListener) {
+    private fun stopReceiver(listener: ADBCastMediaListener) {
         val receiver = synchronized(receivers) { receivers.remove(listener) } ?: return
         receiver.stopped = true
         runCatching { receiver.serverSocket.close() }

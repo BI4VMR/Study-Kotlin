@@ -12,12 +12,12 @@ import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Shader
 
 /**
- * Skia Shader显示层。
+ * Skia Shader 渲染层。
  *
- * 接收YUV信号对应的Shader并绘制到画布上。
+ * 接收 YUV 信号对应的 Shader 并绘制到画布上。
  *
  * @param[frameSize] 视频帧尺寸。
- * @param[shader] Skia Shader。
+ * @param[shader] Skia Shader 。
  */
 @Composable
 internal fun SkiaShaderLayer(

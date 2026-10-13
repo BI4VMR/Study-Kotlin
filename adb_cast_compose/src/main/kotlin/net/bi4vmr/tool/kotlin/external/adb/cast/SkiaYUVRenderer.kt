@@ -13,17 +13,17 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Skia渲染器。
+ * Skia 渲染器。
  *
- * 通过Skia引擎将YUV数据转换为RGB数据，Skia后端基于OpenGL/Vulkan，可以通过显卡硬件加速，与纯CPU转换方案相比更高效。
+ * 通过 Skia 引擎将 YUV 数据转换为 RGB 数据， Skia 后端基于 OpenGL / Vulkan ，可以通过显卡硬件加速，与纯 CPU 转换方案相比更高效。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-object SkiaYUVRenderer {
+internal object SkiaYUVRenderer {
 
     /**
-     * SkSL着色器。
+     * SkSL 着色器。
      */
     private val SKSL_YUV_TO_RGB = """
             uniform shader yTex;
@@ -45,12 +45,12 @@ object SkiaYUVRenderer {
             }
         """.trimIndent()
 
-    // 动态加载SKSL
+    // 动态加载 SKSL
     private val runtimeEffect: RuntimeEffect = RuntimeEffect.makeForShader(SKSL_YUV_TO_RGB)
 
 
     /**
-     * 将 YUV(I420) 数据转换为 RGB Shader。
+     * 将 YUV (I420) 数据转换为 RGB Shader 。
      *
      * @param[yData] Y 平面数据。
      * @param[yStride] Y 平面行跨度（字节数量）。

@@ -75,7 +75,7 @@ object ADBCastManager {
     /**
      * 投屏任务列表。
      */
-    private val tasks: MutableMap<ADBCastEventListener, ADBCastContext> = mutableMapOf()
+    private val tasks: MutableMap<ADBCastMediaListener, ADBCastContext> = mutableMapOf()
 
     /**
      * 当前 ADB 转发端口。
@@ -128,7 +128,7 @@ object ADBCastManager {
     @JvmOverloads
     fun start(
         device: ADBDevice,
-        listener: ADBCastEventListener,
+        listener: ADBCastMediaListener,
         displayID: String = "0",
         videoCodec: VideoCodec = VideoCodec.H264,
         bitRate: Int = 8_000_000,
@@ -247,10 +247,25 @@ object ADBCastManager {
                         }
                 }
 
-                // 建立视频通道（第一个 TCP 连接）
+                /* 建立视频通道（第一个 TCP 连接） */
                 val videoSocket = connectForHandshake(NetUtil.IP_LOOPBACK, localPort, logTag = "Video")
                 videoSocket.tcpNoDelay = true
                 context.videoSocket = videoSocket
+
+                // 循环读取视频通道数据并进行解码
+                thread {
+                    try {
+                        val videoDecoder = VideoDecoder()
+                        videoDecoder.init(context)
+                        context.videoDecoder = videoDecoder
+                        VideoProtocolParser.parse(context)
+                    } catch (e: Exception) {
+                        if (!context.stopped && context.serverError == null) {
+                            listener.onAudioError(e)
+                        }
+                    }
+                }.also { context.audioThread = it }
+
 
                 /*
                  * 建立音频通道（第二个 TCP 连接）
@@ -267,27 +282,17 @@ object ADBCastManager {
                             val audioDecoder = AudioDecoder()
                             audioDecoder.init(context)
                             context.audioDecoder = audioDecoder
-                            val audioThread = thread {
-                                try {
-                                    AudioProtocolParser.parse(context)
-                                } catch (e: Exception) {
-                                    // 用户主动停止投屏或服务端关闭时，音频流会抛异常，此时不需要上报。
-                                    if (!Thread.currentThread().isInterrupted && !context.stopped && context.serverError == null) {
-                                        listener.onAudioError(e)
-                                    }
-                                }
-                            }
-                            context.audioThread = audioThread
+                            AudioProtocolParser.parse(context)
                         } catch (e: Exception) {
-                            // 解码器初始化失败时不能静默退出，否则音频通道将无任何回调。
-                            if (!context.stopped && context.serverError == null) {
+                            if (!context.stopped) {
                                 listener.onAudioError(e)
                             }
                         }
-                    }
+                    }.also { context.audioThread = it }
                 }
 
-                // 建立远程控制通道（第三个 TCP 连接）
+
+                /* 建立远程控制通道（第三个 TCP 连接） */
                 val controlSocket = connect(NetUtil.IP_LOOPBACK, localPort, logTag = "Control")
                 controlSocket.tcpNoDelay = true
                 context.controlSocket = controlSocket
@@ -297,14 +302,8 @@ object ADBCastManager {
                 context.inputController = inputController
                 listener.onControlReady(inputController)
 
-                // 清除 ADB 转发配置不会打断已建立的 TCP 连接，因此客户端连接后就可以调用本方法，不必等到终止投屏时再调用。
+                // 清除 ADB 转发配置不会打断已建立的 TCP 连接，因此客户端连接完毕后即可调用本方法，不必等到终止投屏时再调用。
                 device.stopForward(localPort)
-
-                // 使用主控线程循环读取视频通道数据并进行解码
-                val videoDecoder = VideoDecoder()
-                videoDecoder.init(context)
-                context.videoDecoder = videoDecoder
-                VideoProtocolParser.parse(context)
             } catch (e: Exception) {
                 /*
                  * 如果任务已经被终止，无需回调释放资源过程中出现的异常。
@@ -321,7 +320,7 @@ object ADBCastManager {
         }.also { context.taskThread = it }
     }
 
-    fun stop(listener: ADBCastEventListener) {
+    fun stop(listener: ADBCastMediaListener) {
         synchronized(tasks) {
             tasks.remove(listener)?.let {
                 clearContext(it)

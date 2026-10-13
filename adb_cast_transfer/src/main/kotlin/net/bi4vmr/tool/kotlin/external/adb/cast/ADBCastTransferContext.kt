@@ -10,7 +10,7 @@ import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-data class ADBCastTransferContext(
+internal data class ADBCastTransferContext(
 
     /**
      * ADB 设备。

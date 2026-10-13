@@ -1,3 +1,7 @@
+import net.bi4vmr.gradle.util.LogUtil
+import net.bi4vmr.gradle.util.OSType
+import net.bi4vmr.gradle.util.SystemUtil
+
 val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.core.get()
 val mvnGroupID: String = requireNotNull(depInTOML.group)
 val mvnArtifactID: String = depInTOML.name
@@ -15,10 +19,24 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+val javacvPlatform: String = when (SystemUtil.getOSType()) {
+    OSType.WINDOWS -> "windows-x86_64"
+    OSType.LINUX -> "linux-x86_64"
+    OSType.MACOS -> {
+        val arch = System.getProperty("os.arch")
+        if (arch == "aarch64" || arch == "arm64") "macosx-arm64" else "macosx-x86_64"
+    }
+
+    else -> throw IllegalStateException("Unsupported OS: ${SystemUtil.getOSType()}!")
+}
+LogUtil.info("JavaCV will use platform [$javacvPlatform].")
+
 dependencies {
+    api(project(":adb_cast_common"))
+
     api(libJava.slf4j.api)
     api(libJava.javacv.api)
-    api(libJava.javacv.ffmpeg)
+    api("${libJava.javacv.ffmpeg.get()}:$javacvPlatform")
 
 
     // JUnit5 BOM 版本配置文件

@@ -20,7 +20,7 @@ interface ADBCastMediaContext {
     /**
      * 事件监听器。
      */
-    val listener: ADBCastEventListener
+    val listener: ADBCastMediaListener
 
     /**
      * 视频编码类型。

@@ -1,14 +1,27 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast.video
 
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastMediaContext
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastEventListener
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastMediaListener
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext.FF_THREAD_FRAME
 import org.bytedeco.ffmpeg.avcodec.AVPacket
 import org.bytedeco.ffmpeg.avutil.AVDictionary
 import org.bytedeco.ffmpeg.avutil.AVFrame
-import org.bytedeco.ffmpeg.global.avcodec.*
-import org.bytedeco.ffmpeg.global.avutil.*
+import org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_FLAG_LOW_DELAY
+import org.bytedeco.ffmpeg.global.avcodec.AV_PKT_FLAG_KEY
+import org.bytedeco.ffmpeg.global.avcodec.av_new_packet
+import org.bytedeco.ffmpeg.global.avcodec.av_packet_alloc
+import org.bytedeco.ffmpeg.global.avcodec.av_packet_free
+import org.bytedeco.ffmpeg.global.avcodec.av_packet_unref
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_decoder
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_receive_frame
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_send_packet
+import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
+import org.bytedeco.ffmpeg.global.avutil.av_frame_alloc
+import org.bytedeco.ffmpeg.global.avutil.av_frame_free
 
 /**
  * 视频解码器。
@@ -22,7 +35,7 @@ class VideoDecoder {
     private var avPacket: AVPacket? = null
     private var avFrame: AVFrame? = null
 
-    private var listener: ADBCastEventListener? = null
+    private var listener: ADBCastMediaListener? = null
 
     private var firstFrameArrived: Boolean = false
 
@@ -30,7 +43,7 @@ class VideoDecoder {
     fun init(context: ADBCastMediaContext) {
         listener = context.listener
 
-        val codec = avcodec_find_decoder(context.videoCodec.ffID)
+        val codec = avcodec_find_decoder(context.videoCodec.ffmpegID)
         val avCtx = avcodec_alloc_context3(codec) ?: throw IllegalStateException("Load codec context failed!")
 
         avCtx.apply {
