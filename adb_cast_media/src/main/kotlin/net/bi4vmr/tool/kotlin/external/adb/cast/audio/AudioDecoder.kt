@@ -47,8 +47,8 @@ class AudioDecoder {
     private var avPacket: AVPacket? = null
     private var avFrame: AVFrame? = null
 
-    private var outChannels: Int = 2
-    private var outSampleRate: Int = 48000
+    private val outChannels: Int = 2
+    private val outSampleRate: Int = 48000
 
     private var listener: ADBCastMediaListener? = null
 
@@ -168,7 +168,7 @@ class AudioDecoder {
             outPlanes.deallocate()
             outBytes.deallocate()
 
-            listener?.onAudioData(pcm, outChannels, outSampleRate)
+            listener?.onAudioData(pcm)
         }
     }
 

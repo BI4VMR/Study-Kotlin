@@ -140,9 +140,12 @@ object ADBCastManager {
     ) {
         /* 参数校验 */
         if (!serverFile.canRead() || serverVersion.isBlank()) {
-            listener.onVideoError(IllegalStateException("Scrcpy server file invalid or version not set!"))
+            val info = "Scrcpy server file invalid or version not set!"
+            logger.error(info)
+            listener.onConnectError(IllegalStateException(info))
             return
         }
+
 
         /* 创建投屏任务 */
         val context = ADBCastContext(
@@ -153,7 +156,9 @@ object ADBCastManager {
         )
         synchronized(tasks) {
             if (tasks.containsKey(listener)) {
-                listener.onVideoError(IllegalStateException("Screen cast task already running!"))
+                val info = "Screen cast task already running!"
+                logger.warn(info)
+                listener.onConnectError(IllegalStateException(info))
                 return
             }
 
@@ -169,13 +174,17 @@ object ADBCastManager {
                  */
                 val fileReady = device.pushFile(serverFile, SCRCPY_REMOTE_PATH)
                 if (!fileReady) {
-                    throw IOException("Push Scrcpy server file to device failed!")
+                    val info = "Push Scrcpy server file to device failed!"
+                    logger.error(info)
+                    throw IOException(info)
                 }
                 device.syncFileSystem()
 
 
                 /* 向 JVM 注册清理线程，当应用进程退出时同步终止 ADB 等外部进程。 */
-                val clearThread = Thread { clearContext(context) }
+                val clearThread = Thread {
+                    clearContext(context)
+                }
                 context.clearThread = clearThread
                 Runtime.getRuntime().addShutdownHook(clearThread)
 
@@ -188,7 +197,9 @@ object ADBCastManager {
                 // SCID 是一个 8 位字符串，用于区分同时启动的多个服务端，此处将端口号作为 SCID 。
                 val forwardReady = device.startForward("tcp:$localPort", "localabstract:scrcpy_000$localPort")
                 if (!forwardReady) {
-                    throw IOException("Start ADB forward at local port [$localPort] failed!")
+                    val info = "Start ADB forward at local port [$localPort] failed!"
+                    logger.error(info)
+                    throw IOException(info)
                 }
 
                 context.forwardPort = localPort
@@ -239,13 +250,15 @@ object ADBCastManager {
                                     return@thread
                                 }
 
-                                logger.error("Device report an error! Info:[$msg]")
-                                val e = IllegalStateException("Device report an error! Info:[$msg]")
+                                val info = "Device report an error! Info:[$msg]"
+                                logger.error(info)
+                                val e = IllegalStateException(info)
                                 context.serverError = e
-                                listener.onVideoError(e)
+                                listener.onConnectError(e)
                             }
                         }
                 }
+
 
                 /* 建立视频通道（第一个 TCP 连接） */
                 val videoSocket = connectForHandshake(NetUtil.IP_LOOPBACK, localPort, logTag = "Video")
@@ -260,8 +273,8 @@ object ADBCastManager {
                         context.videoDecoder = videoDecoder
                         VideoProtocolParser.parse(context)
                     } catch (e: Exception) {
-                        if (!context.stopped && context.serverError == null) {
-                            listener.onAudioError(e)
+                        if (!context.stopped) {
+                            listener.onVideoError(e)
                         }
                     }
                 }.also { context.audioThread = it }
@@ -307,14 +320,11 @@ object ADBCastManager {
             } catch (e: Exception) {
                 /*
                  * 如果任务已经被终止，无需回调释放资源过程中出现的异常。
-                 *
-                 * 如果服务端已经汇报了异常，无需汇报客户端出现的异常。
                  */
-                if (!context.stopped && context.serverError == null) {
-                    listener.onVideoError(e)
+                if (!context.stopped) {
+                    listener.onConnectError(e)
                 }
-            } finally {
-                // 清理相关资源
+
                 clearContext(context)
             }
         }.also { context.taskThread = it }
@@ -361,7 +371,7 @@ object ADBCastManager {
         host: String,
         port: Int,
         retryCount: Int = 50,
-        delay: Long = 200L,
+        delay: Long = 250L,
         logTag: String? = null
     ): Socket {
         repeat(retryCount) { time ->
@@ -379,6 +389,7 @@ object ADBCastManager {
             } catch (e: Exception) {
                 // 若到达预设的最大重试次数，则抛出异常；否则延时片刻并进入下轮循环。
                 if (time == retryCount - 1) {
+                    logger.warn("Connect${if (logTag != null) " [$logTag]" else ""} socket reach max time.")
                     throw e
                 } else {
                     Thread.sleep(delay)
@@ -394,7 +405,7 @@ object ADBCastManager {
         host: String,
         port: Int,
         retryCount: Int = 50,
-        delay: Long = 200L,
+        delay: Long = 250L,
         logTag: String? = null
     ): Socket {
         repeat(retryCount) { time ->
@@ -404,6 +415,7 @@ object ADBCastManager {
             } catch (e: Exception) {
                 // 若到达预设的最大重试次数，则抛出异常；否则延时片刻进入下次循环。
                 if (time == retryCount - 1) {
+                    logger.warn("Connect${if (logTag != null) " [$logTag]" else ""} socket reach max time.")
                     throw e
                 } else {
                     Thread.sleep(delay)

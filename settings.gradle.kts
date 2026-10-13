@@ -65,6 +65,7 @@ include(":adb_cast_local")
 include(":adb_cast_transfer")
 include(":adb_cast_receiver")
 include(":adb_cast_compose")
+include(":adb_cast_compose_demo")
 
 // ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")

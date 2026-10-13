@@ -1,22 +1,10 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,7 +13,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.jetbrains.skia.Rect
@@ -63,83 +50,46 @@ fun ADBCastView(
     // 状态管理
     val stateManager: ADBCastStateManager = remember { ADBCastStateManager() }
 
+    // 工况
+    val state: ADBCastState by stateManager.stateFlow.collectAsState()
+
+    // 视频帧尺寸
+    val frameSize: Pair<Int, Int> by stateManager.frameSizeFlow.collectAsState()
+
+    // 视频帧尺寸 (IntSize)
+    val frameIntSize: IntSize = remember(frameSize) {
+        IntSize(frameSize.first, frameSize.second)
+    }
+
     // 画布尺寸
     var canvasSize: IntSize by remember { mutableStateOf(IntSize.Zero) }
 
-
-    // 视频帧尺寸
-    // var frameSize: IntSize by stateManager.frameSize.collectAsState()
-    var frameSize: IntSize by stateManager.frameSize.collectAsState()
-
     // 有效内容区域
     val renderRect: Rect = remember(canvasSize, frameSize) {
-        fitCanvas(canvasSize, frameSize)
+        fitCanvas(canvasSize, frameIntSize)
     }
 
-    // 当前画面的Shader
-    var shader: Shader? by remember { mutableStateOf(null) }
+    // 当前画面的 Shader
+    val shader: Shader? by stateManager.shaderFlow.collectAsState()
 
     // 输入控制器
-    var inputController: InputController? by remember { mutableStateOf(null) }
+    val inputController: InputController? by stateManager.inputControllerFlow.collectAsState()
 
     // 错误消息
-    var errorInfo: String by remember { mutableStateOf("") }
-
-    // 状态
-    var state: ADBCastState by remember { mutableStateOf(ADBCastState.Loading) }
+    val errorInfo: Exception? by stateManager.errorInfoFlow.collectAsState()
 
 
-    // 投屏事件监听器
-    val listener: ADBCastMediaListener = remember {
-        object : ADBCastMediaListener {
-
-            override fun onVideoSizeChange(width: Int, height: Int) {
-                frameSize = IntSize(width, height)
-
-                onVideoSizeChange?.invoke(width, height)
-            }
-
-            override fun onVideoFrame(
-                yData: ByteArray,
-                yStride: Int,
-                uData: ByteArray,
-                uStride: Int,
-                vData: ByteArray,
-                vStride: Int,
-                width: Int,
-                height: Int
-            ) {
-                // 将YUV(I420)数据转换为Skia Shader
-                shader = SkiaYUVRenderer.getShader(yData, yStride, uData, uStride, vData, vStride, width, height)
-            }
-
-            override fun onVideoReady() {
-                state = ADBCastState.Casting
-            }
-
-            override fun onControlReady(controller: InputController) {
-                inputController = controller
-            }
-
-            override fun onVideoError(error: Exception) {
-                state = ADBCastState.Error
-                errorInfo = "${error.javaClass.simpleName}: ${error.message}"
-            }
-        }
+    // 视频帧尺寸变化时通知外部，以便其调整画面尺寸。
+    LaunchedEffect(frameSize) {
+        onVideoSizeChange?.invoke(frameSize.first, frameSize.second)
     }
 
-
+    // 投屏任务控制
     DisposableEffect(device, displayID) {
-        ADBCastManager.start(device, listener, displayID)
+        stateManager.start(device, displayID)
 
         onDispose {
-            state = ADBCastState.Loading
-
-            ADBCastManager.stop(listener)
-            inputController = null
-            shader = null
-            frameSize = IntSize.Zero
-            errorInfo = ""
+            stateManager.stop()
         }
     }
 
@@ -158,7 +108,7 @@ fun ADBCastView(
             ADBCastState.Casting -> {
                 // 设备画面显示
                 SkiaShaderLayer(
-                    frameSize = frameSize,
+                    frameSize = frameIntSize,
                     shader = shader
                 )
 
@@ -173,17 +123,17 @@ fun ADBCastView(
                         // 尺寸与有效区域保持一致
                         modifier = Modifier.size(widthDP, heightDP),
                         onPress = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
                                 inputController?.mouseDown(it.x.toInt(), it.y.toInt())
                             }
                         },
                         onMove = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
                                 inputController?.mouseMove(it.x.toInt(), it.y.toInt(), pressed = true)
                             }
                         },
                         onRelease = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
                                 inputController?.mouseUp(it.x.toInt(), it.y.toInt())
                             }
                         },
@@ -192,7 +142,7 @@ fun ADBCastView(
                             inputController?.pressBack()
                         },
                         onScroll = { position, delta ->
-                            inputLayerToFramePosition(position, renderRect, frameSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
                                 inputController?.scroll(
                                     position.x.toInt(),
                                     position.y.toInt(),
@@ -202,18 +152,18 @@ fun ADBCastView(
                             }
                         },
                         onClick = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
                                 onClick?.invoke(it.x.toInt(), it.y.toInt())
                             }
                         },
                         onLongClick = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
                                 onLongClick?.invoke(it.x.toInt(), it.y.toInt())
                             }
                         },
                         onSwipe = { start, end ->
-                            val startFrame = inputLayerToFramePosition(start, renderRect, frameSize)
-                            val endFrame = inputLayerToFramePosition(end, renderRect, frameSize)
+                            val startFrame = inputLayerToFramePosition(start, renderRect, frameIntSize)
+                            val endFrame = inputLayerToFramePosition(end, renderRect, frameIntSize)
                             onSwipe?.invoke(
                                 startFrame.x.toInt(), startFrame.y.toInt(),
                                 endFrame.x.toInt(), endFrame.y.toInt()
@@ -223,7 +173,7 @@ fun ADBCastView(
                 }
             }
             // 出错终止
-            ADBCastState.Error -> ErrorView(info = errorInfo)
+            ADBCastState.Error -> ErrorView(info = errorInfo?.message ?: "未知错误")
         }
     }
 }
@@ -249,6 +199,7 @@ internal fun LoadingView() {
         )
     }
 }
+
 
 // 投屏错误界面
 @Composable
