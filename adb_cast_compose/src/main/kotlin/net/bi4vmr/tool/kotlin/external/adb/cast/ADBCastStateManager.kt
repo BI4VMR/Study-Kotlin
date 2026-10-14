@@ -2,9 +2,15 @@ package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.jetbrains.skia.Shader
+import javax.sound.sampled.AudioFormat
+import javax.sound.sampled.AudioSystem
+import javax.sound.sampled.SourceDataLine
 
 /**
  * ADB 投屏状态管理。
@@ -72,12 +78,33 @@ internal class ADBCastStateManager {
     val errorInfoFlow: StateFlow<Exception?> = _errorInfoFlow
 
 
-    fun start(device: ADBDevice, displayID: String = "0") {
-        ADBCastManager.start(device, listener, displayID)
+    fun start(
+        device: ADBDevice,
+        displayID: String = "0",
+        videoCodec: VideoCodec = VideoCodec.H264,
+        bitRate: Int = 8_000_000,
+        maxSize: Int = -1,
+        maxFPS: Int = 360,
+        enableAudio: Boolean = false,
+        audioCodec: AudioCodec = AudioCodec.AAC,
+        audioBitRate: Int = 128_000
+    ) {
+        ADBCastManager.start(
+            device,
+            listener,
+            displayID,
+            videoCodec,
+            bitRate,
+            maxSize,
+            maxFPS,
+            enableAudio,
+            audioCodec,
+            audioBitRate
+        )
     }
 
     fun start(host: String, port: Int) {
-        // TODO
+        // ADBCa
     }
 
     fun stop() {
@@ -89,6 +116,26 @@ internal class ADBCastStateManager {
      * 投屏事件监听器实现。
      */
     private inner class EventListener : ADBCastMediaListener {
+
+        private val audioLine: SourceDataLine? by lazy {
+            return@lazy try {
+                val format = AudioFormat(
+                    AudioDecoder.SAMPLE_RATE.toFloat(),
+                    AudioDecoder.SAMPLE_BIT,
+                    AudioDecoder.CHANNELS,
+                    true,
+                    false
+                )
+                AudioSystem.getSourceDataLine(format).apply {
+                    open()
+                    start()
+                }
+            } catch (e: Exception) {
+                println("AudioSystem.getSourceDataLine error: ${e.message}")
+                null
+            }
+        }
+
 
         override fun onConnectError(error: Exception) {
             _stateFlow.value = ADBCastState.Error
@@ -123,7 +170,7 @@ internal class ADBCastStateManager {
         }
 
         override fun onAudioData(data: ByteArray) {
-            // TODO
+            audioLine?.write(data, 0, data.size)
         }
 
         override fun onAudioError(error: Exception) {

@@ -78,7 +78,7 @@ object ADBCastManager {
     private val tasks: MutableMap<ADBCastMediaListener, ADBCastContext> = mutableMapOf()
 
     /**
-     * 当前 ADB 转发端口。
+     * 上次使用的 ADB 转发端口。
      *
      * 每次建立新连接时，从当前端口之后一位尝试查找可用端口。
      */
@@ -123,6 +123,17 @@ object ADBCastManager {
 
     /**
      * 启动屏幕投射任务。
+     *
+     * @param[device] ADB 设备。
+     * @param[listener] 事件监听器。用于接收媒体数据和错误信息等。
+     * @param[displayID] 屏幕 ID 。默认为主屏。
+     * @param[videoCodec] 视频编码。默认值为 H.264 。
+     * @param[bitRate] 视频码率，单位为 `bps` 。默认值为 8 Mbps 。
+     * @param[maxSize] 视频最大宽高，单位为像素。默认值为 `-1` ，表示不做限制，以原始尺寸为准。
+     * @param[maxFPS] 视频最大帧率。默认值为 `360` 。
+     * @param[enableAudio] 是否启用音频，默认值为关闭。
+     * @param[audioCodec] 音频编码。默认值为 AAC 。
+     * @param[audioBitRate] 音频码率，单位为 `bps` 。默认值为 128 Kbps 。
      */
     @JvmStatic
     @JvmOverloads
@@ -134,7 +145,7 @@ object ADBCastManager {
         bitRate: Int = 8_000_000,
         maxSize: Int = -1,
         maxFPS: Int = 360,
-        enableAudio: Boolean = true,
+        enableAudio: Boolean = false,
         audioCodec: AudioCodec = AudioCodec.AAC,
         audioBitRate: Int = 128_000
     ) {
@@ -252,9 +263,7 @@ object ADBCastManager {
 
                                 val info = "Device report an error! Info:[$msg]"
                                 logger.error(info)
-                                val e = IllegalStateException(info)
-                                context.serverError = e
-                                listener.onConnectError(e)
+                                listener.onConnectError(IllegalStateException(info))
                             }
                         }
                 }
@@ -277,7 +286,7 @@ object ADBCastManager {
                             listener.onVideoError(e)
                         }
                     }
-                }.also { context.audioThread = it }
+                }.also { context.videoThread = it }
 
 
                 /*
@@ -330,6 +339,11 @@ object ADBCastManager {
         }.also { context.taskThread = it }
     }
 
+    /**
+     * 停止屏幕投射任务。
+     *
+     * @param[listener] 事件监听器。
+     */
     fun stop(listener: ADBCastMediaListener) {
         synchronized(tasks) {
             tasks.remove(listener)?.let {
@@ -337,6 +351,7 @@ object ADBCastManager {
             }
         }
     }
+
 
     /**
      * 寻找未被占用的本地端口。
@@ -445,6 +460,7 @@ object ADBCastManager {
             CLIUtil.stopProcess(serverProcess)
 
             // 中断目标线程后需等待目标线程退出再释放解码器，否则 Native 层可能访问中断完成前残留的数据而崩溃。
+            videoThread?.let { interruptAndWait(it) }
             audioThread?.let { interruptAndWait(it) }
             taskThread?.let { interruptAndWait(it) }
 

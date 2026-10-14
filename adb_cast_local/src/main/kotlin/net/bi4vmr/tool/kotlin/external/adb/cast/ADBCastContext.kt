@@ -16,6 +16,8 @@ import java.net.Socket
  */
 data class ADBCastContext(
 
+    /* ----- 媒体处理相关组件 ----- */
+
     override val listener: ADBCastMediaListener,
     override val videoCodec: VideoCodec,
     override var videoSocket: Socket? = null,
@@ -47,6 +49,11 @@ data class ADBCastContext(
     var serverProcess: Process? = null,
 
     /**
+     * 视频解析线程。
+     */
+    var videoThread: Thread? = null,
+
+    /**
      * 音频解析线程。
      */
     var audioThread: Thread? = null,
@@ -55,14 +62,6 @@ data class ADBCastContext(
      * 进程结束时的清理线程。
      */
     var clearThread: Thread? = null,
-
-    /**
-     * 服务端异常。
-     *
-     * 优先向上层汇报服务端异常，如果服务端已出现异常，则忽略后续的客户端线程终止等异常。
-     */
-    @Volatile
-    var serverError: Exception? = null,
 
     /**
      * 任务是否已被停止。

@@ -35,20 +35,29 @@ import org.bytedeco.javacpp.PointerPointer
 /**
  * 音频解码器。
  *
- * 解码目标统一为 48kHz 双声道 S16 交错格式的 PCM 数据，便于上层直接播放。
+ * 将音频数据解码为 48 kHz 双声道 S16 交错格式的 PCM 数据，便于调用者直接进行播放。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
 class AudioDecoder {
 
-    private var codecCtx: AVCodecContext? = null
-    private var swrCtx: SwrContext? = null
-    private var avPacket: AVPacket? = null
-    private var avFrame: AVFrame? = null
+    companion object {
 
-    private val outChannels: Int = 2
-    private val outSampleRate: Int = 48000
+        const val CHANNELS: Int = 2
+
+        const val SAMPLE_BIT: Int = 16
+
+        const val SAMPLE_RATE: Int = 48000
+    }
+
+    private var codecCtx: AVCodecContext? = null
+
+    private var swrCtx: SwrContext? = null
+
+    private var avPacket: AVPacket? = null
+
+    private var avFrame: AVFrame? = null
 
     private var listener: ADBCastMediaListener? = null
 
@@ -59,13 +68,14 @@ class AudioDecoder {
         val codec = avcodec_find_decoder(context.audioCodec.ffmpegID)
         val avCtx = avcodec_alloc_context3(codec) ?: throw IllegalStateException("Load codec context failed!")
 
-        // 设置音频参数，对应 C 客户端 demuxer.c 中硬编码的音频属性。
+        // 配置解码器参数，应当与服务端一致。
         avCtx.apply {
             // 立体声
-            av_channel_layout_default(ch_layout(), 2)
-            sample_rate(48000)
+            av_channel_layout_default(ch_layout(), CHANNELS)
+            // 48 kHz
+            sample_rate(SAMPLE_RATE)
+            // FLAC 解码器不会自动设置采样格式，需要手动指定。
             if (context.audioCodec.name == "FLAC") {
-                // FLAC 解码器不会自动设置采样格式，需要手动指定。
                 sample_fmt(AV_SAMPLE_FMT_S16)
             }
         }
@@ -82,7 +92,7 @@ class AudioDecoder {
         // 初始化重采样器，将解码后的音频统一转为 S16 交错格式。
         val swr = swr_alloc()
         val outLayout = AVChannelLayout()
-        av_channel_layout_default(outLayout, outChannels)
+        av_channel_layout_default(outLayout, CHANNELS)
         val inLayout = AVChannelLayout()
         av_channel_layout_default(inLayout, avCtx.ch_layout().nb_channels())
 
@@ -90,7 +100,7 @@ class AudioDecoder {
             swr,
             outLayout,
             AV_SAMPLE_FMT_S16,
-            outSampleRate,
+            SAMPLE_RATE,
             inLayout,
             avCtx.sample_fmt(),
             avCtx.sample_rate(),
@@ -102,7 +112,8 @@ class AudioDecoder {
             throw IllegalStateException("Configure resampler failed!")
         }
 
-        if (swr_init(swr) < 0) {
+        val initResult = swr_init(swr)
+        if (initResult < 0) {
             swr_free(swr)
             throw IllegalStateException("Init resampler failed!")
         }
@@ -115,11 +126,12 @@ class AudioDecoder {
         val packet = avPacket
         val frame = avFrame
         val swr = swrCtx
+
         if (mediaCtx == null || packet == null || frame == null || swr == null) {
             throw IllegalStateException("Had you call #init at first?")
         }
 
-        // 配置包（如 OPUS 的 OpusHead）无需送入解码器，解码参数已在初始化时硬编码。
+        // 配置包（如 OPUS 的 OpusHead）无需送入解码器，解码参数已在初始化时配置完毕。
         if (pts == AV_NOPTS_VALUE) {
             return
         }
@@ -150,7 +162,7 @@ class AudioDecoder {
 
             // 重采样为 S16 交错格式
             val outSamples = swr_get_out_samples(swr, nbSamples)
-            val outBytesCount = outSamples * outChannels * 2
+            val outBytesCount = outSamples * CHANNELS * 2
             val outBytes = BytePointer(outBytesCount.toLong())
             // `out` 参数类型为 `uint8_t **`，需要构造一个指针数组，并将输出缓冲区指针写入第一个元素。
             val outPlanes = PointerPointer<BytePointer>(1L)
@@ -162,7 +174,7 @@ class AudioDecoder {
                 break
             }
 
-            val bytesCount = samplesConverted * outChannels * 2
+            val bytesCount = samplesConverted * CHANNELS * 2
             val pcm = ByteArray(bytesCount)
             outBytes.get(pcm)
             outPlanes.deallocate()
