@@ -23,18 +23,16 @@ tasks.withType<Test> {
 dependencies {
     api(project(":adb_cast_media"))
     api(project(":adb_cast_local"))
+    api(project(":adb_cast_receiver"))
 
     api(privateLibKotlin.external.adb.core)
 
     api(libJava.slf4j.api)
 
-    // Compose Desktop（包含 Skia、Foundation、Material 等基础组件）
+    // Compose Desktop 平台组件
     api(compose.desktop.currentOs)
-    // Material3
+    // Compose Material3
     api(libKotlin.compose.material3)
-    // 协程（Skia/Compose 异步绘制）
-    api(libKotlin.ktx.coroutines.core)
-    api(libKotlin.ktx.coroutines.swing)
 
 
     // JUnit5 BOM 版本配置文件

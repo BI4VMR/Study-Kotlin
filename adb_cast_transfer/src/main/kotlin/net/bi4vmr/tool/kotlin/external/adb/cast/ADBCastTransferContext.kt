@@ -1,6 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import java.net.ServerSocket
 import java.net.Socket
 
 /**
@@ -24,9 +25,24 @@ internal data class ADBCastTransferContext(
     var taskThread: Thread? = null,
 
     /**
-     * Socket ： 本地与接收端之间的数据通道。
+     * ServerSocket ： 监听接收端连接。
      */
-    var forwardSocket: Socket? = null,
+    var remoteServer: ServerSocket? = null,
+
+    /**
+     * Socket ： 本地与接收端之间的视频通道。
+     */
+    var remoteVideoSocket: Socket? = null,
+
+    /**
+     * Socket ： 本地与接收端之间的音频通道。
+     */
+    var remoteAudioSocket: Socket? = null,
+
+    /**
+     * Socket ： 本地与接收端之间的控制通道。
+     */
+    var remoteControlSocket: Socket? = null,
 
     /**
      * ADB 转发端口。

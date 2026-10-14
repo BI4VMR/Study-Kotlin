@@ -1,17 +1,10 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Text
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,9 +18,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Shader
 
@@ -48,8 +39,8 @@ import org.jetbrains.skia.Shader
  * @param[onSwipe] 拖拽手势回调，参数为设备帧坐标(startX, startY, endX, endY)。
  */
 @Composable
-fun ADBCastView(
-    device: ADBDevice,
+internal fun ADBCastView(
+    stateManager: ADBCastStateManager,
     displayID: String = "0",
     modifier: Modifier = Modifier,
     background: Color = Color(0xFF1E1F22),
@@ -60,9 +51,6 @@ fun ADBCastView(
     onLongClick: ((x: Int, y: Int) -> Unit)? = null,
     onSwipe: ((startX: Int, startY: Int, endX: Int, endY: Int) -> Unit)? = null
 ) {
-    // 状态管理
-    val stateManager: ADBCastStateManager = remember { ADBCastStateManager() }
-
     // 工况
     val state: ADBCastState by stateManager.stateFlow.collectAsState()
 
@@ -98,15 +86,6 @@ fun ADBCastView(
         val height = frameSize.second
         if (width > 0 && height > 0) {
             onVideoSizeChange?.invoke(width, height)
-        }
-    }
-
-    // 投屏任务控制
-    DisposableEffect(device, displayID) {
-        stateManager.start(device, displayID)
-
-        onDispose {
-            stateManager.stop()
         }
     }
 
@@ -192,50 +171,5 @@ fun ADBCastView(
             // 出错终止
             ADBCastState.Error -> ErrorView(info = errorInfo?.message ?: "未知错误")
         }
-    }
-}
-
-
-// 正在准备界面
-@Composable
-internal fun LoadingView() {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(64.dp),
-            strokeWidth = 8.dp
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "等待设备视频信号...",
-            fontSize = 24.sp,
-            color = Color.White
-        )
-    }
-}
-
-
-// 投屏错误界面
-@Composable
-internal fun ErrorView(info: String) {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Text(
-            text = "非常不妙！出错了！",
-            fontSize = 24.sp,
-            color = Color.White
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = info,
-            fontSize = 18.sp,
-            color = Color.White
-        )
     }
 }

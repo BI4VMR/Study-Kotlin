@@ -6,8 +6,18 @@ val mvnVersion: String = requireNotNull(depInTOML.version)
 
 plugins {
     alias(libKotlin.plugins.core)
+    application
     // alias(privateLibJava.plugins.java.version)
     // alias(privateLibJava.plugins.publish.private)
+}
+
+application {
+    mainClass = "net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransferMainKt"
+}
+
+tasks.named<JavaExec>("run") {
+    // 转发控制台输入，使 readln 可以阻塞等待
+    standardInput = System.`in`
 }
 
 tasks.withType<Test> {
@@ -22,6 +32,7 @@ dependencies {
     api(privateLibKotlin.external.adb.core)
 
     api(libJava.slf4j.api)
+    runtimeOnly(libJava.slf4j.simple)
 
 
     // JUnit5 BOM 版本配置文件

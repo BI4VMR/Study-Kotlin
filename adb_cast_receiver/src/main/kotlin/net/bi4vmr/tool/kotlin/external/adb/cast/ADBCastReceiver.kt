@@ -1,12 +1,14 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
+import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioProtocolParser
+import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoProtocolParser
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.DataInputStream
 import java.net.Socket
 import kotlin.concurrent.thread
 
@@ -21,50 +23,27 @@ import kotlin.concurrent.thread
 object ADBCastReceiver {
 
     /**
-     * 数据类型：视频通道。
-     */
-    private const val TYPE_VIDEO_DATA: Int = 101
-
-    /**
-     * 数据类型：视频通道错误信息。
-     */
-    private const val TYPE_VIDEO_ERROR: Int = 102
-
-    /**
-     * 数据类型：音频通道。
-     */
-    private const val TYPE_AUDIO_DATA: Int = 201
-
-    /**
-     * 数据类型：音频通道错误信息。
-     */
-    private const val TYPE_AUDIO_ERROR: Int = 202
-
-    /**
-     * 数据类型：控制通道。
-     */
-    private const val TYPE_CONTROL_DATA: Int = 301
-
-    /**
      * 日志工具。
      */
     private val logger: Logger = LoggerFactory.getLogger(ADBCastReceiver::class.java)
 
 
     /**
-     * 启动屏幕投射监听任务（接收端）。
+     * 启动屏幕投射接收任务（接收端）。
      *
-     * 监听成功后，发送端连接并开始转发数据，音视频帧与控制器通过 [listener] 回调。
+     * 连接发送端的监听端口，并依次建立视频、音频（若启用）与控制三个连接，音视频帧与控制器通过 [listener] 回调。
      *
-     * @param[host] 监听地址。
-     * @param[port] 监听端口，传入 `0` 表示由系统分配。
+     * @param[host] 发送端地址。
+     * @param[port] 发送端监听的端口，由 [ADBCastTransfer.start] 返回。
+     * @param[enableAudio] 发送端是否启用音频，需与发送端保持一致。
      * @param[listener] 事件监听器。
      */
     @JvmStatic
     fun start(
         host: String,
         port: Int,
-        listener: ADBCastMediaListener
+        listener: ADBCastMediaListener,
+        enableAudio: Boolean = false
     ) {
         val context = ADBCastReceiverContext(
             listener = listener,
@@ -72,20 +51,44 @@ object ADBCastReceiver {
             videoCodec = VideoCodec.H264,
             audioCodec = AudioCodec.AAC
         )
-        val videoDecoder = VideoDecoder()
-        videoDecoder.init(context)
-        context.videoDecoder = videoDecoder
-        VideoProtocolParser.parse(context)
 
         thread {
             try {
-                val socket = Socket(host, port)
-                DataInputStream(socket.getInputStream()).use {
-                    while (true) {
-                        val type = it.readInt()
-                        println(type)
-                        if (type == TYPE_VIDEO_DATA) {
+                // 连接顺序固定：视频 -> 音频（若启用） -> 控制，发送端按此顺序区分通道。
+                val videoSocket = Socket(host, port).apply { tcpNoDelay = true }
+                context.videoSocket = videoSocket
 
+                val audioSocket = if (enableAudio) Socket(host, port).apply { tcpNoDelay = true } else null
+                context.audioSocket = audioSocket
+
+                val controlSocket = Socket(host, port).apply { tcpNoDelay = true }
+                context.controlSocket = controlSocket
+
+                // 控制器需先于视频解析器创建，视频尺寸变化时会更新控制器的坐标基准。
+                val inputController = InputController(controlSocket.getOutputStream())
+                context.inputController = inputController
+                listener.onControlReady(inputController)
+
+                thread {
+                    try {
+                        val videoDecoder = VideoDecoder()
+                        videoDecoder.init(context)
+                        context.videoDecoder = videoDecoder
+                        VideoProtocolParser.parse(context)
+                    } catch (e: Exception) {
+                        listener.onVideoError(e)
+                    }
+                }
+
+                if (audioSocket != null) {
+                    thread {
+                        try {
+                            val audioDecoder = AudioDecoder()
+                            audioDecoder.init(context)
+                            context.audioDecoder = audioDecoder
+                            AudioProtocolParser.parse(context)
+                        } catch (e: Exception) {
+                            listener.onAudioError(e)
                         }
                     }
                 }
@@ -93,5 +96,17 @@ object ADBCastReceiver {
                 listener.onConnectError(e)
             }
         }
+    }
+
+    /**
+     * 停止屏幕投射接收任务（接收端）。
+     *
+     * 关闭视频、音频与控制三个连接，并释放资源。
+     *
+     * @param[listener] 事件监听器。
+     */
+    @JvmStatic
+    fun stop(listener: ADBCastMediaListener) {
+        // listener.onStop()
     }
 }

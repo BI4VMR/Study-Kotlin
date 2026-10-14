@@ -22,5 +22,5 @@ dependencies {
 
     implementation(project(":adb_cast_compose"))
 
-    implementation(libJava.slf4j.simple)
+    runtimeOnly(libJava.slf4j.simple)
 }

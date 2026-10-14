@@ -6,6 +6,7 @@ val mvnVersion: String = requireNotNull(depInTOML.version)
 
 plugins {
     alias(libKotlin.plugins.core)
+    application
     // alias(privateLibJava.plugins.java.version)
     // alias(privateLibJava.plugins.publish.private)
 }
@@ -20,6 +21,7 @@ dependencies {
     api(project(":adb_cast_media"))
 
     api(libJava.slf4j.api)
+    runtimeOnly(libJava.slf4j.simple)
 
 
     // JUnit5 BOM 版本配置文件

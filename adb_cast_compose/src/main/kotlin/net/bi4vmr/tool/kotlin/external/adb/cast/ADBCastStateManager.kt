@@ -28,6 +28,14 @@ internal class ADBCastStateManager {
     private val listener: ADBCastMediaListener = EventListener()
 
     /**
+     * 是否为本地连接。
+     *
+     * 每个实例只能使用一种模式，空值表示未开启任务， `true` 表示本地连接， `false` 表示远程连接。
+     */
+    @Volatile
+    private var localMode: Boolean? = null
+
+    /**
      * 投屏状态。
      */
     private val _stateFlow: MutableStateFlow<ADBCastState> = MutableStateFlow(ADBCastState.Loading)
@@ -68,17 +76,27 @@ internal class ADBCastStateManager {
     val inputControllerFlow: StateFlow<InputController?> = _inputControllerFlow
 
     /**
-     * 错误信息。
+     * 初始化错误和视频错误信息。
      */
     private val _errorInfoFlow: MutableStateFlow<Exception?> = MutableStateFlow(null)
 
     /**
-     * 错误信息。
+     * 初始化错误和视频错误信息。
      */
     val errorInfoFlow: StateFlow<Exception?> = _errorInfoFlow
 
+    /**
+     * 音频错误信息。
+     */
+    private val _audioErrorInfoFlow: MutableStateFlow<Exception?> = MutableStateFlow(null)
 
-    fun start(
+    /**
+     * 音频错误信息。
+     */
+    val audioErrorInfoFlow: StateFlow<Exception?> = _audioErrorInfoFlow
+
+
+    fun startLocal(
         device: ADBDevice,
         displayID: String = "0",
         videoCodec: VideoCodec = VideoCodec.H264,
@@ -89,6 +107,12 @@ internal class ADBCastStateManager {
         audioCodec: AudioCodec = AudioCodec.AAC,
         audioBitRate: Int = 128_000
     ) {
+        if (localMode != null) {
+            return
+        }
+
+        localMode = true
+
         ADBCastManager.start(
             device,
             listener,
@@ -103,12 +127,23 @@ internal class ADBCastStateManager {
         )
     }
 
-    fun start(host: String, port: Int) {
-        // ADBCa
+    fun startRemote(host: String, port: Int) {
+        if (localMode != null) {
+            return
+        }
+
+        localMode = false
+
+        ADBCastReceiver.start(host, port, listener)
     }
 
     fun stop() {
-        ADBCastManager.stop(listener)
+        val mode = localMode ?: return
+        if (mode) {
+            ADBCastManager.stop(listener)
+        } else {
+            ADBCastReceiver.stop(listener)
+        }
     }
 
 
@@ -174,7 +209,7 @@ internal class ADBCastStateManager {
         }
 
         override fun onAudioError(error: Exception) {
-            println(error)
+            _audioErrorInfoFlow.value = error
         }
 
         override fun onControlReady(controller: InputController) {

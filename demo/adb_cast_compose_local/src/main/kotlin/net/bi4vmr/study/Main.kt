@@ -12,7 +12,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastView
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBLocalCastView
 
 /**
  * 示例： ADB 屏幕投射控件。
@@ -46,7 +46,7 @@ fun main() = application {
             ADBController.getDevices()
                 .firstOrNull()
                 ?.let { device ->
-                    ADBCastView(
+                    ADBLocalCastView(
                         device = device,
                         onVideoSizeChange = { w, h ->
                             println("OnVideoSizeChange. W:[$w] H:[$h]")
