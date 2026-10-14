@@ -1,7 +1,7 @@
 package net.bi4vmr.gradle.entity
 
 /**
- * Maven仓库。
+ * Maven 仓库。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

@@ -9,7 +9,7 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 
 /**
- * Maven私有仓库插件。
+ * Maven 私有仓库插件。
  *
  * 自动为子模块添加常用的私有仓库。
  *
@@ -52,7 +52,7 @@ class PrivateRepoPlugin : Plugin<Project> {
     }
 
     private fun addRepo(handler: RepositoryHandler, repo: MavenRepo) {
-        // 特殊处理Maven本地仓库。
+        // 特殊处理 Maven 本地仓库。
         if (repo == MavenRepos.PRIVATE_MAVEN_LOCAL) {
             handler.mavenLocal()
             return

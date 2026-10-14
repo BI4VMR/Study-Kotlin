@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package net.bi4vmr.gradle.plugin
 
 import net.bi4vmr.gradle.data.MavenRepos
@@ -6,7 +8,7 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.repositories
 
 /**
- * Maven公共仓库插件。
+ * Maven 公共仓库插件。
  *
  * 自动为子模块添加常用的公共仓库。
  *
@@ -48,7 +50,13 @@ class PublicRepoPlugin : Plugin<Project> {
             }
 
             mavenCentral()
-            google()
+            google {
+                mavenContent {
+                    includeGroupAndSubgroups("androidx")
+                    includeGroupAndSubgroups("com.android")
+                    includeGroupAndSubgroups("com.google")
+                }
+            }
         }
     }
 }

@@ -1,7 +1,7 @@
 package net.bi4vmr.gradle.util
 
 /**
- * 日志相关工具。
+ * 日志工具。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

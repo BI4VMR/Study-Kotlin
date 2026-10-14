@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 
 /**
- * 网络相关工具。
+ * 网络工具。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -12,9 +12,9 @@ import java.net.Socket
 object NetUtil {
 
     /**
-     * 主机可达性侦测(TCP)。
+     * 主机可达性侦测 (TCP)。
      *
-     * @param[host] 目标IP地址或域名。
+     * @param[host] 目标 IP 地址或域名。
      * @param[port] 目标端口。
      * @return `true` 表示目标可达； `false` 表示目标不可达。
      */

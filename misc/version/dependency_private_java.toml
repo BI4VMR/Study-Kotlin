@@ -15,13 +15,6 @@ finance_base = "1.0.0"
 security_digest = "1.0.0"
 
 
-# ----- 插件 -----
-java_version = "1.0.0"
-repo_public = "1.0.0"
-repo_private = "1.0.0"
-publish_private = "1.0.0"
-
-
 # 组件
 [libraries]
 common_base = { group = "net.bi4vmr.tool.java", name = "common-base", version.ref = "common_base" }
@@ -39,14 +32,16 @@ finance_base = { group = "net.bi4vmr.tool.java", name = "finance-base", version.
 security_digest = { group = "net.bi4vmr.tool.java", name = "security-digest", version.ref = "security_digest" }
 
 
-# Gradle插件
+# Gradle 插件
 [plugins]
 # ----- Java -----
-# Java版本配置
-java_version = { id = "net.bi4vmr.gradle.plugin.java.version", version.ref = "java_version" }
-# Maven公开仓库
-repo_public = { id = "net.bi4vmr.gradle.plugin.repo.public", version.ref = "repo_public" }
-# Maven私有仓库
-repo_private = { id = "net.bi4vmr.gradle.plugin.repo.private", version.ref = "repo_private" }
-# Maven Publish私有仓库配置
-publish_private = { id = "net.bi4vmr.gradle.plugin.maven.publish", version.ref = "publish_private" }
+# Java 版本配置
+java_version = { id = "net.bi4vmr.gradle.plugin.java.version" }
+# Maven 公开仓库
+repo_public = { id = "net.bi4vmr.gradle.plugin.repo.public" }
+# Maven 私有仓库
+repo_private = { id = "net.bi4vmr.gradle.plugin.repo.private" }
+# Maven Publish 私有仓库配置
+publish_private = { id = "net.bi4vmr.gradle.plugin.maven.publish" }
+# Maven Publish 私有仓库配置 (KMP)
+publish_private_kmp = { id = "net.bi4vmr.gradle.plugin.maven.publish.kmp" }

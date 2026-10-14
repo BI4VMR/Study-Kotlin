@@ -1,7 +1,7 @@
 package net.bi4vmr.gradle.plugin
 
 /**
- * 私有Maven发布插件配置项。
+ * 私有 Maven 仓库发布插件配置项。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -44,4 +44,12 @@ open class PrivatePublishConfig {
      * 默认上传。
      */
     var uploadJavadoc: Boolean = true
+
+    /**
+     * Android 模块是否发布全部变体。
+     *
+     * - `false` : 发布 Release 变体。
+     * - `true` : 发布全部变体，默认情况包括 `debug` 和 `release` 。
+     */
+    var includeAllVariants: Boolean = false
 }

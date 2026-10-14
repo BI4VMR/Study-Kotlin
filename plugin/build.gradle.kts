@@ -1,16 +1,16 @@
-// Gradle插件声明
+// Gradle 插件声明
 plugins {
     `kotlin-dsl`
 }
 
 repositories {
-    // 腾讯云仓库镜像：Maven中心仓库+Spring+Google+JCenter
+    // 腾讯云仓库镜像： Maven 中心仓库 + Spring + Google + JCenter
     maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
-    // 阿里云仓库镜像：Gradle社区插件
+    // 阿里云仓库镜像： Gradle 社区插件
     maven { setUrl("https://maven.aliyun.com/repository/gradle-plugin/") }
-    // 阿里云仓库镜像：Maven中心仓库+JCenter
+    // 阿里云仓库镜像： Maven 中心仓库 + JCenter
     maven { setUrl("https://maven.aliyun.com/repository/public/") }
-    // 阿里云仓库镜像：Google仓库
+    // 阿里云仓库镜像： Google 仓库
     maven { setUrl("https://maven.aliyun.com/repository/google/") }
 
     gradlePluginPortal()
@@ -20,37 +20,41 @@ repositories {
 
 dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0")
+    compileOnly("com.android.tools.build:gradle-api:8.0.0")
 }
 
 gradlePlugin {
     plugins {
-
-        /* Java编译版本控制 */
+        /* Java 编译版本控制 */
         create("JavaVersion") {
-            // 声明插件ID
+            // 声明插件 ID
             id = "net.bi4vmr.gradle.plugin.java.version"
             // 声明入口类
             implementationClass = "net.bi4vmr.gradle.plugin.JavaVersionPlugin"
         }
 
-        /* 公共Maven仓库 */
+        /* 公共 Maven 仓库 */
         create("PublicRepo") {
-            // 声明插件ID
             id = "net.bi4vmr.gradle.plugin.repo.public"
-            // 声明入口类
             implementationClass = "net.bi4vmr.gradle.plugin.PublicRepoPlugin"
         }
 
-        /* 私有Maven仓库 */
+        /* 私有 Maven 仓库 */
         create("PrivateRepo") {
             id = "net.bi4vmr.gradle.plugin.repo.private"
             implementationClass = "net.bi4vmr.gradle.plugin.PrivateRepoPlugin"
         }
 
-        /* 私有Maven Publish配置 */
+        /* 私有 Maven Publish 配置 */
         create("PrivatePublish") {
             id = "net.bi4vmr.gradle.plugin.maven.publish"
             implementationClass = "net.bi4vmr.gradle.plugin.PrivatePublishPlugin"
+        }
+
+        /* 私有 Maven Publish 配置 (KMP) */
+        create("PrivatePublishKMP") {
+            id = "net.bi4vmr.gradle.plugin.maven.publish.kmp"
+            implementationClass = "net.bi4vmr.gradle.plugin.PrivatePublishKMPPlugin"
         }
     }
 }

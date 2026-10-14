@@ -39,7 +39,7 @@ apacheCommons-imaging = "1.0.0-alpha6"
 drewnoakes-metadataExtractor = "2.19.0"
 
 
-# ----- JavaEE框架 -----
+# ----- JavaEE 框架 -----
 springboot-bom = "3.5.0"
 
 
@@ -59,23 +59,23 @@ spring-dependency = "1.1.7"
 # 组件
 [libraries]
 # ----- 实用工具 -----
-# < Apache通用工具 >
+# < Apache 通用工具 >
 # I/O
 apacheCommons-io = { group = "org.apache.commons", name = "commons-io", version.ref = "apacheCommons-io" }
 
 # < SLF4J >
-# SLF4J・API（SLF4J接口声明，不包括具体实现，编写库时应当使用。）
+# SLF4J・API（SLF4J 接口声明，不包括具体实现，编写库时应当使用。）
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
-# SLF4J・NOP（SLF4J的空实现，不输出任何消息，用于屏蔽日志输出。）
+# SLF4J・NOP（SLF4J 的空实现，不输出任何消息，用于屏蔽日志输出。）
 slf4j-nop = { group = "org.slf4j", name = "slf4j-nop", version.ref = "slf4j" }
-# SLF4J・Simple（SLF4J的简单实现，功能较少，通常仅用于调试场景。）
+# SLF4J・Simple（SLF4J 的简单实现，功能较少，通常仅用于调试场景。）
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 
 # < SLF4J >
-# Log4J2・SLF4J实现
+# Log4J2・SLF4J 实现
 log4j2-slf4j = { group = "org.apache.logging.log4j", name = "log4j-slf4j2-impl", version.ref = "log4j2-slf4j" }
 
-# < ID生成器 >
+# < ID 生成器 >
 # UUID Creator
 uuidCreator = { group = "com.github.f4b6a3", name = "uuid-creator", version.ref = "uuidCreator" }
 
@@ -98,13 +98,13 @@ jdbc_mariadb = { group = "org.mariadb.jdbc", name = "mariadb-java-client", versi
 # < 数据库工具 >
 # MyBatis
 mybatis-core = { group = "org.mybatis", name = "mybatis", version.ref = "mybatis" }
-# MyBatis・SpringBoot支持
+# MyBatis・SpringBoot 支持
 mybatis-springboot-starter = { group = "org.mybatis.spring.boot", name = "mybatis-spring-boot-starter", version.ref = "mybatis-springboot-starter" }
 
 # < 数据库连接池 >
 # Druid・核心
 druid-core = { group = "com.alibaba", name = "druid", version.ref = "druid" }
-# Druid・SpringBoot支持
+# Druid・SpringBoot 支持
 druid-springboot-starter = { group = "com.alibaba", name = "druid-spring-boot-starter", version.ref = "druid" }
 
 
@@ -119,7 +119,7 @@ okhttp3-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-
 okhttp3-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver" }
 
 # < Retrofit >
-# BOM文件（其他组件的版本配置文件）
+# BOM 文件（其他组件的版本配置文件）
 retrofit2-bom = { group = "com.squareup.retrofit2", name = "retrofit-bom", version.ref = "retrofit2-bom" }
 # 核心
 retrofit2-core = { group = "com.squareup.retrofit2", name = "retrofit" }
@@ -127,9 +127,9 @@ retrofit2-core = { group = "com.squareup.retrofit2", name = "retrofit" }
 # < OkHttps >
 # 核心
 okhttps-core = { group = "cn.zhxu", name = "okhttps", version.ref = "okhttps-core" }
-# GSON支持
+# GSON 支持
 okhttps-gson = { group = "cn.zhxu", name = "okhttps-gson", version.ref = "okhttps-core" }
-# Jackson支持
+# Jackson 支持
 okhttps-jackson = { group = "cn.zhxu", name = "okhttps-jackson", version.ref = "okhttps-core" }
 
 # < HiveMQ MQTT Client >
@@ -139,13 +139,13 @@ hivemq-mqtt = { group = "com.hivemq", name = "hivemq-mqtt-client", version.ref =
 
 # ----- 媒体工具 -----
 # < JavaCV >
-# JavaCV・全量（包括FFmpeg/OpenCV/OpenBLAS等组件及各平台Native库，体积巨大，一般仅用于实验。）
+# JavaCV・全量（包括 FFmpeg/OpenCV/OpenBLAS 等组件及各平台 Native 库，体积巨大，一般仅用于实验。）
 javacv-platform = { group = "org.bytedeco", name = "javacv-platform", version.ref = "javacv" }
 # JavaCV・核心（仅包含接口声明，必须配合以下具体的组件才能使用。）
 javacv-api = { group = "org.bytedeco", name = "javacv", version.ref = "javacv" }
 # JavaCV・FFmpeg
 javacv-ffmpeg = { group = "org.bytedeco", name = "ffmpeg", version.ref = "javacv-ffmpeg" }
-# JavaCV・OpenCV（需要同时声明OpenBLAS的依赖项，否则运行时会报错。）
+# JavaCV・OpenCV（需要同时声明 OpenBLAS 的依赖项，否则运行时会报错。）
 javacv-opencv = { group = "org.bytedeco", name = "opencv", version.ref = "javacv-opencv" }
 # JavaCV・OpenBLAS
 javacv-openblas = { group = "org.bytedeco", name = "openblas", version.ref = "javacv-openblas" }
@@ -160,9 +160,9 @@ apacheCommons-imaging = { group = "org.apache.commons", name = "commons-imaging"
 drewnoakes-metadataExtractor = { group = "com.drewnoakes", name = "metadata-extractor", version.ref = "drewnoakes-metadataExtractor" }
 
 
-# ----- JavaEE框架 -----
+# ----- JavaEE 框架 -----
 # < SpringBoot >
-# BOM文件（其他组件的版本配置文件）
+# BOM 文件（其他组件的版本配置文件）
 springboot-bom = { group = "org.springframework.boot", name = "spring-boot-dependencies", version.ref = "springboot-bom" }
 # Starter・核心
 springboot-starter-core = { group = "org.springframework.boot", name = "spring-boot-starter" }
@@ -173,26 +173,26 @@ springboot-starter-test = { group = "org.springframework.boot", name = "spring-b
 
 
 # ----- 测试工具 -----
-# < JUnit4 >
+# < JUnit 4 >
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 
-# < JUnit5 >
-# BOM文件（其他组件的版本配置文件）
+# < JUnit 5 >
+# BOM 文件（其他组件的版本配置文件）
 junit5-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit5-bom" }
 # 平台启动器
 junit5-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
-# Jupiter（JUnit5引擎的实现）
+# Jupiter（JUnit5 引擎的实现）
 junit5-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter-engine" }
-# Vintage（JUnit4及更早版本的兼容模块，可以运行JUnit4以及更早版本的测试代码，可选。）
+# Vintage（JUnit4 及更早版本的兼容模块，可以运行 JUnit4 以及更早版本的测试代码，可选。）
 junit5-vintage = { group = "org.junit.vintage", name = "junit-vintage-engine" }
 
 # < Mockito >
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito-core" }
 
 
-# Gradle插件
+# Gradle 插件
 [plugins]
-# ----- Gradle内置插件 -----
+# ----- Gradle 内置插件 -----
 # Java・基础（不建议直接使用，可以选择更具体的库或者应用程序。）
 java-base = { id = "org.gradle.java" }
 # Java・库
@@ -208,7 +208,7 @@ jacoco = { id = "jacoco" }
 
 
 # ----- Spring -----
-# SpringBoot插件（提供构建JAR/WAR包、调试应用等功能，版本号与SpringBoot同步。）
+# SpringBoot 插件（提供构建 JAR/WAR 包、调试应用等功能，版本号与 SpringBoot 同步。）
 spring-springboot = { id = "org.springframework.boot", version.ref = "spring-springboot" }
-# Spring版本插件（为SpringBoot等模块引入BOM文件，子模块声明依赖时无需指定版本，以SpringBoot插件版本为准。）
+# Spring 版本插件（为 SpringBoot 等模块引入 BOM 文件，子模块声明依赖时无需指定版本，以 SpringBoot 插件版本为准。）
 spring-dependency = { id = "io.spring.dependency-management", version.ref = "spring-dependency" }

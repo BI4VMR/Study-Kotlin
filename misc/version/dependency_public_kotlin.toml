@@ -4,6 +4,7 @@
 kotlin = "2.4.10"
 ktx_coroutines = "1.11.0"
 ktx_serial-json = "1.11.0"
+ktx_io-core = "0.9.1"
 
 
 # ----- 数据存储 -----
@@ -18,6 +19,7 @@ ktor = "3.5.1"
 compose-material3 = "1.9.0"
 compose-materialIcons = "1.7.3"
 compose-resources = "1.11.1"
+compose-viewmodel = "2.10.0"
 
 reorderable = "2.4.3"
 coil3 = "3.5.0"
@@ -29,12 +31,13 @@ mockito-kotlin = "5.4.0"
 mockk = "1.13.17"
 
 
-# ----- Gradle插件 -----
+# ----- Gradle 插件 -----
 plugin_ksp = "2.2.21-2.0.5"
 plugin_compose = "1.11.1"
+plugin_agp = "8.13.2"
 plugin_dokka = "2.2.0"
 plugin_kover = "0.9.8"
-buildConfig = "6.0.10"
+plugin_buildConfig = "6.0.10"
 
 
 # 组件
@@ -51,12 +54,14 @@ test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "ko
 # < Kotlin 官方扩展 >
 # Kotlin・协程・核心
 ktx_coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "ktx_coroutines" }
-# Kotlin・协程・Java Swing支持（允许在Java GUI中使用Main调度器）
+# Kotlin・协程・Java Swing 支持（允许在 Java GUI 中使用 Main 调度器。）
 ktx_coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "ktx_coroutines" }
 # Kotlin・协程・测试工具
 ktx_coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "ktx_coroutines" }
 # Kotlin・序列化・JSON
 ktx_serial-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "ktx_serial-json" }
+# Kotlin・I/O・核心
+ktx_io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "ktx_io-core" }
 
 
 # ----- 数据存储 -----
@@ -65,7 +70,7 @@ ktx_serial-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serializati
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 # SQLDelight・驱动・SQLite
 sqldelight-driver-sqlite = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
-# SQLDelight・协程扩展（查询方法可以返回Flow类型）
+# SQLDelight・协程扩展（查询方法可以返回 Flow 类型。）
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 
 
@@ -91,10 +96,11 @@ ktor-client-netty = { module = "io.ktor:ktor-client-netty", version.ref = "ktor"
 ktor-client-jetty = { module = "io.ktor:ktor-client-jetty", version.ref = "ktor" }
 # Ktor・客户端・引擎（Coroutine-based I/O）
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+# Ktor・客户端・HTTP 协议解析
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 # Ktor・客户端・日志工具
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
-# Ktor・序列化・KTX-Json
+# Ktor・序列化・KotlinX Json
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
 
@@ -102,28 +108,35 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 # < Compose Multiplatform >
 # Compose・Material3
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
+# Compose・Material3・窗口尺寸自适应
+compose-material3-window-size = { module = "org.jetbrains.compose.material3:material3-window-size-class", version.ref = "compose-material3" }
 # Compose・内置图标资源
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose-materialIcons" }
 # Compose・资源框架
 compose-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-resources" }
+# Compose・ViewModel
+compose-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "compose-viewmodel" }
+# Compose・ViewModel・Navigation3
+compose-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "compose-viewmodel" }
+
 
 # < Reorderable >
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 # < Coil3 >
-# Coil3・Compose支持
+# Coil3・Compose 支持
 coil3-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
 # < FileKit >
 # FileKit・核心
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
 # FileKit・对话框
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
-# FileKit・对话框・Compose扩展
+# FileKit・对话框・Compose 扩展
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 
 
 # ----- 测试工具 -----
 # < Mockito >
-# Mockito・Kotlin扩展
+# Mockito・Kotlin 扩展
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito-kotlin" }
 
 # < MockK >
@@ -134,11 +147,11 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 # Gradle插件
 [plugins]
 # ----- Kotlin -----
-# 基础・JVM平台支持
+# 基础・JVM 平台支持
 core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 # 扩展・序列化
 serial = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-# 扩展・Spring支持
+# 扩展・Spring 支持
 spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 # KSP（注解处理器）
 ksp = { id = "com.google.devtools.ksp", version.ref = "plugin_ksp" }
@@ -147,10 +160,12 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "plugin_ksp" }
 # ----- Compose Multiplatform -----
 # Compose Multiplatform
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "plugin_compose" }
-# Compose Multiplatform 编译器（仅基于Kotlin v2.0之后的Compose Multiplatform版本需要声明）
+# Compose Multiplatform 编译器（仅基于 Kotlin v2.0 之后的 Compose Multiplatform 版本需要声明）
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 # Kotlin Multiplatform
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+# Kotlin Multiplatform (Android Library)
+kotlin-multiplatform-android = { id = "com.android.kotlin.multiplatform.library", version.ref = "plugin_agp" }
 
 
 # ----- 其他插件 -----
@@ -160,5 +175,5 @@ sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "plugin_dokka" }
 # Kover（测试代码覆盖率检测工具）
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "plugin_kover" }
-# BuildConfig生成插件（类似Android的BuildConfig类生成工具，以便我们通过构建脚本向应用程序注入版本号等信息。）
-buildConfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildConfig" }
+# BuildConfig 生成插件（类似 Android 的 BuildConfig 类生成工具，以便我们通过构建脚本向应用程序注入版本号等信息。）
+buildConfig = { id = "com.github.gmazzo.buildconfig", version.ref = "plugin_buildConfig" }

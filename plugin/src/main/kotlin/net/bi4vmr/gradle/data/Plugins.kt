@@ -1,6 +1,7 @@
 package net.bi4vmr.gradle.data
 
 import net.bi4vmr.gradle.plugin.JavaVersionPlugin
+import net.bi4vmr.gradle.plugin.PrivatePublishKMPPlugin
 import net.bi4vmr.gradle.plugin.PrivatePublishPlugin
 import net.bi4vmr.gradle.plugin.PrivateRepoPlugin
 import net.bi4vmr.gradle.plugin.PublicRepoPlugin
@@ -36,11 +37,15 @@ object Plugins {
 
     const val KOTLIN_JVM: String = "org.jetbrains.kotlin.jvm"
 
+    const val KOTLIN_MULTIPLATFORM: String = "org.jetbrains.kotlin.multiplatform"
+
     const val ANDROID_LIBRARY = "com.android.library"
 
     const val ANDROID_APPLICATION = "com.android.application"
 
     const val ANDROID_KOTLIN = "org.jetbrains.kotlin.android"
+
+    const val DOKKA = "org.jetbrains.dokka"
 
 
     /*
@@ -54,4 +59,6 @@ object Plugins {
     const val PRIVATE_REPO: String = PrivateRepoPlugin.NAME
 
     const val PRIVATE_PUBLISH: String = PrivatePublishPlugin.NAME
+
+    const val PRIVATE_PUBLISH_KMP: String = PrivatePublishKMPPlugin.NAME
 }

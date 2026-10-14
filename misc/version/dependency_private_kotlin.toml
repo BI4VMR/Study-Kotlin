@@ -5,6 +5,8 @@ common_reflect = "1.0.0"
 
 finance_base = "1.0.0"
 
+media_exif = "1.0.0"
+
 external_adb = "1.0.0"
 
 
@@ -15,6 +17,13 @@ common_reflect = { group = "net.bi4vmr.tool.kotlin", name = "common-reflect", ve
 
 finance_base = { group = "net.bi4vmr.tool.kotlin", name = "finance-base", version.ref = "finance_base" }
 
+media_exif = { group = "net.bi4vmr.tool.kotlin", name = "media-exif", version.ref = "media_exif" }
+
 external_adb-core = { group = "net.bi4vmr.tool.kotlin", name = "external-adb", version.ref = "external_adb" }
 external_adb-ktx = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-ktx", version.ref = "external_adb" }
-external_adb-cast = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast", version.ref = "external_adb" }
+external_adb-cast-common = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-common", version.ref = "external_adb" }
+external_adb-cast-media = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-media", version.ref = "external_adb" }
+external_adb-cast-local = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-local", version.ref = "external_adb" }
+external_adb-cast-transfer = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-transfer", version.ref = "external_adb" }
+external_adb-cast-receiver = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-receiver", version.ref = "external_adb" }
+external_adb-cast-compose = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-compose", version.ref = "external_adb" }

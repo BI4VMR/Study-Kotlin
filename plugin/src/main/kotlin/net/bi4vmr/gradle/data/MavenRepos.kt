@@ -4,7 +4,7 @@ import net.bi4vmr.gradle.entity.MavenRepo
 import java.io.File
 
 /**
- * 预设Maven仓库。
+ * 预设 Maven 仓库。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -67,7 +67,7 @@ object MavenRepos {
         description = "私有仓库（通过局域网连接）。"
     )
 
-    // 主机名，局域网和TailScale VPN可用。
+    // 主机名，局域网和 TailScale VPN 可用。
     val PRIVATE_HOSTNAME = MavenRepo(
         name = "Private-HostName",
         host = "BI4VMR-S1",
@@ -76,7 +76,7 @@ object MavenRepos {
         description = "私有仓库（通过主机名连接）。"
     )
 
-    // DynV6域名。
+    // DynV6 域名。
     val PRIVATE_DYNV6 = MavenRepo(
         name = "Private-DynV6",
         host = "bi4vmr.dynv6.net",
@@ -94,7 +94,7 @@ object MavenRepos {
     )
 
     /**
-     * Maven本地仓库。
+     * Maven 本地仓库。
      *
      * 该常量仅用于占位，建议使用内置函数 `mavenLocal()` 。
      */

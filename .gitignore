@@ -15,6 +15,8 @@ out/
 build/
 # CMake
 cmake-build-*/
+# CMake - Android NDK
+.cxx/
 
 
 # ----- 编译工具临时文件 -----
@@ -22,21 +24,21 @@ cmake-build-*/
 .gradle/
 
 
-# ----- IDE本地配置 -----
+# ----- IDE 本地配置 -----
 # IntelliJ IDEA
 .idea/
 # Visual Studio Code
 .vscode/
 
 
-# ----- Java工程 -----
-# Java错误日志
+# ----- Java 工程 -----
+# Java 错误日志
 hs_err_pid*.log
 
+# ----- Kotlin 工程 -----
+# Kotlin 编译缓存
+.kotlin/
 
-# ----- Android工程 -----
+# ----- Android 工程 -----
 # 本地属性配置文件
 local.properties
-# CMake - Android NDK
-.cxx/
-.externalNativeBuild/

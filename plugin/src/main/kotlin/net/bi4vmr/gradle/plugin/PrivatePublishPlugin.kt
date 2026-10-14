@@ -1,10 +1,14 @@
+@file:Suppress("UnstableApiUsage")
+
 package net.bi4vmr.gradle.plugin
 
+import com.android.build.api.variant.LibraryAndroidComponentsExtension
 import net.bi4vmr.gradle.data.MavenRepos
 import net.bi4vmr.gradle.data.Plugins
 import net.bi4vmr.gradle.entity.MavenRepo
 import net.bi4vmr.gradle.util.LogUtil
 import net.bi4vmr.gradle.util.NetUtil
+import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
@@ -15,7 +19,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.register
 
 /**
- * 私有Maven发布插件。
+ * 私有 Maven 仓库发布插件。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -36,10 +40,10 @@ class PrivatePublishPlugin : Plugin<Project> {
             if (NetUtil.scanByTCP(MavenRepos.PRIVATE_LAN.host, MavenRepos.PRIVATE_LAN.port)) {
                 LogUtil.info("Use LAN address to connect private repositories.")
                 netTestResult = MavenRepos.PRIVATE_LAN
-            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_DYNV6.host, MavenRepos.PRIVATE_DYNV6.port)) {
+            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_HOSTNAME.host, MavenRepos.PRIVATE_HOSTNAME.port)) {
                 LogUtil.info("Use Hostname to connect private repositories.")
                 netTestResult = MavenRepos.PRIVATE_HOSTNAME
-            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_HOSTNAME.host, MavenRepos.PRIVATE_HOSTNAME.port)) {
+            } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_DYNV6.host, MavenRepos.PRIVATE_DYNV6.port)) {
                 LogUtil.info("Use DynV6 domain to connect private repositories.")
                 netTestResult = MavenRepos.PRIVATE_DYNV6
             } else if (NetUtil.scanByTCP(MavenRepos.PRIVATE_LOCAL.host, MavenRepos.PRIVATE_LOCAL.port)) {
@@ -51,11 +55,42 @@ class PrivatePublishPlugin : Plugin<Project> {
             }
         }
 
-        // 应用Maven Publish插件
+        // 应用 Maven Publish 插件
         target.pluginManager.apply(Plugins.MAVEN_PUBLISH)
 
         // 注册扩展
         target.extensions.create(PrivatePublishConfig.NAME, PrivatePublishConfig::class.java)
+
+        // AGP 8 以上版本不会自动生成发布配置，需要在 `android {}` 块中通过 `publishing {}` 显式声明。
+        target.pluginManager.withPlugin(Plugins.ANDROID_LIBRARY) {
+            target.extensions.findByType(LibraryAndroidComponentsExtension::class.java)
+                ?.finalizeDsl { android ->
+                    val ext = target.extensions.findByType(PrivatePublishConfig::class.java) ?: return@finalizeDsl
+
+                    android.publishing {
+                        if (ext.includeAllVariants) {
+                            multipleVariants {
+                                allVariants()
+                                if (ext.uploadSources) {
+                                    withSourcesJar()
+                                }
+                                if (ext.uploadJavadoc) {
+                                    withJavadocJar()
+                                }
+                            }
+                        } else {
+                            singleVariant("release") {
+                                if (ext.uploadSources) {
+                                    withSourcesJar()
+                                }
+                                if (ext.uploadJavadoc) {
+                                    withJavadocJar()
+                                }
+                            }
+                        }
+                    }
+                }
+        }
 
         target.plugins.withId(Plugins.MAVEN_PUBLISH) {
             target.afterEvaluate {
@@ -86,7 +121,7 @@ class PrivatePublishPlugin : Plugin<Project> {
                     }
 
                     publications {
-                        // 创建名为"Maven"的发布配置
+                        // 创建名为 "Maven" 的发布配置
                         register<MavenPublication>("Maven") {
                             // 产物的基本信息
                             groupId = ext.groupID
@@ -94,15 +129,17 @@ class PrivatePublishPlugin : Plugin<Project> {
                             version = ext.version
 
                             // 发布程序包
-                            if (target.isAndroidLib()) {
-                                from(components.getByName("release"))
+                            val component = if (target.isAndroidLib()) {
+                                val cmpName: String = if (ext.includeAllVariants) "default" else "release"
+                                target.components.findByName(cmpName)
                             } else {
-                                from(components.getByName("java"))
-                            }
+                                target.components.findByName("java")
+                            } ?: throw GradleException("Can not find component to publish. Please check config.")
+                            from(component)
 
                             val projectName: String = target.rootProject.name
 
-                            // POM信息
+                            // POM 信息
                             pom {
                                 // 打包格式
                                 packaging = if (target.isAndroidLib()) "aar" else "jar"
@@ -119,16 +156,7 @@ class PrivatePublishPlugin : Plugin<Project> {
                     }
                 }
 
-                // 根据模块类型配置是否上传源码包和文档包
-                if (target.isAndroidLib()) {
-                    /*
-                     * 自从Gradle 7.0开始，Android Library默认会发布源码，且无法在 `afterEvaluate {}` 阶段修改配置，因此无法
-                     * 通过插件的Extensions修改此行为，目前需要用户在 `android {}` 块中手动进行配置。
-                     */
-                    if (!ext.uploadSources || !ext.uploadJavadoc) {
-                        throw IllegalArgumentException("This version of Gradle will upload sources automatically, plugin can not interrupt this behavior, please use `publishing {}` in `android {}` to config manually!")
-                    }
-                } else {
+                if (!target.isAndroidLib()) {
                     target.extensions.configure<JavaPluginExtension> {
                         if (ext.uploadSources) {
                             withSourcesJar()
@@ -136,7 +164,7 @@ class PrivatePublishPlugin : Plugin<Project> {
                         if (ext.uploadJavadoc) {
                             withJavadocJar()
 
-                            // 指定JavaDoc编码，解决系统编码与文件不一致导致错误。
+                            // 指定 JavaDoc 编码，避免 Windows 系统编码与文件不一致导致错误。
                             target.tasks.withType(Javadoc::class.java).configureEach {
                                 options.encoding = "UTF-8"
                             }
