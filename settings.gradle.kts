@@ -123,3 +123,6 @@ include(":lib_external:adb_cast_compose")
 
 include(":demo_external:adb_cast_compose_local")
 include(":demo_external:adb_cast_compose_remote")
+
+include(":adb_main")
+include(":adb_gui")

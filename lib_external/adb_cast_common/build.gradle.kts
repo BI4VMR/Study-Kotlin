@@ -25,13 +25,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(libKotlin.standardlib)
-            api(libKotlin.ktx.io.core)
         }
 
         jvmMain.dependencies {
             api(libJava.slf4j.api)
-
-            api(privateLibJava.common.base)
         }
 
         jvmTest.dependencies {

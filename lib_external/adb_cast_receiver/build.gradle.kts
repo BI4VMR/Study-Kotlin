@@ -1,4 +1,4 @@
-val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.core.get()
+val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.cast.local.get()
 val mvnGroupID: String = requireNotNull(depInTOML.group)
 val mvnArtifactID: String = depInTOML.name
 val mvnVersion: String = requireNotNull(depInTOML.version)
@@ -6,9 +6,9 @@ val mvnVersion: String = requireNotNull(depInTOML.version)
 
 plugins {
     alias(libKotlin.plugins.core)
-    application
-    // alias(privateLibJava.plugins.java.version)
-    // alias(privateLibJava.plugins.publish.private)
+
+    alias(privateLibJava.plugins.java.version)
+    alias(privateLibJava.plugins.publish.private)
 }
 
 tasks.withType<Test> {
@@ -17,13 +17,22 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    /* 工程组件 */
+    // 本地调试
     api(project(":lib_external:adb_cast_common"))
     api(project(":lib_external:adb_cast_media"))
 
+    // 依赖传递
+    // api(privateLibKotlin.external.adb.cast.common)
+    // api(privateLibKotlin.external.adb.cast.media)
+
+
+    /* 外部组件 */
     api(libJava.slf4j.api)
     runtimeOnly(libJava.slf4j.simple)
 
 
+    /* 测试组件 */
     // JUnit5 BOM 版本配置文件
     testImplementation(platform(libJava.junit5.bom))
     // JUnit5 平台启动器
@@ -32,12 +41,12 @@ dependencies {
     testImplementation(libJava.junit5.jupiter)
 }
 
-// javaVersionConfig {
-//     jdkVersion = JavaVersion.VERSION_1_8
-// }
+javaVersionConfig {
+    jdkVersion = JavaVersion.VERSION_1_8
+}
 
-// privatePublishConfig {
-//     groupID = mvnGroupID
-//     artifactID = mvnArtifactID
-//     version = mvnVersion
-// }
+privatePublishConfig {
+    groupID = mvnGroupID
+    artifactID = mvnArtifactID
+    version = mvnVersion
+}

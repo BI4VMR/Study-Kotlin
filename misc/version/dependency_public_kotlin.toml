@@ -16,6 +16,7 @@ ktor = "3.5.1"
 
 
 # ----- 图形界面 -----
+compose-ui = "1.12.1"
 compose-material3 = "1.9.0"
 compose-materialIcons = "1.7.3"
 compose-resources = "1.11.1"
@@ -106,12 +107,24 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 
 # ----- 图形界面 -----
 # < Compose Multiplatform >
+# Compose・UI・核心（提供测量、绘制、 Modifier 等能力，被 Material3 等上层模块依赖。）
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-ui" }
+# Compose・UI・预览（提供 `@Preview` 注解定义，需要在所有变体引入确保编译通过。）
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose-ui" }
+# Compose・UI・调试工具（ IDE 预览功能，仅在 Debug 变体引入即可， Release 变体无需引入。）
+compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "compose-ui" }
+# Compose・UI・绘图（提供 2D 画布等基础 API，被 UI 模块依赖，通常无需显式声明，仅编写库时使用。）
+compose-ui-graphics = { module = "org.jetbrains.compose.ui:ui-graphics", version.ref = "compose-ui" }
+# Compose・UI・Skiko（提供 Skia 引擎 API ，被 UI 模块依赖，通常无需显式声明，仅编写库时使用。）
+compose-ui-skiko = { module = "org.jetbrains.compose.ui:ui-skiko", version.ref = "compose-ui" }
+# Compose・基础组件（提供列表容器、手势处理等能力，被 Material3 等上层模块依赖。）
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-ui" }
 # Compose・Material3
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 # Compose・Material3・窗口尺寸自适应
 compose-material3-window-size = { module = "org.jetbrains.compose.material3:material3-window-size-class", version.ref = "compose-material3" }
 # Compose・内置图标资源
-compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose-materialIcons" }
+compose-material-icons = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose-materialIcons" }
 # Compose・资源框架
 compose-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-resources" }
 # Compose・ViewModel
