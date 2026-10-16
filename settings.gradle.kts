@@ -108,7 +108,6 @@ include(":M04_Utils:C01_Test:S03_MockK")
 include(":M07_GUI:C01_CMP:S01_Desktop")
 
 
-
 // TODO Test
 include(":M01_Overview:C02_AdbMqtt:Protocol")
 include(":M01_Overview:C02_AdbMqtt:Agent")
@@ -120,9 +119,14 @@ include(":lib_external:adb_cast_local")
 include(":lib_external:adb_cast_transfer")
 include(":lib_external:adb_cast_receiver")
 include(":lib_external:adb_cast_compose")
+include(":lib_external:adb_proxy_api")
+include(":lib_external:adb_proxy_client")
+include(":lib_external:adb_proxy_server")
 
 include(":demo_external:adb_cast_compose_local")
 include(":demo_external:adb_cast_compose_remote")
+include(":demo_external:adb_proxy_server")
+include(":demo_external:adb_proxy_client")
 
 include(":adb_main")
 include(":adb_gui")

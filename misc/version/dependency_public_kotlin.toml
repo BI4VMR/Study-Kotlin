@@ -87,6 +87,8 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor"
 ktor-server-jetty = { module = "io.ktor:ktor-server-jetty", version.ref = "ktor" }
 # Ktor・服务端・引擎（Coroutine-based I/O）
 ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+# Ktor・服务端・WebSocket
+ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 # Ktor・客户端・核心
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 # Ktor・客户端・引擎（Tomcat）
@@ -97,11 +99,13 @@ ktor-client-netty = { module = "io.ktor:ktor-client-netty", version.ref = "ktor"
 ktor-client-jetty = { module = "io.ktor:ktor-client-jetty", version.ref = "ktor" }
 # Ktor・客户端・引擎（Coroutine-based I/O）
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
-# Ktor・客户端・HTTP 协议解析
+# Ktor・客户端・内容协定（配合序列化工具自动解析 JSON 等内容为对象。）
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+# Ktor・客户端・WebSocket 支持
+ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 # Ktor・客户端・日志工具
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
-# Ktor・序列化・KotlinX Json
+# Ktor・序列化・KotlinX JSON 支持
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
 
