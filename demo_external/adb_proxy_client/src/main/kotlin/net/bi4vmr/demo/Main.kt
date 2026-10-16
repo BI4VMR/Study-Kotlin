@@ -61,6 +61,32 @@ fun main() = application {
             }) {
                 Text("停止监听设备列表")
             }
+
+            /*
+             * 示例：远程 Shell ，通过 socat 接入系统原生终端。
+             *
+             * 必须由 `stty raw -echo` 将终端切换为 raw 模式，方向键、Tab 等控制字符才能原样传到设备。
+             * 不要依赖 socat 的 `raw` 选项：socat 1.7.3.x 会将其误用于 TCP 连接，要么报 `tcsetattr ... Inappropriate ioctl for device` ，
+             * 要么终端仍处于行缓冲模式，导致按上键显示 `^[[A` 。
+             */
+            Button(onClick = {
+                runBlocking {
+                    client.fetchDeviceList().firstOrNull()
+                        ?.let {
+                            val bridge = client.openShellBridge(it.sn)
+                            bridge.use {
+                                val script = "stty raw -echo; socat - TCP:127.0.0.1:${bridge.port}; stty sane"
+                                val code = ProcessBuilder("konsole", "-e", "sh", "-c", script)
+                                    .inheritIO()
+                                    .start()
+                                    .waitFor()
+                                System.err.println("\n会话已结束（终端退出码 $code）")
+                            }
+                        }
+                }
+            }) {
+                Text("远程 Shell")
+            }
         }
     }
 }

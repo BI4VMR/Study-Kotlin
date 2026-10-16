@@ -80,6 +80,24 @@ class ADBProxyClient(
     val devicesFlow: StateFlow<List<ADBRemoteDevice>> = _devicesFlow
 
 
+    /**
+     * 在本机开启 Shell 桥接端口。
+     *
+     * 桥接端口仅监听 `127.0.0.1` ，每个接入的 TCP 连接对应目标设备上的一个交互式 Shell 会话。可使用 `socat` 接入系统原生终端：
+     *
+     * `sh -c "stty raw -echo; socat - TCP:127.0.0.1:<port>; stty sane"`
+     *
+     * 终端必须先由 `stty raw -echo` 切换为 raw 模式，不要使用 socat 的 `raw` 选项：socat 1.7.3.x 会将其误用于 TCP 连接，
+     * 导致方向键、Tab 等按键显示为 `^[[A` 而无效。
+     *
+     * @param[sn] 目标设备序列号。
+     * @param[localPort] 本地端口， `0` 表示自动分配。
+     * @return 桥接对象，通过 [ShellBridge.port] 获取端口，关闭后停止监听。
+     */
+    @JvmOverloads
+    fun openShellBridge(sn: String, localPort: Int = 0): ShellBridge =
+        ShellBridge(client, host, port, sn, localPort)
+
     fun release() {
         client.close()
     }

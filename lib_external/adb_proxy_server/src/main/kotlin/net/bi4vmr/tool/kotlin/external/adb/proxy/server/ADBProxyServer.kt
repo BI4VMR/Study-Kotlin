@@ -12,7 +12,9 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
@@ -98,6 +100,23 @@ class ADBProxyServer(
             post(Constant.PATH_ADB_DEVICE_LIST) {
                 val result = onFetchDeviceList()
                 call.respondText(result, ContentType.Application.Json)
+            }
+
+            webSocket(Constant.PATH_ADB_SHELL) {
+                val sn = call.request.queryParameters[Constant.PARAM_SN]
+                val available = ADBController.getDevices().any { it.getSN() == sn && it.isOnline() }
+                if (sn.isNullOrBlank() || !available) {
+                    close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Device not available: $sn"))
+                    return@webSocket
+                }
+
+                val term = call.request.queryParameters[Constant.PARAM_TERM]
+                    ?.takeIf { it.matches(Regex("[A-Za-z0-9._-]{1,64}")) }
+                    ?: "xterm-256color"
+                val params = call.request.queryParameters
+                val cols = params[Constant.PARAM_COLS]?.toIntOrNull()?.takeIf { it > 0 }?.coerceAtMost(1000) ?: 120
+                val rows = params[Constant.PARAM_ROWS]?.toIntOrNull()?.takeIf { it > 0 }?.coerceAtMost(1000) ?: 30
+                ShellBridge.run(this, sn, term, cols, rows)
             }
 
             webSocket(Constant.PATH_ADB_EVENTS) {

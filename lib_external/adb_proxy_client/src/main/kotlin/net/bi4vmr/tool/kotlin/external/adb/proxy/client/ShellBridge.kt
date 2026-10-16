@@ -1,4 +1,6 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy
+package net.bi4vmr.tool.kotlin.external.adb.proxy.client
+
+import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.Constant
 
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.webSocket
@@ -31,6 +33,19 @@ class ShellBridge internal constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val listener = ServerSocket(localPort, 8, InetAddress.getLoopbackAddress())
 
+    // 尽力获取当前终端大小，失败时由服务端使用默认值
+    private val cols: Int
+    private val rows: Int
+
+    init {
+        val size = runCatching {
+            val p = ProcessBuilder("sh", "-c", "stty size < /dev/tty").redirectErrorStream(true).start()
+            p.inputStream.bufferedReader().readText().trim().split(" ").map { it.toInt() }
+        }.getOrNull()
+        rows = size?.getOrNull(0) ?: 0
+        cols = size?.getOrNull(1) ?: 0
+    }
+
     /**
      * 实际监听的本地端口。
      */
@@ -49,13 +64,17 @@ class ShellBridge internal constructor(
         }
     }
 
+    private val term: String = System.getenv("TERM")
+        ?.takeIf { it.isNotBlank() && it != "dumb" }
+        ?: "xterm-256color"
+
     private suspend fun serve(socket: Socket) {
         socket.use {
             try {
                 client.webSocket(
                     host = host,
                     port = serverPort,
-                    path = "${ADBProxyProtocol.PATH_SHELL}?sn=$sn"
+                    path = "${Constant.PATH_ADB_SHELL}?${Constant.PARAM_SN}=$sn&${Constant.PARAM_TERM}=$term&${Constant.PARAM_COLS}=$cols&${Constant.PARAM_ROWS}=$rows"
                 ) {
                     val upstream = launch {
                         val buf = ByteArray(4096)

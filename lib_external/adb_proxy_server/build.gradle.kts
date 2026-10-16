@@ -44,6 +44,7 @@ dependencies {
     api(libKotlin.ktor.server.core)
     api(libKotlin.ktor.server.cio)
     api(libKotlin.ktor.server.websockets)
+    implementation(libKotlin.pty4j)
 
 
     /* 测试组件 */
@@ -56,7 +57,7 @@ dependencies {
 }
 
 javaVersionConfig {
-    jdkVersion = JavaVersion.VERSION_1_8
+    jdkVersion = JavaVersion.VERSION_11
 }
 
 privatePublishConfig {
