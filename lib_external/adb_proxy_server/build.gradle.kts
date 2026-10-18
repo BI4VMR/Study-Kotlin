@@ -35,16 +35,15 @@ dependencies {
 
     /* 私有组件 */
     api(privateLibKotlin.external.adb.core)
-    api(privateLibKotlin.external.adb.ktx)
 
 
     /* 外部组件 */
     api(libJava.slf4j.api)
+    api(libJava.pty4j)
     api(libKotlin.ktx.coroutines.core)
     api(libKotlin.ktor.server.core)
     api(libKotlin.ktor.server.cio)
     api(libKotlin.ktor.server.websockets)
-    implementation(libKotlin.pty4j)
 
 
     /* 测试组件 */
@@ -57,6 +56,7 @@ dependencies {
 }
 
 javaVersionConfig {
+    // PTY4J 要求 JDK 版本至少为 11 。
     jdkVersion = JavaVersion.VERSION_11
 }
 

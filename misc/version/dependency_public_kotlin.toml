@@ -7,13 +7,16 @@ ktx_serial-json = "1.11.0"
 ktx_io-core = "0.9.1"
 
 
+# ----- 实用工具 -----
+# TODO
+
+
 # ----- 数据存储 -----
 sqldelight = "2.3.2"
 
 
 # ----- 网络通讯 -----
 ktor = "3.5.1"
-pty4j = "0.14.0"
 
 
 # ----- 图形界面 -----
@@ -66,6 +69,10 @@ ktx_serial-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serializati
 ktx_io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "ktx_io-core" }
 
 
+# ----- 实用工具 -----
+# TODO
+
+
 # ----- 数据存储 -----
 # < SQLDelight >
 # SQLDelight・核心
@@ -77,10 +84,6 @@ sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", 
 
 
 # ----- 网络通讯 -----
-# < PTY4J >
-# 伪终端（PTY）支持
-pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
-
 # < Ktor >
 # Ktor・服务端・核心
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }

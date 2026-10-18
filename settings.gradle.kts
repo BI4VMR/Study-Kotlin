@@ -130,3 +130,4 @@ include(":demo_external:adb_proxy_client")
 
 include(":adb_main")
 include(":adb_gui")
+include(":adb_core")

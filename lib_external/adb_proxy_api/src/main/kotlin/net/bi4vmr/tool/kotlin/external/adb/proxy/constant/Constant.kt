@@ -1,5 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.constant
 
+import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.Constant.PARAM_SN
+
+
 /**
  * 全局常量。
  *
@@ -42,31 +45,14 @@ object Constant {
     const val PATH_ADB_EVENTS: String = "/adb/events"
 
     /**
-     * 路径：交互式 Shell 。
+     * 路径：远程 ADB Shell 。
      *
-     * 协议为 WebSocket ，查询参数 [PARAM_SN] 指定目标设备序列号。二进制帧为终端原始字节流，双向透传，连接关闭即结束会话。
+     * 协议为 WebSocket ，查询参数 [PARAM_SN] 表示目标设备序列号。
      */
     const val PATH_ADB_SHELL: String = "/adb/shell"
 
     /**
-     * 查询参数：设备序列号。
+     * 查询参数： ADB 设备序列号。
      */
     const val PARAM_SN: String = "sn"
-
-    /**
-     * 查询参数：终端类型。
-     *
-     * 对应客户端终端的 `TERM` 环境变量，决定设备 Shell 是否启用方向键、Tab 补全等行编辑功能，缺省值为 `xterm-256color` 。
-     */
-    const val PARAM_TERM: String = "term"
-
-    /**
-     * 查询参数：终端列数。
-     */
-    const val PARAM_COLS: String = "cols"
-
-    /**
-     * 查询参数：终端行数。
-     */
-    const val PARAM_ROWS: String = "rows"
 }

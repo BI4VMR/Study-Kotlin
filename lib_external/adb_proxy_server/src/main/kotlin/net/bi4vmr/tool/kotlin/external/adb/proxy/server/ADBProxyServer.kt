@@ -1,24 +1,21 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
-import io.ktor.http.ContentType
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.EmbeddedServer
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
-import io.ktor.server.websocket.WebSockets
-import io.ktor.server.websocket.webSocket
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
+import com.pty4j.PtyProcessBuilder
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.cio.*
+import io.ktor.server.engine.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.websocket.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
+import net.bi4vmr.tool.kotlin.external.adb.ADBEventListener
+import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.model.toRemoteState
@@ -47,8 +44,14 @@ class ADBProxyServer(
     private val port: Int = Constant.PORT_SERVER_DEFAULT,
 ) {
 
+    /**
+     * 日志工具。
+     */
     private val logger = LoggerFactory.getLogger(ADBProxyServer::class.java)
 
+    /**
+     * Ktor 服务器。
+     */
     private var server: EmbeddedServer<*, *>? = null
 
     /**
@@ -61,6 +64,16 @@ class ADBProxyServer(
         encodeDefaults = true
     }
 
+    /**
+     * 设备状态监听器实例。
+     */
+    private val deviceListener: DeviceListener = DeviceListener()
+
+    /**
+     * Flow : 设备列表。
+     */
+    private val devicesFlow: MutableStateFlow<List<ADBDevice>> = MutableStateFlow(emptyList())
+
 
     @Synchronized
     fun start() {
@@ -72,7 +85,7 @@ class ADBProxyServer(
         if (!ADBController.isInitialized()) {
             ADBController.init()
         }
-        ADBObserver.init()
+        ADBController.addEventListener(deviceListener)
 
         server = embeddedServer(CIO, host = host, port = port) {
             configure()
@@ -83,9 +96,10 @@ class ADBProxyServer(
 
     @Synchronized
     fun stop() {
+        ADBController.removeEventListener(deviceListener)
+
         server?.stop(500, 2000)
         server = null
-        ADBObserver.terminate()
     }
 
 
@@ -102,28 +116,15 @@ class ADBProxyServer(
                 call.respondText(result, ContentType.Application.Json)
             }
 
-            webSocket(Constant.PATH_ADB_SHELL) {
-                val sn = call.request.queryParameters[Constant.PARAM_SN]
-                val available = ADBController.getDevices().any { it.getSN() == sn && it.isOnline() }
-                if (sn.isNullOrBlank() || !available) {
-                    close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Device not available: $sn"))
-                    return@webSocket
-                }
-
-                val term = call.request.queryParameters[Constant.PARAM_TERM]
-                    ?.takeIf { it.matches(Regex("[A-Za-z0-9._-]{1,64}")) }
-                    ?: "xterm-256color"
-                val params = call.request.queryParameters
-                val cols = params[Constant.PARAM_COLS]?.toIntOrNull()?.takeIf { it > 0 }?.coerceAtMost(1000) ?: 120
-                val rows = params[Constant.PARAM_ROWS]?.toIntOrNull()?.takeIf { it > 0 }?.coerceAtMost(1000) ?: 30
-                ShellBridge.run(this, sn, term, cols, rows)
-            }
-
             webSocket(Constant.PATH_ADB_EVENTS) {
-                ADBObserver.devicesState.collect {
+                devicesFlow.collect {
                     val frame = Frame.Text(onFetchDeviceList())
                     send(frame)
                 }
+            }
+
+            webSocket(Constant.PATH_ADB_SHELL) {
+                onConnectADBShell(this)
             }
         }
     }
@@ -141,5 +142,87 @@ class ADBProxyServer(
             ListSerializer(ADBRemoteDevice.serializer()),
             list
         )
+    }
+
+    private suspend fun onConnectADBShell(session: DefaultWebSocketServerSession) {
+        /* 参数校验 */
+        val sn = session.call.request.queryParameters[Constant.PARAM_SN]
+        logger.debug("Receive [${Constant.PATH_ADB_SHELL}] request. SN:[$sn]")
+        if (sn.isNullOrBlank()) {
+            session.close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Device SN is required."))
+            return
+        }
+
+
+        val available = ADBController.getDevices().any { it.getSN() == sn && it.isOnline() }
+        if (!available) {
+            session.close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Device not ready or not exist."))
+            return
+        }
+
+
+        val execName = ADBController.getExecutableFile()?.absolutePath ?: "adb"
+        val env = HashMap(System.getenv())
+        if (env["TERM"] == null) {
+            env["TERM"] = "xterm-256color"
+        }
+
+        // 使用 `pty4j` 启动 ADB Shell 进程，确保终端控制信息能够被正确处理。
+        val process = PtyProcessBuilder(arrayOf(execName, "-s", sn, "shell"))
+            .setEnvironment(env)
+            .start()
+
+
+        /* 将 ADB 输出转发到远程设备 */
+        val shellToRemoteJob = session.launch {
+            try {
+                val buffer = ByteArray(4096)
+                while (true) {
+                    val data = process.inputStream.read(buffer)
+                    if (data < 0) {
+                        break
+                    }
+
+                    val frame = Frame.Binary(true, buffer.copyOf(data))
+                    session.send(frame)
+                }
+            } catch (e: Exception) {
+                // TODO
+                e.printStackTrace()
+            } finally {
+                session.close()
+            }
+        }
+
+
+        /* 将远程设备输入转发到 ADB 设备 */
+        try {
+            for (frame in session.incoming) {
+                if (frame is Frame.Binary) {
+                    val data = frame.readBytes()
+                    process.outputStream.apply {
+                        write(data)
+                        flush()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // TODO
+            e.printStackTrace()
+        } finally {
+            shellToRemoteJob.cancel()
+            process.destroy()
+        }
+    }
+
+
+    /**
+     * ADB 设备状态监听器实现。
+     */
+    private inner class DeviceListener : ADBEventListener {
+
+        override fun onDeviceListChange(devices: List<ADBDevice>) {
+            devicesFlow.value = devices
+        }
     }
 }

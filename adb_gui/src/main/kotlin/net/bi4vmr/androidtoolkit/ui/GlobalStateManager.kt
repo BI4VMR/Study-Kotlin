@@ -1,6 +1,7 @@
 package net.bi4vmr.androidtoolkit.ui
 
 import kotlinx.coroutines.flow.StateFlow
+import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 
@@ -21,4 +22,13 @@ class GlobalStateManager {
      * Flow : 本地 ADB 设备列表。
      */
     val deviceListFlow: StateFlow<List<ADBDevice>> = ADBObserver.devicesState
+
+    init {
+        ADBController.init()
+        ADBObserver.init()
+    }
+
+    fun release() {
+
+    }
 }

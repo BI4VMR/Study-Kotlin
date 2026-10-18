@@ -16,5 +16,6 @@ compose.desktop {
 dependencies {
     implementation(project(":adb_gui"))
 
+    runtimeOnly(libJava.slf4j.simple)
     implementation(compose.desktop.currentOs)
 }
