@@ -1,10 +1,8 @@
 package net.bi4vmr.androidtoolkit.ui
 
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.ADBExecutor
-import net.bi4vmr.androidtoolkit.core.IDevice
-import net.bi4vmr.androidtoolkit.core.LocalExecutor
+import net.bi4vmr.androidtoolkit.core.Device
 import net.bi4vmr.androidtoolkit.core.LogicManager
 
 /**
@@ -22,42 +20,26 @@ class GlobalStateManager {
      */
     val executorsFlow: StateFlow<List<ADBExecutor>> = logicManager.executorsFlow
 
-    private val _selectedExecutorFlow: MutableStateFlow<ADBExecutor> = MutableStateFlow(LocalExecutor)
-
     /**
      * Flow : 当前选中的 ADB 执行器。
      */
-    val selectedExecutorFlow: StateFlow<ADBExecutor> = _selectedExecutorFlow
+    val selectedExecutorFlow: StateFlow<ADBExecutor?> = logicManager.selectedExecutorFlow
 
-    private val _selectedDeviceFlow: MutableStateFlow<IDevice?> = MutableStateFlow(null)
+    /**
+     * Flow : ADB 设备列表。
+     *
+     * 跟随当前选中的执行器，若无选中项则为空列表。
+     */
+    val devicesFlow: StateFlow<List<Device>> = logicManager.devicesFlow
 
     /**
      * Flow : 当前选中的 ADB 设备。
      */
-    val selectedDeviceFlow: StateFlow<IDevice?> = _selectedDeviceFlow
+    val selectedDeviceFlow: StateFlow<Device?> = logicManager.selectedDeviceFlow
 
-    /**
-     * 选中执行器，同时清除已选设备。
-     */
-    fun selectExecutor(executor: ADBExecutor) {
-        _selectedExecutorFlow.value = executor
-        _selectedDeviceFlow.value = null
-    }
+    fun selectExecutor(executor: ADBExecutor) = logicManager.selectExecutor(executor)
 
-    fun selectDevice(device: IDevice?) {
-        _selectedDeviceFlow.value = device
-    }
-
-    /**
-     * 添加远程执行器，成功后自动选中。
-     */
-    suspend fun addExecutor(host: String): Boolean {
-        val result = logicManager.addExecutor(host)
-        if (result) {
-            executorsFlow.value.lastOrNull()?.let { selectExecutor(it) }
-        }
-        return result
-    }
+    fun selectDevice(device: Device?) = logicManager.selectDevice(device)
 
     fun release() {
         logicManager.release()

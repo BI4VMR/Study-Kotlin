@@ -2,11 +2,7 @@ package net.bi4vmr.androidtoolkit.core
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 
@@ -18,19 +14,30 @@ import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
  */
 object LocalExecutor : ADBExecutor {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val adbObserver: ADBObserver = ADBObserver()
 
-    private val devicesFlow: StateFlow<List<IDevice>> = ADBObserver.devicesState
+    private val scope = CoroutineScope(Dispatchers.IO)
+
+    private val devicesFlow: StateFlow<List<Device>> = adbObserver.devicesState
         .map { list -> list.map { LocalDevice(it) } }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    override fun getKey(): String = "local"
-
     override fun getType(): ExecutorType = ExecutorType.LOCAL
+
+    override fun init() {
+        adbObserver.init()
+    }
+
+    override fun release() {
+        adbObserver.terminate()
+    }
 
     override fun getDisplayName(): String = "本机"
 
-    override fun getAvailableFlow(): StateFlow<Boolean> = ADBObserver.serviceState
+    override fun getStateFlow(): StateFlow<Boolean> {
+        // TODO 本地执行器总是可用的，直接返回 true。
+        return MutableStateFlow(true)
+    }
 
-    override fun getDevicesFlow(): StateFlow<List<IDevice>> = devicesFlow
+    override fun getDevicesFlow(): StateFlow<List<Device>> = devicesFlow
 }

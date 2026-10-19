@@ -10,7 +10,7 @@ import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
  */
 class LocalDevice(
     val adbDevice: ADBDevice
-) : IDevice {
+) : Device {
 
     override fun getSN(): String = adbDevice.getSN()
 

@@ -30,24 +30,18 @@ class RemoteExecutor(
         .map { it == ConnectState.CONNECTED }
         .stateIn(scope, SharingStarted.Eagerly, client.isReady())
 
-    private val devicesFlow: StateFlow<List<IDevice>> = client.devicesFlow
+    private val devicesFlow: StateFlow<List<Device>> = client.devicesFlow
         .map { list -> list.map { RemoteDevice(it) } }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
-
-    override fun getKey(): String = "$host:$port"
 
     override fun getType(): ExecutorType = ExecutorType.REMOTE
 
     override fun getDisplayName(): String = "$host:$port"
 
-    override fun getAvailableFlow(): StateFlow<Boolean> = availableFlow
+    override fun getDevicesFlow(): StateFlow<List<Device>> = devicesFlow
 
-    override fun getDevicesFlow(): StateFlow<List<IDevice>> = devicesFlow
-
-    override fun reconnect() {
-        if (client.connectStateFlow.value == ConnectState.DISCONNECTED) {
-            client.init()
-        }
+    override fun getStateFlow(): StateFlow<Boolean> {
+        return availableFlow
     }
 
     override fun release() {

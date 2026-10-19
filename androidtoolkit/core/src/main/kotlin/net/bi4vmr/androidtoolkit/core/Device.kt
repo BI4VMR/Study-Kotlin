@@ -8,7 +8,7 @@ package net.bi4vmr.androidtoolkit.core
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-interface IDevice {
+interface Device {
 
     /**
      * 获取序列号。

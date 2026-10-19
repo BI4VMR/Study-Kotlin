@@ -13,32 +13,24 @@ import net.bi4vmr.androidtoolkit.core.common.ExecutorType
  */
 interface ADBExecutor {
 
-    /**
-     * 获取执行器唯一标识。
-     */
-    fun getKey(): String
-
     fun getType(): ExecutorType
 
-    fun getDisplayName(): String
-
-    /**
-     * Flow : 执行器是否可用（本地服务已启动或远程连接已建立）。
-     */
-    fun getAvailableFlow(): StateFlow<Boolean>
-
-    /**
-     * Flow : 设备列表。
-     */
-    fun getDevicesFlow(): StateFlow<List<IDevice>>
-
-    /**
-     * 尝试重新连接，本地执行器无需实现。
-     */
-    fun reconnect() {}
+    fun init() {}
 
     /**
      * 释放资源。
      */
     fun release() {}
+
+    fun getDisplayName(): String
+
+    /**
+     * Flow : 执行器状态。
+     */
+    fun getStateFlow(): StateFlow<Boolean>
+
+    /**
+     * Flow : 设备列表。
+     */
+    fun getDevicesFlow(): StateFlow<List<Device>>
 }

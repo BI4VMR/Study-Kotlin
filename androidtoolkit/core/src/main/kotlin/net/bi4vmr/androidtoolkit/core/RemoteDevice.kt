@@ -10,7 +10,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
  */
 class RemoteDevice(
     val remoteDevice: ADBRemoteDevice
-) : IDevice {
+) : Device {
 
     override fun getSN(): String = remoteDevice.sn
 
