@@ -1,25 +1,35 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.client.common.ConnectState
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.ServerSocket
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * ADB 代理客户端。
@@ -62,9 +72,7 @@ class ADBProxyClient(
      */
     private val client = HttpClient(CIO) {
         // 自动反序列化
-        install(ContentNegotiation) {
-            json(jsonTool)
-        }
+        install(ContentNegotiation) { json(jsonTool) }
         // WebSocket 支持
         install(WebSockets)
     }
@@ -76,14 +84,18 @@ class ADBProxyClient(
 
 
     /**
-     * Flow : 连接状态。
+     * Flow : 远程连接状态。
+     *
+     * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
-    private val _connectStateFlow: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val _connectStateFlow: MutableStateFlow<ConnectState> = MutableStateFlow(ConnectState.DISCONNECTED)
 
     /**
-     * Flow : 连接状态。
+     * Flow : 远程连接状态。
+     *
+     * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
-    val connectStateFlow: StateFlow<Boolean> = _connectStateFlow
+    val connectStateFlow: StateFlow<ConnectState> = _connectStateFlow
 
     /**
      * Flow : 远程设备列表。
@@ -111,45 +123,51 @@ class ADBProxyClient(
 
     private fun connectWebSocket() {
         taskScope.launch {
-            // 协程未被终止时如果出现异常，继续尝试重连。
-            while (isActive) {
-                try {
-                    // WebSocket 请求只能填写路径，不能携带 `ws://` 等前缀。
-                    client.webSocket(host = host, port = port, path = Constant.PATH_ADB_EVENTS) {
-                        _connectStateFlow.value = true
-                        logger.info("Connected to server: $host:$port")
+            _connectStateFlow.value = ConnectState.CONNECTING
+            try {
+                // Ktor 的 WebSocket 请求只能填写路径，不能携带 `ws://` 等前缀。
+                client.webSocket(host = host, port = port, path = Constant.PATH_ADB_EVENTS) {
+                    logger.info("Connect to [$host:$port] successfully.")
+                    _connectStateFlow.value = ConnectState.CONNECTED
 
-                        // 循环处理接收到的事件帧
-                        for (frame in incoming) {
-                            if (frame is Frame.Text) {
-                                _devicesFlow.value = jsonTool.decodeFromString(
-                                    ListSerializer(ADBRemoteDevice.serializer()),
-                                    frame.readText()
-                                )
-                            } else {
-                                throw IllegalArgumentException("Unsupported frame type!")
-                            }
+                    // 循环处理接收到的事件帧
+                    for (frame in incoming) {
+                        // 目前控制通道仅用于发送设备列表，无需判断具体的消息类型。
+                        if (frame is Frame.Text) {
+                            _devicesFlow.value = jsonTool.decodeFromString(
+                                ListSerializer(ADBRemoteDevice.serializer()),
+                                frame.readText().also{
+                                    println(it)
+                                }
+                            )
                         }
                     }
-                } catch (e: CancellationException) {
-                    logger.info("Remote connect job cancelled.")
-                    throw e
-                } catch (e: Exception) {
-                    logger.warn("Failed to connect with server, will retry after delay. Reason:[${e.message}]")
-                    _connectStateFlow.value = false
                 }
-
-                delay(3.seconds)
+            } catch (_: CancellationException) {
+                logger.info("Connect with [$host:$port] job has been cancelled.")
+            } catch (e: Exception) {
+                logger.warn("Failed to connect server [$host:$port]. Reason:[${e.message}]")
+            } finally {
+                // 遇到异常或事件循环结束表示连接已断开
+                _connectStateFlow.value = ConnectState.DISCONNECTED
             }
         }
     }
 
-    fun isReady(): Boolean = _connectStateFlow.value
+    fun isReady(): Boolean = (_connectStateFlow.value == ConnectState.CONNECTED)
 
+    /**
+     * 释放资源。
+     *
+     * 本方法调用后客户端实例不再可用，若需重新连接，请创建新的实例。
+     */
     fun release() {
         taskScope.cancel()
         client.close()
     }
+
+
+    /* ----- 远程服务端操作 ----- */
 
     /**
      * 获取服务端版本。

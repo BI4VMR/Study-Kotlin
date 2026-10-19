@@ -1,7 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.model
 
 import kotlinx.serialization.Serializable
-import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.RemoteDeviceState
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.RemoteDeviceState
 
 /**
  * 远程 ADB 设备。

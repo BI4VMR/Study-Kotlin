@@ -1,6 +1,6 @@
 package net.bi4vmr.demo
 
-import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 
 /**

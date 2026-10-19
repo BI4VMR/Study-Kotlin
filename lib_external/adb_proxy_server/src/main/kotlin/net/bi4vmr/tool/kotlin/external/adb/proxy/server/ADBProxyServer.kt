@@ -1,14 +1,23 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
 import com.pty4j.PtyProcessBuilder
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.cio.*
-import io.ktor.server.engine.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.server.websocket.*
-import io.ktor.websocket.*
+import io.ktor.http.ContentType
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.cio.CIO
+import io.ktor.server.engine.EmbeddedServer
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
+import io.ktor.server.websocket.DefaultWebSocketServerSession
+import io.ktor.server.websocket.WebSockets
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
@@ -16,7 +25,7 @@ import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.ADBEventListener
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.constant.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.model.toRemoteState
 import org.slf4j.LoggerFactory
@@ -118,6 +127,7 @@ class ADBProxyServer(
 
             webSocket(Constant.PATH_ADB_EVENTS) {
                 devicesFlow.collect {
+                    println("send device list: ${it.size}")
                     val frame = Frame.Text(onFetchDeviceList())
                     send(frame)
                 }
@@ -222,7 +232,20 @@ class ADBProxyServer(
     private inner class DeviceListener : ADBEventListener {
 
         override fun onDeviceListChange(devices: List<ADBDevice>) {
+            println("Device list changed: ${devices.size}")
             devicesFlow.value = devices
+        }
+
+        override fun onDeviceConnect(device: ADBDevice) {
+            println("onDeviceConnect")
+        }
+
+        override fun onDeviceDisconnect(device: ADBDevice) {
+            println("ondisConnect")
+        }
+
+        override fun onDeviceStateChange(device: ADBDevice) {
+            super.onDeviceStateChange(device)
         }
     }
 }
