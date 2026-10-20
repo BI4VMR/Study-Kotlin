@@ -18,6 +18,14 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    /* 工程组件 */
+    // 本地调试
+    api(project(":lib_external:adb_common"))
+
+    // 依赖传递
+    // api(privateLibKotlin.external.adb.common)
+
+
     /* 外部组件 */
     api(libKotlin.ktx.serial.json)
 

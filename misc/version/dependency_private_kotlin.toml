@@ -19,7 +19,8 @@ finance_base = { group = "net.bi4vmr.tool.kotlin", name = "finance-base", versio
 
 media_exif = { group = "net.bi4vmr.tool.kotlin", name = "media-exif", version.ref = "media_exif" }
 
-external_adb-core = { group = "net.bi4vmr.tool.kotlin", name = "external-adb", version.ref = "external_adb" }
+external_adb-common = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-common", version.ref = "external_adb" }
+external_adb-core = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-core", version.ref = "external_adb" }
 external_adb-ktx = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-ktx", version.ref = "external_adb" }
 external_adb-cast-common = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-common", version.ref = "external_adb" }
 external_adb-cast-media = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-media", version.ref = "external_adb" }

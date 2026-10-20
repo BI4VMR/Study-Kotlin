@@ -2,11 +2,15 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
 import com.pty4j.PtyProcessBuilder
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.receive
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -18,16 +22,20 @@ import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.ADBEventListener
+import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.model.toRemoteState
+import net.bi4vmr.tool.kotlin.external.adb.proxy.param.ADBExecRequestParams
+import net.bi4vmr.tool.kotlin.external.adb.util.ADBUtil
 import org.slf4j.LoggerFactory
 
 /**
@@ -73,15 +81,12 @@ class ADBProxyServer(
         encodeDefaults = true
     }
 
+    private val adbObserver: ADBObserver = ADBObserver()
+
     /**
      * 设备状态监听器实例。
      */
     private val deviceListener: DeviceListener = DeviceListener()
-
-    /**
-     * Flow : 设备列表。
-     */
-    private val devicesFlow: MutableStateFlow<List<ADBDevice>> = MutableStateFlow(emptyList())
 
 
     @Synchronized
@@ -91,20 +96,31 @@ class ADBProxyServer(
             return
         }
 
-        if (!ADBController.isInitialized()) {
+        if (ADBController.getServiceState() == ServiceState.IDLE) {
             ADBController.init()
         }
         ADBController.addEventListener(deviceListener)
+        adbObserver.init()
 
-        server = embeddedServer(CIO, host = host, port = port) {
-            configure()
-        }.start(wait = false)
+        try {
+            server = embeddedServer(CIO, host = host, port = port) {
+                configure()
+            }.start(wait = false)
+        } catch (e: Exception) {
+            // TODO
+            logger.error("Failed to start server on [{}:{}].", host, port, e)
+            // throw e
+            println("e.message: ${e.message}")
+            println("e.type: ${e}")
+        }
+
 
         logger.info("Server started on [{}:{}].", host, port)
     }
 
     @Synchronized
     fun stop() {
+        adbObserver.terminate()
         ADBController.removeEventListener(deviceListener)
 
         server?.stop(500, 2000)
@@ -114,6 +130,7 @@ class ADBProxyServer(
 
     private fun Application.configure() {
         install(WebSockets)
+        install(ContentNegotiation) { json(jsonTool) }
 
         routing {
             get(Constant.PATH_VERSION) {
@@ -125,9 +142,48 @@ class ADBProxyServer(
                 call.respondText(result, ContentType.Application.Json)
             }
 
+            post(Constant.PATH_ADB_EXEC_STATUS) {
+                // 服务端未安装 ContentNegotiation 插件，手动解析 JSON 请求体。
+                val params: ADBExecRequestParams = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                if (params.sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val code = onADBExecForStatus(params)
+
+                call.respondText(code.toString(), ContentType.Text.Plain)
+            }
+
+            post(Constant.PATH_ADB_EXEC_TEXT) {
+                val params: ADBExecRequestParams = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                if (params.sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val text = onADBExecForText(params)
+                if (text == null) {
+                    call.respondText("Failed to run command.", status = HttpStatusCode.InternalServerError)
+                } else {
+                    call.respondText(text, ContentType.Text.Plain)
+                }
+            }
+
             webSocket(Constant.PATH_ADB_EVENTS) {
-                devicesFlow.collect {
-                    println("send device list: ${it.size}")
+                adbObserver.devicesFlow.collect {
                     val frame = Frame.Text(onFetchDeviceList())
                     send(frame)
                 }
@@ -144,7 +200,7 @@ class ADBProxyServer(
             .map { device ->
                 ADBRemoteDevice(
                     device.getSN(),
-                    device.getState().toRemoteState()
+                    device.getState()
                 )
             }
 
@@ -152,6 +208,18 @@ class ADBProxyServer(
             ListSerializer(ADBRemoteDevice.serializer()),
             list
         )
+    }
+
+    private suspend fun onADBExecForStatus(params: ADBExecRequestParams): Int {
+        return withContext(Dispatchers.IO) {
+            ADBUtil.runForStatus(params.sn, params.command)
+        }
+    }
+
+    private suspend fun onADBExecForText(params: ADBExecRequestParams): String? {
+        return withContext(Dispatchers.IO) {
+            ADBUtil.runForText(params.sn, params.command, params.redirectError, params.charset)
+        }
     }
 
     private suspend fun onConnectADBShell(session: DefaultWebSocketServerSession) {
@@ -232,20 +300,7 @@ class ADBProxyServer(
     private inner class DeviceListener : ADBEventListener {
 
         override fun onDeviceListChange(devices: List<ADBDevice>) {
-            println("Device list changed: ${devices.size}")
-            devicesFlow.value = devices
-        }
-
-        override fun onDeviceConnect(device: ADBDevice) {
-            println("onDeviceConnect")
-        }
-
-        override fun onDeviceDisconnect(device: ADBDevice) {
-            println("ondisConnect")
-        }
-
-        override fun onDeviceStateChange(device: ADBDevice) {
-            super.onDeviceStateChange(device)
+            // TODO
         }
     }
 }

@@ -2,11 +2,29 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
+import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
+import net.bi4vmr.androidtoolkit.core.model.Device
+import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
+import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
+import java.net.ConnectException
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 业务逻辑入口。
@@ -32,13 +50,17 @@ class LogicManager {
 
     /**
      * Flow : 当前选中的执行器。
+     *
+     * 没有远程设备时默认使用本地 ADB 进程。
      */
-    private val _selectedExecutorFlow: MutableStateFlow<ADBExecutor?> = MutableStateFlow(LocalExecutor)
+    private val _selectedExecutorFlow: MutableStateFlow<ADBExecutor> = MutableStateFlow(LocalExecutor)
 
     /**
      * Flow : 当前选中的执行器。
+     *
+     * 没有远程设备时默认使用本地 ADB 进程。
      */
-    val selectedExecutorFlow: StateFlow<ADBExecutor?> = _selectedExecutorFlow
+    val selectedExecutorFlow: StateFlow<ADBExecutor> = _selectedExecutorFlow
 
     /**
      * Flow : ADB 设备列表。
@@ -48,7 +70,7 @@ class LogicManager {
     val devicesFlow: StateFlow<List<Device>> =
         selectedExecutorFlow
             .flatMapLatest { executor ->
-                executor?.getDevicesFlow() ?: flowOf(emptyList())
+                executor.getDevicesFlow()
             }
             .stateIn(
                 scope = taskScope,
@@ -69,6 +91,8 @@ class LogicManager {
 
     init {
         ADBController.init()
+
+        startProxyServer()
     }
 
     fun selectExecutor(executor: ADBExecutor) {
@@ -82,36 +106,50 @@ class LogicManager {
     /**
      * 添加远程执行器。
      *
-     * 先通过 HTTP 请求验证服务端可达，成功后才加入执行器列表并建立事件连接。
-     *
      * @return `true` 表示添加成功， `false` 表示连接失败或已存在。
+     * @throws[ConnectException] 服务端协议版本与客户端不匹配。
+     * @throws[IllegalStateException] 服务端协议版本与客户端不匹配。
      */
-    suspend fun addExecutor(host: String, port: Int = Constant.PORT_SERVER_DEFAULT): Boolean {
+    suspend fun addRemoteExecutor(host: String, port: Int = Constant.PORT_SERVER_DEFAULT) {
         val client = ADBProxyClient(host, port)
-        val reachable = try {
-            withTimeout(5_000L) { client.getServerVersion() }
-            true
-        } catch (e: CancellationException) {
+
+        val serverVersion: String
+        try {
+            serverVersion = client.getServerVersion()
+        } catch (e: Exception) {
             client.release()
             throw e
-        } catch (e: Exception) {
-            false
         }
 
-        if (!reachable) {
+        if (serverVersion != Constant.PROTOCOL_VERSION) {
             client.release()
-            return false
+            throw IllegalStateException("Server version is [$serverVersion], mismatch with [${Constant.PROTOCOL_VERSION}].")
         }
 
         client.init()
-        _executorsFlow.update { it + RemoteExecutor(host, port, client) }
-        return true
+        // 5 秒内未返回就绪，认为连接失败。
+        val ok = withTimeoutOrNull(5.seconds) {
+            client.serviceStateFlow.first { it == ServiceState.READY }
+        } != null
+
+        if (ok) {
+            _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+        } else {
+            client.release()
+            throw ConnectException("Failed to connect with remote executor [$host:$port].")
+        }
     }
 
-    /**
-     * 释放所有远程执行器。
-     */
     fun release() {
+        // 释放所有远程执行器
         _executorsFlow.value.forEach { it.release() }
+    }
+
+    fun startProxyServer() {
+        ADBProxyServer().start()
+    }
+
+    fun stopProxyServer(){
+        ADBProxyServer().stop()
     }
 }

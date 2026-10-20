@@ -8,7 +8,11 @@ import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
@@ -24,9 +28,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import net.bi4vmr.tool.kotlin.external.adb.proxy.client.common.ConnectState
+import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.param.ADBExecRequestParams
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.ServerSocket
@@ -88,14 +93,14 @@ class ADBProxyClient(
      *
      * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
-    private val _connectStateFlow: MutableStateFlow<ConnectState> = MutableStateFlow(ConnectState.DISCONNECTED)
+    private val _serviceStateFlow: MutableStateFlow<ServiceState> = MutableStateFlow(ServiceState.IDLE)
 
     /**
      * Flow : 远程连接状态。
      *
      * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
-    val connectStateFlow: StateFlow<ConnectState> = _connectStateFlow
+    val serviceStateFlow: StateFlow<ServiceState> = _serviceStateFlow
 
     /**
      * Flow : 远程设备列表。
@@ -115,7 +120,7 @@ class ADBProxyClient(
      *
      * 与服务器建立连接，连接成功后可监听设备列表变化等事件。
      *
-     * 本方法不会阻塞调用线程，连接状态可通过 [connectStateFlow] 获取。
+     * 本方法不会阻塞调用线程，连接状态可通过 [serviceStateFlow] 获取。
      */
     fun init() {
         connectWebSocket()
@@ -123,12 +128,12 @@ class ADBProxyClient(
 
     private fun connectWebSocket() {
         taskScope.launch {
-            _connectStateFlow.value = ConnectState.CONNECTING
+            _serviceStateFlow.value = ServiceState.PREPARING
             try {
                 // Ktor 的 WebSocket 请求只能填写路径，不能携带 `ws://` 等前缀。
                 client.webSocket(host = host, port = port, path = Constant.PATH_ADB_EVENTS) {
                     logger.info("Connect to [$host:$port] successfully.")
-                    _connectStateFlow.value = ConnectState.CONNECTED
+                    _serviceStateFlow.value = ServiceState.READY
 
                     // 循环处理接收到的事件帧
                     for (frame in incoming) {
@@ -136,7 +141,7 @@ class ADBProxyClient(
                         if (frame is Frame.Text) {
                             _devicesFlow.value = jsonTool.decodeFromString(
                                 ListSerializer(ADBRemoteDevice.serializer()),
-                                frame.readText().also{
+                                frame.readText().also {
                                     println(it)
                                 }
                             )
@@ -149,12 +154,12 @@ class ADBProxyClient(
                 logger.warn("Failed to connect server [$host:$port]. Reason:[${e.message}]")
             } finally {
                 // 遇到异常或事件循环结束表示连接已断开
-                _connectStateFlow.value = ConnectState.DISCONNECTED
+                _serviceStateFlow.value = ServiceState.IDLE
             }
         }
     }
 
-    fun isReady(): Boolean = (_connectStateFlow.value == ConnectState.CONNECTED)
+    fun isServiceReady(): Boolean = (_serviceStateFlow.value == ServiceState.READY)
 
     /**
      * 释放资源。
@@ -191,6 +196,91 @@ class ADBProxyClient(
     suspend fun fetchDeviceList(): List<ADBRemoteDevice> {
         val url = buildURL(Constant.PATH_ADB_DEVICE_LIST)
         return client.post(url).body()
+    }
+
+    /**
+     * 在远程设备上执行 ADB 命令并获取状态码。
+     *
+     * 命令由服务端执行完毕后才会返回，调用协程将被挂起。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句，与本地 `ADBUtil.runForStatus()` 的规则一致。
+     * @return 状态码。若出现异常则返回 `-1` 。
+     */
+    suspend fun runForStatus(sn: String, command: String): Int {
+        return try {
+            val response = client.post(buildURL(Constant.PATH_ADB_EXEC_STATUS)) {
+                val params = ADBExecRequestParams(
+                    sn = sn,
+                    command = command
+                )
+                contentType(ContentType.Application.Json)
+                setBody(params)
+            }
+
+            if (response.status.isSuccess()) {
+                response.bodyAsText().trim().toIntOrNull() ?: -1
+            } else {
+                logger.warn("Failed to run command. Reason:[${response.bodyAsText()}]")
+                -1
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to run command. Reason:[${e.message}]")
+            -1
+        }
+    }
+
+    /**
+     * 在远程设备上执行 ADB 命令并获取文本消息。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句，与本地 `ADBUtil.runForText()` 的规则一致。
+     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
+     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
+     * @return 命令输出文本。若出现异常则返回空值。
+     */
+    suspend fun runForText(
+        sn: String,
+        command: String,
+        redirectError: Boolean = true,
+        charset: String? = null
+    ): String? {
+        return try {
+            val response = client.post(buildURL(Constant.PATH_ADB_EXEC_TEXT)) {
+                contentType(ContentType.Application.Json)
+                setBody(ADBExecRequestParams(sn, command, redirectError, charset))
+            }
+
+            if (response.status.isSuccess()) {
+                response.bodyAsText()
+            } else {
+                logger.warn("Failed to run command. Reason:[${response.bodyAsText()}]")
+                null
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to run command. Reason:[${e.message}]")
+            null
+        }
+    }
+
+    /**
+     * 在远程设备上执行 ADB 命令并获取文本行。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句，与本地 `ADBUtil.runForLines()` 的规则一致。
+     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
+     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
+     * @return 命令输出的文本行。若出现异常则返回空值。
+     */
+    suspend fun runForLines(
+        sn: String,
+        command: String,
+        redirectError: Boolean = true,
+        charset: String? = null
+    ): List<String>? {
+        val text = runForText(sn, command, redirectError, charset) ?: return null
+        // 与按行读取的语义保持一致：末尾换行符不产生空行。
+        return text.lineSequence().toList()
     }
 
 

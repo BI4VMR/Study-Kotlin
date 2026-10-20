@@ -1,9 +1,10 @@
 package net.bi4vmr.androidtoolkit.ui
 
 import kotlinx.coroutines.flow.StateFlow
-import net.bi4vmr.androidtoolkit.core.ADBExecutor
-import net.bi4vmr.androidtoolkit.core.Device
 import net.bi4vmr.androidtoolkit.core.LogicManager
+import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
+import net.bi4vmr.androidtoolkit.core.model.Device
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 
 /**
  * 全局状态管理。
@@ -23,7 +24,7 @@ class GlobalStateManager {
     /**
      * Flow : 当前选中的 ADB 执行器。
      */
-    val selectedExecutorFlow: StateFlow<ADBExecutor?> = logicManager.selectedExecutorFlow
+    val selectedExecutorFlow: StateFlow<ADBExecutor> = logicManager.selectedExecutorFlow
 
     /**
      * Flow : ADB 设备列表。
@@ -40,6 +41,9 @@ class GlobalStateManager {
     fun selectExecutor(executor: ADBExecutor) = logicManager.selectExecutor(executor)
 
     fun selectDevice(device: Device?) = logicManager.selectDevice(device)
+
+    suspend fun addRemoteExecutor(host: String, port: Int = Constant.PORT_SERVER_DEFAULT) =
+        logicManager.addRemoteExecutor(host, port)
 
     fun release() {
         logicManager.release()

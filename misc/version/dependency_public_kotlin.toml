@@ -95,6 +95,8 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor"
 ktor-server-jetty = { module = "io.ktor:ktor-server-jetty", version.ref = "ktor" }
 # Ktor・服务端・引擎（Coroutine-based I/O）
 ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+# Ktor・服务端・内容协定（配合序列化工具自动解析 JSON 等内容为对象。）
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 # Ktor・服务端・WebSocket
 ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 # Ktor・客户端・核心

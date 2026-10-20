@@ -1,15 +1,12 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.common
-
-import kotlinx.serialization.Serializable
+package net.bi4vmr.tool.kotlin.external.adb.common.enums
 
 /**
- * 远程 ADB 设备状态。
+ * ADB 设备状态。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-@Serializable
-enum class RemoteDeviceState {
+enum class DeviceState {
 
     /**
      * 离线。
@@ -22,12 +19,12 @@ enum class RemoteDeviceState {
     ONLINE,
 
     /**
-     * Recovery 。
+     * Recovery。
      */
     RECOVERY,
 
     /**
-     * Bootloader 。
+     * Bootloader。
      */
     BOOTLOADER;
 }

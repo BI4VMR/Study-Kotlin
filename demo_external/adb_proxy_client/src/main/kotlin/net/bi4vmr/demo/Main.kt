@@ -27,7 +27,7 @@ fun main() = application {
     // 注册设备列表监听器，监听设备列表变化。
     val scope = CoroutineScope(Dispatchers.IO)
     scope.launch {
-        client.connectStateFlow.collect {
+        client.serviceStateFlow.collect {
             println("连接状态变化：$it")
         }
     }
@@ -78,6 +78,35 @@ fun main() = application {
                 }
             }) {
                 Text("远程 Shell")
+            }
+
+            val cmd = "free -h"
+
+            Button(onClick = {
+                runBlocking {
+                    client.fetchDeviceList().firstOrNull()
+                        ?.let {
+                            val c = client.runForStatus(it.sn, cmd)
+                            println("执行命令[$cmd]返回状态码：$c")
+                        }
+
+                }
+            }) {
+                Text("执行命令:cmd code")
+            }
+
+            Button(onClick = {
+                runBlocking {
+                    client.fetchDeviceList().firstOrNull()
+                        ?.let {
+                            val c = client.runForText(it.sn, cmd)
+                            println("执行命令[$cmd]：")
+                            println("$c")
+                        }
+
+                }
+            }) {
+                Text("执行命令:cmd text")
             }
         }
     }

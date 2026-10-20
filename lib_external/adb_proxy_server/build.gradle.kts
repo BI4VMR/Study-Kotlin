@@ -9,14 +9,6 @@ plugins {
 
     alias(privateLibJava.plugins.java.version)
     alias(privateLibJava.plugins.publish.private)
-
-    // TODO Debug
-    application
-}
-
-// TODO Debug
-application {
-    mainClass = "net.bi4vmr.tool.kotlin.external.adb.proxy.ADBProxyServerMainKt"
 }
 
 tasks.withType<Test> {
@@ -35,6 +27,7 @@ dependencies {
 
     /* 私有组件 */
     api(privateLibKotlin.external.adb.core)
+    api(privateLibKotlin.external.adb.ktx)
 
 
     /* 外部组件 */
@@ -44,6 +37,8 @@ dependencies {
     api(libKotlin.ktor.server.core)
     api(libKotlin.ktor.server.cio)
     api(libKotlin.ktor.server.websockets)
+    api(libKotlin.ktor.server.content.negotiation)
+    api(libKotlin.ktor.serialization.kotlinx.json)
 
 
     /* 测试组件 */

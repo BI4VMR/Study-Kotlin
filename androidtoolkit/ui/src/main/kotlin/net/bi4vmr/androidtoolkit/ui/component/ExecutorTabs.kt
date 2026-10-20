@@ -23,7 +23,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import net.bi4vmr.androidtoolkit.core.ADBExecutor
+import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 
 /**
  * Segment 样式的执行器选项卡。

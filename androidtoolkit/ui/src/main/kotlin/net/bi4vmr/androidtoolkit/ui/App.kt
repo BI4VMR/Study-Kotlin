@@ -19,13 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.bi4vmr.androidtoolkit.ui.common.Pages
 import net.bi4vmr.androidtoolkit.ui.generic.GenericPage
+import net.bi4vmr.androidtoolkit.ui.setting.SettingPage
 
 /**
  * 应用主界面。
  */
 @Composable
 fun App() {
-    val globalManager: GlobalStateManager = remember { GlobalStateManager() }
+    val globalStateManager: GlobalStateManager = remember { GlobalStateManager() }
     var currentPage: Pages by remember { mutableStateOf(Pages.GENERAL) }
 
     /* 根容器 */
@@ -52,7 +53,8 @@ fun App() {
 
         /* 右栏：选中的页面 */
         when (currentPage) {
-            Pages.GENERAL -> GenericPage(globalManager)
+            Pages.GENERAL -> GenericPage(globalStateManager)
+            Pages.SETTING -> SettingPage()
             else -> {}
         }
     }

@@ -26,6 +26,10 @@ dependencies {
     // api(privateLibKotlin.external.adb.proxy.api)
 
 
+    /* 私有组件 */
+    api(privateLibKotlin.external.adb.common)
+
+
     /* 外部组件 */
     api(libJava.slf4j.api)
     api(libKotlin.ktx.coroutines.core)

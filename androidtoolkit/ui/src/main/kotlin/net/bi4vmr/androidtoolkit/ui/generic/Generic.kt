@@ -1,36 +1,61 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import net.bi4vmr.androidtoolkit.core.ADBExecutor
-import net.bi4vmr.androidtoolkit.core.Device
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
+import net.bi4vmr.androidtoolkit.core.model.Device
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.constant.DeviceState
+import net.bi4vmr.tool.kotlin.external.adb.common.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 
 @Composable
 fun GenericPage(globalStateManager: GlobalStateManager) {
     val executors: List<ADBExecutor> by globalStateManager.executorsFlow.collectAsStateWithLifecycle()
-    val selectedExecutor: ADBExecutor? by globalStateManager.selectedExecutorFlow.collectAsStateWithLifecycle()
+    val selectedExecutor: ADBExecutor by globalStateManager.selectedExecutorFlow.collectAsStateWithLifecycle()
     val devices: List<Device> by globalStateManager.devicesFlow.collectAsStateWithLifecycle()
     val selectedDevice: Device? by globalStateManager.selectedDeviceFlow.collectAsStateWithLifecycle()
-
-    LaunchedEffect(devices) {
-        println(devices)
-    }
 
     Row(modifier = Modifier.fillMaxSize()) {
         Column {
@@ -49,6 +74,7 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
             }
 
             DeviceList(
+                globalStateManager = globalStateManager,
                 devices = devices,
                 selected = selectedDevice,
                 onSelect = { globalStateManager.selectDevice(it) },
@@ -67,18 +93,13 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
 
 @Composable
 private fun DeviceList(
+    globalStateManager: GlobalStateManager,
     devices: List<Device>,
     selected: Device?,
     onSelect: (Device) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = "设备列表 (${devices.size})",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-
         LazyColumn(
             modifier = Modifier.weight(1F),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
@@ -169,12 +190,15 @@ private fun DeviceList(
         }
 
         if (connectProxyDialogState) {
+            var host: String by remember { mutableStateOf("127.0.0.1") }
+            var loading: Boolean by remember { mutableStateOf(false) }
+            var errorInfo: String? by remember { mutableStateOf(null) }
+            val scope = rememberCoroutineScope()
+
             Dialog(
-                onDismissRequest = { connectProxyDialogState = false },
+                // 连接过程中不允许关闭对话框
+                onDismissRequest = { if (!loading) connectProxyDialogState = false },
             ) {
-                var host: String by remember { mutableStateOf("") }
-                var state: Boolean by remember { mutableStateOf(false) }
-                var errorInfo: String? by remember { mutableStateOf(null) }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
@@ -186,24 +210,40 @@ private fun DeviceList(
                         Text("主机名或 IP 地址：")
                         OutlinedTextField(
                             value = host,
-                            onValueChange = { host = it }
+                            onValueChange = { host = it },
+                            enabled = !loading
                         )
 
                         if (errorInfo != null) {
-                            Text(errorInfo ?: "-")
+                            Text(errorInfo ?: "-", color = MaterialTheme.colorScheme.error)
                         }
 
                         Button(
+                            enabled = !loading,
                             onClick = {
-                                val result = ADBController.connectRemoteDevice(host)
-                                if (result) {
-                                    connectDeviceDialogState = false
-                                } else {
-                                    errorInfo = "连接失败，请检查主机名或 IP 地址是否正确"
+                                loading = true
+                                errorInfo = null
+                                scope.launch {
+                                    try {
+                                        globalStateManager.addRemoteExecutor(host)
+                                        connectProxyDialogState = false
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        errorInfo = e.message ?: "连接失败，请检查主机名或 IP 地址是否正确"
+                                    } finally {
+                                        loading = false
+                                    }
                                 }
                             }
                         ) {
-                            Text("连接")
+                            if (loading) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("连接中…")
+                            } else {
+                                Text("连接")
+                            }
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-package net.bi4vmr.androidtoolkit.core
+package net.bi4vmr.androidtoolkit.core.model
 
 /**
  * 设备能力公共接口。
