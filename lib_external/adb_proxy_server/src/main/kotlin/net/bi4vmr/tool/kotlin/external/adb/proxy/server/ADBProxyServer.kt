@@ -34,7 +34,7 @@ import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.param.ADBExecRequestParams
+import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.util.ADBUtil
 import org.slf4j.LoggerFactory
 
@@ -144,7 +144,7 @@ class ADBProxyServer(
 
             post(Constant.PATH_ADB_EXEC_STATUS) {
                 // 服务端未安装 ContentNegotiation 插件，手动解析 JSON 请求体。
-                val params: ADBExecRequestParams = try {
+                val params: ADBExecRequest = try {
                     call.receive()
                 } catch (e: Exception) {
                     call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
@@ -162,7 +162,7 @@ class ADBProxyServer(
             }
 
             post(Constant.PATH_ADB_EXEC_TEXT) {
-                val params: ADBExecRequestParams = try {
+                val params: ADBExecRequest = try {
                     call.receive()
                 } catch (e: Exception) {
                     call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
@@ -210,13 +210,13 @@ class ADBProxyServer(
         )
     }
 
-    private suspend fun onADBExecForStatus(params: ADBExecRequestParams): Int {
+    private suspend fun onADBExecForStatus(params: ADBExecRequest): Int {
         return withContext(Dispatchers.IO) {
             ADBUtil.runForStatus(params.sn, params.command)
         }
     }
 
-    private suspend fun onADBExecForText(params: ADBExecRequestParams): String? {
+    private suspend fun onADBExecForText(params: ADBExecRequest): String? {
         return withContext(Dispatchers.IO) {
             ADBUtil.runForText(params.sn, params.command, params.redirectError, params.charset)
         }

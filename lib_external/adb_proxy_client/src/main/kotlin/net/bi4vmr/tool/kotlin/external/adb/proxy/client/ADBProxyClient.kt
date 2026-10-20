@@ -31,7 +31,7 @@ import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.param.ADBExecRequestParams
+import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.ServerSocket
@@ -210,7 +210,7 @@ class ADBProxyClient(
     suspend fun runForStatus(sn: String, command: String): Int {
         return try {
             val response = client.post(buildURL(Constant.PATH_ADB_EXEC_STATUS)) {
-                val params = ADBExecRequestParams(
+                val params = ADBExecRequest(
                     sn = sn,
                     command = command
                 )
@@ -248,7 +248,7 @@ class ADBProxyClient(
         return try {
             val response = client.post(buildURL(Constant.PATH_ADB_EXEC_TEXT)) {
                 contentType(ContentType.Application.Json)
-                setBody(ADBExecRequestParams(sn, command, redirectError, charset))
+                setBody(ADBExecRequest(sn, command, redirectError, charset))
             }
 
             if (response.status.isSuccess()) {

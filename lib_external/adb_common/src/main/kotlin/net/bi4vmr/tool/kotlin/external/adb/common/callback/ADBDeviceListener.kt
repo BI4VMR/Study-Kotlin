@@ -1,6 +1,6 @@
-package net.bi4vmr.tool.kotlin.external.adb
+package net.bi4vmr.tool.kotlin.external.adb.common.callback
 
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
 /**
  * ADB 事件监听器。
@@ -8,12 +8,12 @@ import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-interface ADBEventListener {
+interface ADBDeviceListener {
 
     /**
-     * 设备列表变更。
+     * 事件：设备列表变更。
      *
-     * 设备连接、断开、状态变化均会触发该回调。
+     * 设备连接、断开、状态变更均会触发该回调。
      *
      * @param[devices] 设备列表。
      */
@@ -22,7 +22,7 @@ interface ADBEventListener {
     }
 
     /**
-     * 设备已连接。
+     * 事件：设备已连接。
      *
      * @param[device] 设备。
      */
@@ -31,7 +31,7 @@ interface ADBEventListener {
     }
 
     /**
-     * 设备已断开。
+     * 事件：设备已断开。
      *
      * @param[device] 设备。
      */
@@ -40,7 +40,7 @@ interface ADBEventListener {
     }
 
     /**
-     * 设备状态变更。
+     * 事件：设备状态变更。
      *
      * @param[device] 设备。
      */

@@ -3,10 +3,11 @@ package net.bi4vmr.tool.kotlin.external.adb.ktx
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.ADBEventListener
-import net.bi4vmr.tool.kotlin.external.adb.ADBServiceListener
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.Device
 
 /**
  * ADB 相关状态的协程封装。
@@ -26,12 +27,12 @@ class ADBObserver {
     /**
      * ADB 设备列表。
      */
-    private val _devicesFlow = MutableStateFlow<List<ADBDevice>>(emptyList())
+    private val _devicesFlow = MutableStateFlow<List<Device>>(emptyList())
 
     /**
      * ADB 设备列表。
      */
-    val devicesFlow: StateFlow<List<ADBDevice>> = _devicesFlow
+    val devicesFlow: StateFlow<List<Device>> = _devicesFlow
 
 
     /**
@@ -72,14 +73,10 @@ class ADBObserver {
     /**
      * ADB 设备列表监听器实现。
      */
-    private val eventListener = object : ADBEventListener {
+    private val eventListener = object : ADBDeviceListener {
 
         override fun onDeviceListChange(devices: List<ADBDevice>) {
-            println("[ADBObserver] onDeviceListChange: ${devices.size} devices")
-            devices.forEach {
-                println("[ADBObserver] Device: ${it.ddmDevice}")
-            }
-            _devicesFlow.value = devices
+            _devicesFlow.value = ADBController.getDevices()
         }
     }
 }

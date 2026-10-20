@@ -57,7 +57,7 @@ data class DisplayInfo(
     /**
      * 获取物理 ID 索引编号。
      *
-     * 获取物理 ID 冒号后的索引编号，如果格式不符合预期，则返回 [uniqueID] 原值。
+     * 获取屏幕物理 ID 冒号后的索引编号，类似 `local:0` 中的 `0` 。如果格式不符合预期，则返回 [uniqueID] 原值。
      *
      * @return 索引编号。
      */

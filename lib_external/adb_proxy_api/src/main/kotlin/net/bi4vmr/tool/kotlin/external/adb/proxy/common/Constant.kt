@@ -1,7 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common
 
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant.PARAM_SN
-import net.bi4vmr.tool.kotlin.external.adb.proxy.param.ADBExecRequestParams
+import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
 
 /**
  * 全局常量。
@@ -40,14 +40,14 @@ object Constant {
     /**
      * 路径：执行 ADB Shell 命令并返回状态码。
      *
-     * 请求格式为 HTTP POST ，请求体为 [ADBExecRequestParams] ；返回纯文本消息，内容为命令的状态码。
+     * 请求格式为 HTTP POST ，请求体为 [ADBExecRequest] ；返回纯文本消息，内容为命令的状态码。
      */
     const val PATH_ADB_EXEC_STATUS: String = "/adb/exec/status"
 
     /**
      * 路径：执行 ADB Shell 命令并返回文本。
      *
-     * 请求格式为 HTTP POST ，请求体为 [ADBExecRequestParams] ；返回纯文本消息，内容为命令的输出文本。
+     * 请求格式为 HTTP POST ，请求体为 [ADBExecRequest] ；返回纯文本消息，内容为命令的输出文本。
      */
     const val PATH_ADB_EXEC_TEXT: String = "/adb/exec/text"
 

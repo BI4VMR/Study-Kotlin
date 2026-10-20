@@ -5,10 +5,11 @@ import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener
 import com.android.ddmlib.IDevice
 import net.bi4vmr.tool.java.common.base.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController.init
-import net.bi4vmr.tool.kotlin.external.adb.ADBController.terminate
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.util.ADBExecutableUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
+import net.bi4vmr.tool.kotlin.external.adb.model.Device
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -30,27 +31,16 @@ object ADBController {
     private val logger: Logger = LoggerFactory.getLogger(ADBController::class.java)
 
     /**
-     * ADB 可执行文件。
-     */
-    @Volatile
-    private var executableFile: File? = null
-
-    /**
-     * 是否自动侦测 ADB 可执行文件位置。
-     */
-    private var detectExecutable: Boolean = true
-
-    /**
      * DDMLib 回调监听器实例。
      *
-     * 仅本工具内部使用，将原始事件处理后转发到 [ADBEventListener] 以供调用者监听。
+     * 仅本工具内部使用，将原始事件处理后转发到 [ADBDeviceListener] 以供调用者监听。
      */
     private val ddmLibListener: DDMLibListener = DDMLibListener()
 
     /**
      * ADB 设备列表。
      */
-    private val deviceList: MutableList<ADBDevice> = mutableListOf()
+    private val deviceList: MutableList<Device> = mutableListOf()
 
     /**
      * ADB 服务监听器列表。
@@ -60,7 +50,7 @@ object ADBController {
     /**
      * ADB 事件监听器列表。
      */
-    private val eventListeners: MutableList<ADBEventListener> = mutableListOf()
+    private val eventListeners: MutableList<ADBDeviceListener> = mutableListOf()
 
     /**
      * 事件通知线程。
@@ -117,11 +107,7 @@ object ADBController {
             serviceState = ServiceState.PREPARING
             listenerNotifier = initListenerNotifier()
 
-            if (executableFile == null) {
-                executableFile = ADBExecutableUtil.detectExecutable()
-            }
-
-            val file = executableFile
+            val file = ADBExecutableHelper.getExecutableFile()
             if (file == null || file.isDirectory || !file.canExecute()) {
                 logger.error("ADB file is not exist or executable! Path:[{}]", file)
                 serviceState = ServiceState.IDLE
@@ -223,7 +209,7 @@ object ADBController {
 
         val newList = AndroidDebugBridge.getBridge()
             .devices
-            .map { ADBDevice(it.state, it) }
+            .map { Device(it.state, it) }
 
         deviceList.addAll(newList)
     }
@@ -349,7 +335,7 @@ object ADBController {
      * @return 设备列表。
      */
     @JvmStatic
-    fun getDevices(): List<ADBDevice> {
+    fun getDevices(): List<Device> {
         synchronized(lock) {
             return deviceList.toList()
         }
@@ -390,7 +376,7 @@ object ADBController {
      * @param[listener] 监听器实现。
      */
     @JvmStatic
-    fun addEventListener(listener: ADBEventListener) {
+    fun addEventListener(listener: ADBDeviceListener) {
         synchronized(lock) {
             if (!eventListeners.contains(listener)) {
                 eventListeners.add(listener)
@@ -404,7 +390,7 @@ object ADBController {
      * @param[listener] 监听器实现。
      */
     @JvmStatic
-    fun removeEventListener(listener: ADBEventListener) {
+    fun removeEventListener(listener: ADBDeviceListener) {
         synchronized(lock) {
             eventListeners.remove(listener)
         }
@@ -415,9 +401,9 @@ object ADBController {
      *
      * @param[devices] 设备列表。
      */
-    private fun notifyDeviceListChange(devices: List<ADBDevice>) {
-        var currentDevices: List<ADBDevice> = emptyList()
-        var listeners: List<ADBEventListener> = emptyList()
+    private fun notifyDeviceListChange(devices: List<Device>) {
+        var currentDevices: List<Device> = emptyList()
+        var listeners: List<ADBDeviceListener> = emptyList()
         synchronized(lock) {
             currentDevices = devices.toList()
             listeners = eventListeners.toList()
@@ -439,7 +425,7 @@ object ADBController {
      *
      * @param[device] 设备。
      */
-    private fun notifyDeviceConnect(device: ADBDevice) {
+    private fun notifyDeviceConnect(device: Device) {
         val listeners = synchronized(lock) {
             eventListeners.toList()
         }
@@ -460,7 +446,7 @@ object ADBController {
      *
      * @param[device] 设备。
      */
-    private fun notifyDeviceDisconnect(device: ADBDevice) {
+    private fun notifyDeviceDisconnect(device: Device) {
         val listeners = synchronized(lock) {
             eventListeners.toList()
         }
@@ -481,7 +467,7 @@ object ADBController {
      *
      * @param[device] 设备。
      */
-    private fun notifyDeviceStateChange(device: ADBDevice) {
+    private fun notifyDeviceStateChange(device: Device) {
         val listeners = synchronized(lock) {
             eventListeners.toList()
         }
@@ -498,55 +484,16 @@ object ADBController {
     }
 
 
-    /*
-     * ----- 可执行文件管理 -----
-     */
-
-    /**
-     * 是否自动侦测 ADB 可执行文件位置。
-     *
-     * @return `true` 表示自动侦测； `false` 表示使用用户指定的路径。
-     */
-    @JvmStatic
-    fun isAutoDetectExecutable(): Boolean = detectExecutable
-
-    /**
-     * 获取当前 ADB 可执行文件。
-     *
-     * @return 可执行文件。如果当前采用自动侦测但没有找到可执行文件，则返回空值。
-     */
-    @JvmStatic
-    fun getExecutableFile(): File? = executableFile
-
-    /**
-     * 设置 ADB 可执行文件路径。
-     *
-     * 该方法不会对已经开启的 ADB 进程生效，若要更新这些进程，应当先通过 [terminate] 方法断开连接，然后重新调用 [init] 方法。
-     *
-     * @param[path] 可执行文件路径。若为空值则启用自动侦测。
-     */
-    @JvmStatic
-    fun setExecutableFile(path: String? = null) {
-        if (path == null) {
-            executableFile = ADBExecutableUtil.detectExecutable()
-            detectExecutable = true
-        } else {
-            executableFile = File(path)
-            detectExecutable = false
-        }
-    }
-
-
     /**
      * DDMLib 监听器实现。
      *
-     * 监听 DDMLib 的设备连接、断开和状态变化事件，并通过 [ADBEventListener] 接口通知外部监听者。
+     * 监听 DDMLib 的设备连接、断开和状态变化事件，并通过 [ADBDeviceListener] 接口通知外部监听者。
      */
     private class DDMLibListener : IDeviceChangeListener {
 
         override fun deviceConnected(device: IDevice) {
             logger.debug("DDMLib notify device [{}] connected.", device)
-            val device = ADBDevice(device.state, device)
+            val device = Device(device.state, device)
             synchronized(lock) {
                 // 如果初始化时列表已有该设备，避免重复添加。
                 if (deviceList.any { it.ddmDevice == device.ddmDevice }) {
@@ -587,7 +534,7 @@ object ADBController {
             logger.debug("DDMLib notify device [{}] state changed.", device)
 
             synchronized(lock) {
-                // 寻找 IDevice 属性与当前值对应的 ADBDevice
+                // 寻找 IDevice 属性与当前值对应的 Device
                 val current = deviceList.find { it.ddmDevice == device }
                 if (current != null) {
                     val index = deviceList.indexOf(current)

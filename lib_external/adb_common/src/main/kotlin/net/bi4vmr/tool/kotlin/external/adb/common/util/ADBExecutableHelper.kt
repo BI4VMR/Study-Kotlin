@@ -3,28 +3,97 @@ package net.bi4vmr.tool.kotlin.external.adb.common.util
 import net.bi4vmr.tool.java.common.base.TextUtil
 import net.bi4vmr.tool.java.common.base.system.OSType
 import net.bi4vmr.tool.java.common.base.system.SystemUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.setExecutableFile
 import java.io.File
-import kotlin.collections.forEach
 
 /**
  * ADB 可执行文件工具。
  *
- * 自动侦测可执行文件位置的相关工具。
+ * 管理 ADB 可执行文件位置，并提供自动侦测功能。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-object ADBExecutableUtil {
+object ADBExecutableHelper {
 
     /**
-     * 获取当前平台可执行文件名称。
+     * ADB 可执行文件。
+     */
+    private var executableFile: File? = detectExecutable()
+
+    /**
+     * 是否自动侦测 ADB 可执行文件位置。
+     */
+    private var autoDetectExecutable: Boolean = true
+
+
+    /**
+     * 获取 ADB 可执行文件。
      *
-     * @return 文件名称。
+     * @return 可执行文件。如果当前采用自动侦测但未找到可执行文件，则为空值。
      */
     @JvmStatic
-    fun getExecutableName(): String {
-        return if (SystemUtil.isWindows()) "adb.exe" else "adb"
+    fun getExecutableFile(): File? = executableFile
+
+    /**
+     * 获取 ADB 可执行文件路径。
+     *
+     * @return 可执行文件路径。如果当前采用自动侦测但未找到可执行文件，则为空值。
+     */
+    @JvmStatic
+    fun getExecutablePath(): String? = executableFile?.absolutePath
+
+    /**
+     * 获取 ADB 可执行文件名称。
+     *
+     * 如果可执行文件存在，则返回完整路径；否则回退到默认名称 `adb` 。可以用于执行命令。
+     *
+     * @return 可执行文件名称。
+     */
+    @JvmStatic
+    fun getExecutableName(): String = getExecutablePath() ?: "adb"
+
+    /**
+     * 设置 ADB 可执行文件。
+     *
+     * 该方法对已开启的 ADB 进程无效，若要更新这些进程，应当重启它们。
+     *
+     * @param[file] 可执行文件。若为空值则启用自动侦测。
+     */
+    @JvmStatic
+    @Synchronized
+    fun setExecutableFile(file: File? = null) {
+        if (file == null) {
+            executableFile = detectExecutable()
+            autoDetectExecutable = true
+        } else {
+            executableFile = file
+            autoDetectExecutable = false
+        }
     }
+
+    /**
+     * 设置 ADB 可执行文件路径。
+     *
+     * @param[path] 可执行文件路径。若为空值则启用自动侦测。
+     * @see[setExecutableFile]
+     */
+    @JvmStatic
+    fun setExecutablePath(path: String? = null) {
+        if (path == null) {
+            setExecutableFile(null)
+        } else {
+            setExecutableFile(File(path))
+        }
+    }
+
+    /**
+     * 判断是否自动侦测可执行文件位置。
+     *
+     * @return `true` 表示自动侦测； `false` 表示使用用户指定的路径。
+     */
+    @JvmStatic
+    fun isAutoDetectExecutable(): Boolean = autoDetectExecutable
 
     /**
      * 自动侦测可执行文件的位置。
@@ -45,14 +114,23 @@ object ADBExecutableUtil {
         return findInPath() ?: findInAndroidHome() ?: findInFileSystem()
     }
 
+
+    /**
+     * 获取当前平台可执行文件名称。
+     *
+     * @return 文件名称。
+     */
+    private fun getPlatformExecutableName(): String {
+        return if (SystemUtil.isWindows()) "adb.exe" else "adb"
+    }
+
     /**
      * 在环境变量 `PATH` 中寻找可执行文件。
      *
      * @return 可执行文件。未找到时将返回空值。
      */
-    @JvmStatic
     private fun findInPath(): File? {
-        val adbName = getExecutableName()
+        val adbName = getPlatformExecutableName()
 
         SystemUtil.getPathDirectories()
             .forEach { dir ->
@@ -70,9 +148,8 @@ object ADBExecutableUtil {
      *
      * @return 可执行文件。未找到时将返回空值。
      */
-    @JvmStatic
     private fun findInAndroidHome(): File? {
-        val adbName = getExecutableName()
+        val adbName = getPlatformExecutableName()
 
         val androidHome = System.getenv("ANDROID_HOME")
         if (TextUtil.isNotBlank(androidHome)) {
@@ -90,7 +167,6 @@ object ADBExecutableUtil {
      *
      * @return 可执行文件。未找到时将返回空值。
      */
-    @JvmStatic
     private fun findInFileSystem(): File? {
         val homePath = System.getProperty("user.home")
         val generalPaths = when (SystemUtil.getOSType()) {
@@ -105,6 +181,7 @@ object ADBExecutableUtil {
                     "D:/Android/Sdk/platform-tools/adb.exe"
                 )
             }
+
             OSType.MACOS -> {
                 listOf(
                     "$homePath/Library/Android/sdk/platform-tools/adb",

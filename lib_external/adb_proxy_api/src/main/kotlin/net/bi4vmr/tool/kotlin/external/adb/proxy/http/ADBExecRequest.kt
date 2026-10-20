@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.param
+package net.bi4vmr.tool.kotlin.external.adb.proxy.http
 
 import kotlinx.serialization.Serializable
 
@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  * @since 1.0.0
  */
 @Serializable
-data class ADBExecRequestParams(
+data class ADBExecRequest(
     val sn: String = "",
     val command: String = ":",
     val redirectError: Boolean = true,

@@ -1,5 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+
 /**
  * ADB 输出解析器。
  * <p>
@@ -10,19 +12,21 @@ package net.bi4vmr.tool.kotlin.external.adb.common.util
  */
 object ADBOutputParser {
 
-    // 正则表达式：屏幕 ID 匹配（Android 11 及更高版本）。
+    // 正则表达式：屏幕 ID （Android 11 及更高版本）。
     private val displayIDRegex_V11U = """Display id (\d+):""".toRegex()
 
-    // 正则表达式：屏幕 ID 匹配（Android 11 及更高版本）。
+    // 正则表达式：屏幕 ID （Android 10）。
     private val displayIDRegex_V10 = """displayId (\d+)""".toRegex()
 
+    // 正则表达式：屏幕物理 ID 。
     private val uniqueIDRegex = """uniqueId "([^:]+:[^"]+)"""".toRegex()
 
+    // 正则表达式：屏幕分辨率。
     private val sizeRegex = """real (\d+) x (\d+)""".toRegex()
 
 
     /**
-     * 提取屏幕信息（Android 11及更高版本）。
+     * 提取屏幕信息（Android 11 及更高版本）。
      *
      * 从 `cmd display get-displays` 命令的输出结果中提取屏幕 ID 、物理 ID 、分辨率信息。
      *
@@ -93,7 +97,7 @@ object ADBOutputParser {
     }
 
     /**
-     * 提取屏幕信息（Android 10及更低版本）。
+     * 提取屏幕信息（Android 10）。
      *
      * 从 `dumpsys display | grep mBaseDisplayInfo=DisplayInfo` 命令的输出结果中提取屏幕 ID 、物理 ID 、分辨率信息。
      *
@@ -156,7 +160,7 @@ object ADBOutputParser {
     }
 
     /**
-     * 提取屏幕信息（Android 9及更低版本）。
+     * 提取屏幕信息（Android 9 及更低版本）。
      *
      * 从 `dumpsys display | grep mBaseDisplayInfo=DisplayInfo` 命令的输出结果中提取屏幕 ID 、物理 ID 、分辨率信息。
      *

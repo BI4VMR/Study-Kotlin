@@ -1,7 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.model
 
 import kotlinx.serialization.Serializable
-import net.bi4vmr.tool.kotlin.external.adb.common.DeviceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
 /**
  * 远程 ADB 设备。
@@ -21,16 +22,25 @@ data class ADBRemoteDevice(
      * 状态。
      */
     val state: DeviceState
-) {
+) : ADBDevice {
+
+    /*
+     * ----- 连接信息 -----
+     */
 
     /**
-     * 判断设备是否在线。
+     * 获取序列号。
      *
-     * 判断设备是否为 [DeviceState.ONLINE] 状态。
-     *
-     * @return `true` 表示在线， `false` 表示其他状态。
+     * @return 序列号。
      */
-    fun isOnline(): Boolean = (state == DeviceState.ONLINE)
+    override fun getSN(): String = sn
+
+    /**
+     * 获取状态。
+     *
+     * @return 状态。
+     */
+    override fun getState(): DeviceState = state
 
 
     /*

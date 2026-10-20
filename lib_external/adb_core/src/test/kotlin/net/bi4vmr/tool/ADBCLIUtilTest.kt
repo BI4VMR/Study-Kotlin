@@ -5,12 +5,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * [net.bi4vmr.tool.kotlin.external.adb.common.util.ADBUtil] 功能测试。
+ * [net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil] 功能测试。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class ADBUtilTest {
+class ADBCLIUtilTest {
 
     @Test
     fun test_BuildCommand() {

@@ -4,20 +4,20 @@ import net.bi4vmr.tool.java.common.base.CLIUtil
 import net.bi4vmr.tool.java.common.base.io.BaseIOUtil
 import net.bi4vmr.tool.java.common.base.io.FileIOUtil
 import net.bi4vmr.tool.java.common.base.io.IOUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import java.io.File
+import java.io.IOException
 
 /**
- * ADB 相关工具。
+ * ADB 命令行工具。
  *
- * 获取设备信息、执行命令等。
+ * 提供获取设备信息、执行命令等方法。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-object ADBUtil {
+object ADBCLIUtil {
 
     /**
      * 设备属性名称：制造商。
@@ -60,17 +60,14 @@ object ADBUtil {
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
      * @param[redirectError] 是否重定向错误输出流。默认值为 `true` 。
-     * @return [Process] 对象，若执行出错则返回空值。
+     * @return [Process] 实例，永不为空，进程启动失败时抛出异常。
+     * @throws[IOException] 进程启动失败。
      */
     @JvmOverloads
     @JvmStatic
-    fun run(sn: String, command: String, redirectError: Boolean = true): Process? {
+    fun run(sn: String, command: String, redirectError: Boolean = true): Process {
         val optimizedCommand = buildCommand(sn, command)
-        return try {
-            CLIUtil.run(optimizedCommand, redirectError)
-        } catch (_: Exception) {
-            null
-        }
+        return CLIUtil.run(optimizedCommand, redirectError)
     }
 
     /**
@@ -548,16 +545,4 @@ object ADBUtil {
     fun isADBCommand(command: String): Boolean {
         return command.startsWith("adb ")
     }
-
-
-    /*
-     * ----- 内部方法 -----
-     */
-
-    /**
-     * 获取 ADB 可执行文件名称。
-     *
-     * 使用 [net.bi4vmr.tool.kotlin.external.adb.ADBController] 中自动侦测或用户指定的可执行文件路径；若文件未指定则使用默认名称。
-     */
-    private fun getExecutableName(): String = ADBController.getExecutableFile()?.absolutePath ?: "adb"
 }
