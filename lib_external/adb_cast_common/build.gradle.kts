@@ -5,11 +5,9 @@ val mvnVersion: String = requireNotNull(depInTOML.version)
 
 
 plugins {
-    alias(libKotlin.plugins.kotlin.multiplatform)
-    alias(libKotlin.plugins.dokka)
-
+    alias(libKotlin.plugins.core)
     alias(privateLibJava.plugins.java.version)
-    alias(privateLibJava.plugins.publish.private.kmp)
+    alias(privateLibJava.plugins.publish.private)
 }
 
 tasks.withType<Test> {
@@ -17,29 +15,17 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-kotlin {
-    /* 桌面平台配置 */
-    jvm()
+dependencies {
+    /* 外部组件 */
+    api(libJava.slf4j.api)
 
-    /* 各平台依赖配置 */
-    sourceSets {
-        commonMain.dependencies {
-            api(libKotlin.standardlib)
-        }
-
-        jvmMain.dependencies {
-            api(libJava.slf4j.api)
-        }
-
-        jvmTest.dependencies {
-            // JUnit5 BOM 版本配置文件
-            implementation(dependencies.platform(libJava.junit5.bom))
-            // JUnit5 平台启动器
-            implementation(libJava.junit5.launcher)
-            // Jupiter（JUnit5 引擎的实现）
-            implementation(libJava.junit5.jupiter)
-        }
-    }
+    /* 测试组件 */
+    // JUnit5 BOM 版本配置文件
+    testImplementation(platform(libJava.junit5.bom))
+    // JUnit5 平台启动器
+    testImplementation(libJava.junit5.launcher)
+    // Jupiter（JUnit5 引擎的实现）
+    testImplementation(libJava.junit5.jupiter)
 }
 
 javaVersionConfig {

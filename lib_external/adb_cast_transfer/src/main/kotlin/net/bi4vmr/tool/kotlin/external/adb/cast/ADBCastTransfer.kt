@@ -1,18 +1,14 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import net.bi4vmr.tool.java.common.base.CLIUtil
-import net.bi4vmr.tool.java.common.base.FileUtil
 import net.bi4vmr.tool.java.common.base.net.NetUtil
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.FORWARD_PORT_START
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.setServerFilePath
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.setServerVersion
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
-import java.io.File
 import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
@@ -43,31 +39,9 @@ object ADBCastTransfer {
     private const val FORWARD_PORT_END: Int = 33280
 
     /**
-     * 服务端 JAR 文件在 Android 设备上的存放路径。
-     */
-    private const val SCRCPY_REMOTE_PATH: String = "/data/local/tmp/scrcpy-server"
-
-    /**
      * 日志工具。
      */
     private val logger: Logger = LoggerFactory.getLogger(ADBCastTransfer::class.java)
-
-    /**
-     * Scrcpy 服务端 JAR 文件路径。
-     *
-     * 可以从 [Scrcpy - Release](https://github.com/Genymobile/scrcpy/releases) 页面下载 Scrcpy 服务端 JAR 包，名称类似
-     * `scrcpy-server-v4.1` ，尾部为可变版本号，无 `.jar` 后缀。
-     */
-    @Volatile
-    private var serverFile: File = FileUtil.FILE_INVALID
-
-    /**
-     * Scrcpy 服务端版本。
-     *
-     * 应当与服务端 JAR 文件匹配，例如：使用 `scrcpy-server-v4.1` 时，应当填写 `4.1` 。
-     */
-    @Volatile
-    private var serverVersion: String = ""
 
     /**
      * 投屏任务列表。
@@ -81,42 +55,6 @@ object ADBCastTransfer {
      */
     private val forwardPort: AtomicInteger = AtomicInteger(FORWARD_PORT_START)
 
-
-    /**
-     * 设置 Scrcpy 服务端文件路径。
-     *
-     * 未修改官方提供的 JAR 文件名称时，（例如： `scrcpy-server-v4.1` ），可以自动解析版本号，无需调用 [setServerVersion] 方法。
-     *
-     * @param[path] 服务端文件路径。
-     */
-    @JvmStatic
-    fun setServerFilePath(path: String) {
-        logger.debug("SetServerFilePath. Path:[$path]")
-        val jarFile = File(path)
-        serverFile = jarFile
-
-        /* 尝试自动设置版本号 */
-        val fileName = jarFile.name
-        val startOfVersion = fileName.lastIndexOf('v')
-        if (startOfVersion != -1 && startOfVersion < fileName.length - 1) {
-            val version = fileName.substring(startOfVersion + 1)
-            serverVersion = version
-            logger.debug("Detected scrcpy server version is [$version].")
-        }
-    }
-
-    /**
-     * 设置 Scrcpy 服务端版本。
-     *
-     * 应当与 JAR 文件匹配，例如：使用 `scrcpy-server-v4.1` 时，应填写 `4.1` 。
-     *
-     * @param[version] 版本号。
-     * @see[setServerFilePath]
-     */
-    @JvmStatic
-    fun setServerVersion(version: String) {
-        serverVersion = version
-    }
 
     /**
      * 启动屏幕投射转发任务。
@@ -148,7 +86,7 @@ object ADBCastTransfer {
         audioBitRate: Int = 128_000
     ): Int {
         /* 参数校验 */
-        if (!serverFile.canRead() || serverVersion.isBlank()) {
+        if (!ScrcpyServerHelper.isValid()) {
             throw IllegalStateException("Scrcpy server file invalid or version not set!")
         }
 
@@ -173,7 +111,7 @@ object ADBCastTransfer {
 
 
                 /* 推送服务端 JAR 文件 */
-                val fileReady = device.pushFile(serverFile, SCRCPY_REMOTE_PATH)
+                val fileReady = device.pushFile(ScrcpyServerHelper.getServerFile()!!, ScrcpyServerHelper.REMOTE_PATH)
                 if (!fileReady) {
                     throw IOException("Push Scrcpy server file to device failed!")
                 }
@@ -196,11 +134,11 @@ object ADBCastTransfer {
 
                 /* 开启服务端 */
                 val cmd = arrayOf(
-                    "CLASSPATH=$SCRCPY_REMOTE_PATH",
+                    "CLASSPATH=${ScrcpyServerHelper.REMOTE_PATH}",
                     "app_process",
                     "/",
                     "com.genymobile.scrcpy.Server",
-                    serverVersion,
+                    ScrcpyServerHelper.getServerVersion(),
                     "tunnel_forward=true",
                     "display_id=$displayID",
                     "video_codec=${videoCodec.cli}",

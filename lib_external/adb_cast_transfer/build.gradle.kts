@@ -9,12 +9,6 @@ plugins {
 
     alias(privateLibJava.plugins.java.version)
     alias(privateLibJava.plugins.publish.private)
-
-    application
-}
-
-application {
-    mainClass = "net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransferMainKt"
 }
 
 tasks.withType<Test> {
