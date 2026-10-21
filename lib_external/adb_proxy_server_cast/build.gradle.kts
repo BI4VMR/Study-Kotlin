@@ -12,13 +12,14 @@ plugins {
 }
 
 tasks.withType<Test> {
+    // 连接 Gradle 测试任务与 JUnit 工具
     useJUnitPlatform()
 }
 
 dependencies {
     /* 工程组件 */
-    implementation(project(":lib_external:adb_cast_transfer"))
     implementation(project(":lib_external:adb_core"))
+    implementation(project(":lib_external:adb_cast_transfer"))
     implementation(project(":lib_external:adb_proxy_server"))
 
 

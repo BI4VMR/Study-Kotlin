@@ -72,7 +72,7 @@ object ADBCastTransfer {
      * @param[enableAudio] 是否启用音频，默认值为关闭。
      * @param[audioCodec] 音频编码。默认值为 AAC 。
      * @param[audioBitRate] 音频码率，单位为 `bps` 。默认值为 128 Kbps 。
-     * @return 本地监听的端口，接收端需要依次建立视频、音频（若启用）与控制连接。
+     * @return 本地监听端口。接收端需要依次建立视频、音频与控制通道；若未启用音频，则只有视频与控制通道。
      */
     @JvmStatic
     @JvmOverloads

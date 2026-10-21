@@ -20,14 +20,12 @@ tasks.withType<Test> {
 dependencies {
     /* 工程组件 */
     // 本地调试
+    api(project(":lib_external:adb_common"))
     api(project(":lib_external:adb_proxy_common"))
 
     // 依赖传递
+    // api(privateLibKotlin.external.adb.common)
     // api(privateLibKotlin.external.adb.proxy.common)
-
-
-    /* 私有组件 */
-    api(privateLibKotlin.external.adb.common)
 
 
     /* 外部组件 */
@@ -35,6 +33,7 @@ dependencies {
     api(libKotlin.ktx.coroutines.core)
     api(libKotlin.ktor.client.core)
     api(libKotlin.ktor.client.cio)
+    api(libKotlin.ktor.client.logging)
     api(libKotlin.ktor.client.websockets)
     api(libKotlin.ktor.client.content.negotiation)
     api(libKotlin.ktor.serialization.kotlinx.json)

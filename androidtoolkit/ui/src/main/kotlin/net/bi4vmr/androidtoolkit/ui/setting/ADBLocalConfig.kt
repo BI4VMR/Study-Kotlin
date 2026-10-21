@@ -1,10 +1,7 @@
 package net.bi4vmr.androidtoolkit.ui.setting
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 
 /**
@@ -16,8 +13,14 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
  */
 @Composable
 fun ADBLocalConfig(globalStateManager: GlobalStateManager) {
-    val m =
-    SettingRow(label = "启用 ADB 代理") {
-        OutlinedTextField()
+    var adbPath: String by remember { mutableStateOf("") }
+
+    SettingRow(label = "ADB 路径") {
+        OutlinedTextField(
+            value = adbPath,
+            onValueChange = { newValue ->
+                adbPath = newValue
+            }
+        )
     }
 }

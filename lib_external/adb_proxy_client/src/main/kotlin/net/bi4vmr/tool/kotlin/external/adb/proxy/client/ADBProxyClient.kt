@@ -1,32 +1,19 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.URLBuilder
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -80,6 +67,8 @@ class ADBProxyClient(
      * Ktor 客户端。
      */
     private val client = HttpClient(CIO) {
+        // 日志输出
+        install(Logging) { level = LogLevel.INFO }
         // 自动反序列化
         install(ContentNegotiation) { json(jsonTool) }
         // WebSocket 支持
@@ -135,7 +124,7 @@ class ADBProxyClient(
             _serviceStateFlow.value = ServiceState.PREPARING
             try {
                 // Ktor 的 WebSocket 请求只能填写路径，不能携带 `ws://` 等前缀。
-                client.webSocket(host = host, port = port, path = Constant.PATH_ADB_EVENTS) {
+                client.webSocket(host = host, port = port, path = API.ADB_EVENTS) {
                     logger.info("Connect to [$host:$port] successfully.")
                     _serviceStateFlow.value = ServiceState.READY
 
@@ -187,7 +176,7 @@ class ADBProxyClient(
      * @throws[ConnectException] 建立连接失败。
      */
     suspend fun getServerVersion(): String {
-        val url = buildURL(Constant.PATH_VERSION)
+        val url = buildURL(API.VERSION)
         return client.get(url).bodyAsText()
     }
 
@@ -198,7 +187,7 @@ class ADBProxyClient(
      * @throws[ConnectException] 建立连接失败。
      */
     suspend fun fetchDeviceList(): List<RemoteDevice> {
-        val url = buildURL(Constant.PATH_ADB_DEVICE_LIST)
+        val url = buildURL(API.ADB_DEVICES)
         return client.post(url).body()
     }
 
@@ -212,19 +201,19 @@ class ADBProxyClient(
      * @return 服务端投屏监听端口。
      * @throws[IllegalStateException] 服务端未启用投屏路由或启动投屏失败。
      */
-    suspend fun requestCast(sn: String): Int {
-        require(sn.isNotBlank()) { "Device SN is required." }
-
-        val url = URLBuilder(buildURL(API.ADB_CAST)).apply {
-            parameters.append(Constant.PARAM_SN, sn)
-        }.buildString()
-        val response = client.post(url)
-        check(response.status.isSuccess()) {
-            "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
-        }
-        return response.bodyAsText().trim().toIntOrNull()
-            ?: throw IllegalStateException("Invalid cast port returned by server.")
-    }
+    // suspend fun requestCast(sn: String): Int {
+    //     require(sn.isNotBlank()) { "Device SN is required." }
+    //
+    //     val url = URLBuilder(buildURL(API.ADB_CAST)).apply {
+    //         parameters.append(Constant.PARAM_SN, sn)
+    //     }.buildString()
+    //     val response = client.post(url)
+    //     check(response.status.isSuccess()) {
+    //         "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
+    //     }
+    //     return response.bodyAsText().trim().toIntOrNull()
+    //         ?: throw IllegalStateException("Invalid cast port returned by server.")
+    // }
 
     /**
      * 在远程设备上执行 ADB 命令并获取状态码。
@@ -237,7 +226,7 @@ class ADBProxyClient(
      */
     suspend fun runForStatus(sn: String, command: String): Int {
         return try {
-            val response = client.post(buildURL(Constant.PATH_ADB_EXEC_STATUS)) {
+            val response = client.post(buildURL(API.ADB_EXEC_STATUS)) {
                 val params = ADBExecRequest(
                     sn = sn,
                     command = command
@@ -274,7 +263,7 @@ class ADBProxyClient(
         charset: String? = null
     ): String? {
         return try {
-            val response = client.post(buildURL(Constant.PATH_ADB_EXEC_TEXT)) {
+            val response = client.post(buildURL(API.ADB_EXEC_TEXT)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBExecRequest(sn, command, redirectError, charset))
             }
@@ -319,7 +308,7 @@ class ADBProxyClient(
      */
     suspend fun getDisplays(sn: String): List<DisplayInfo> {
         return try {
-            val response = client.post(buildURL(Constant.PATH_ADB_DISPLAYS)) {
+            val response = client.post(buildURL(API.ADB_DISPLAYS)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBExecRequest(sn = sn))
             }
@@ -347,7 +336,7 @@ class ADBProxyClient(
                 client.webSocket(
                     host = host,
                     port = port,
-                    path = "${Constant.PATH_ADB_SHELL}?${Constant.PARAM_SN}=${device.getSN()}"
+                    path = "${API.ADB_SHELL}?sn=${device.getSN()}"
                 ) {
                     localServer = ServerSocket(0)
 

@@ -16,8 +16,6 @@ tasks.withType<Test> {
 
 dependencies {
     implementation(privateLibJava.common.base)
-    implementation(privateLibKotlin.external.adb.core)
-    implementation(privateLibKotlin.external.adb.ktx)
 
     implementation(libKotlin.ktx.coroutines.core)
     implementation(libKotlin.ktor.server.core)
