@@ -2,7 +2,8 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
 /**
  * ADB 执行器公共能力接口。
@@ -33,5 +34,5 @@ interface ADBExecutor {
     /**
      * Flow : 设备列表。
      */
-    fun getDevicesFlow(): StateFlow<List<Device>>
+    fun getDevicesFlow(): StateFlow<List<ADBDevice>>
 }

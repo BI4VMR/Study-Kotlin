@@ -28,14 +28,15 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.ADBEventListener
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.util.ADBUtil
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
 
 /**
@@ -81,13 +82,6 @@ class ADBProxyServer(
         encodeDefaults = true
     }
 
-    private val adbObserver: ADBObserver = ADBObserver()
-
-    /**
-     * 设备状态监听器实例。
-     */
-    private val deviceListener: DeviceListener = DeviceListener()
-
 
     @Synchronized
     fun start() {
@@ -99,8 +93,6 @@ class ADBProxyServer(
         if (ADBController.getServiceState() == ServiceState.IDLE) {
             ADBController.init()
         }
-        ADBController.addEventListener(deviceListener)
-        adbObserver.init()
 
         try {
             server = embeddedServer(CIO, host = host, port = port) {
@@ -114,15 +106,11 @@ class ADBProxyServer(
             println("e.type: ${e}")
         }
 
-
         logger.info("Server started on [{}:{}].", host, port)
     }
 
     @Synchronized
     fun stop() {
-        adbObserver.terminate()
-        ADBController.removeEventListener(deviceListener)
-
         server?.stop(500, 2000)
         server = null
     }
@@ -143,7 +131,6 @@ class ADBProxyServer(
             }
 
             post(Constant.PATH_ADB_EXEC_STATUS) {
-                // 服务端未安装 ContentNegotiation 插件，手动解析 JSON 请求体。
                 val params: ADBExecRequest = try {
                     call.receive()
                 } catch (e: Exception) {
@@ -182,15 +169,33 @@ class ADBProxyServer(
                 }
             }
 
-            webSocket(Constant.PATH_ADB_EVENTS) {
-                adbObserver.devicesFlow.collect {
-                    val frame = Frame.Text(onFetchDeviceList())
-                    send(frame)
+            post(Constant.PATH_ADB_DISPLAYS) {
+                val params: ADBExecRequest = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
                 }
+
+                if (params.sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val list = ADBCLIUtil.getDisplays(params.sn)
+                val result = jsonTool.encodeToString(
+                    ListSerializer(DisplayInfoSerializer),
+                    list
+                )
+                call.respondText(result, ContentType.Application.Json)
+            }
+
+            webSocket(Constant.PATH_ADB_EVENTS) {
+                onADBEventsWSConnect(this)
             }
 
             webSocket(Constant.PATH_ADB_SHELL) {
-                onConnectADBShell(this)
+                onADBShellWSConnect(this)
             }
         }
     }
@@ -198,31 +203,52 @@ class ADBProxyServer(
     private fun onFetchDeviceList(): String {
         val list = ADBController.getDevices()
             .map { device ->
-                ADBRemoteDevice(
+                RemoteDevice(
                     device.getSN(),
                     device.getState()
                 )
             }
 
         return jsonTool.encodeToString(
-            ListSerializer(ADBRemoteDevice.serializer()),
+            ListSerializer(RemoteDevice.serializer()),
             list
         )
     }
 
     private suspend fun onADBExecForStatus(params: ADBExecRequest): Int {
         return withContext(Dispatchers.IO) {
-            ADBUtil.runForStatus(params.sn, params.command)
+            ADBCLIUtil.runForStatus(params.sn, params.command)
         }
     }
 
     private suspend fun onADBExecForText(params: ADBExecRequest): String? {
         return withContext(Dispatchers.IO) {
-            ADBUtil.runForText(params.sn, params.command, params.redirectError, params.charset)
+            ADBCLIUtil.runForText(params.sn, params.command, params.redirectError, params.charset)
         }
     }
 
-    private suspend fun onConnectADBShell(session: DefaultWebSocketServerSession) {
+    private suspend fun onADBEventsWSConnect(session: DefaultWebSocketServerSession) {
+        // 监听器回调不是挂起函数，因此使用 `trySend()` 将事件投递到发送队列。
+        val listener = object : ADBDeviceListener {
+            override fun onDeviceListChange(devices: List<ADBDevice>) {
+                session.outgoing.trySend(Frame.Text(onFetchDeviceList()))
+            }
+        }
+
+        // 客户端连接：注册监听器，并推送一次当前设备列表。
+        ADBController.addEventListener(listener)
+        try {
+            session.send(Frame.Text(onFetchDeviceList()))
+
+            // 挂起直到客户端断开（通道关闭或抛出异常）；此处块一旦返回，连接即被关闭。
+            session.closeReason.await()
+        } finally {
+            // 客户端终止（正常关闭、异常断开或服务器停止）：注销监听器。
+            ADBController.removeEventListener(listener)
+        }
+    }
+
+    private suspend fun onADBShellWSConnect(session: DefaultWebSocketServerSession) {
         /* 参数校验 */
         val sn = session.call.request.queryParameters[Constant.PARAM_SN]
         logger.debug("Receive [${Constant.PATH_ADB_SHELL}] request. SN:[$sn]")
@@ -239,7 +265,7 @@ class ADBProxyServer(
         }
 
 
-        val execName = ADBController.getExecutableFile()?.absolutePath ?: "adb"
+        val execName = ADBExecutableHelper.getExecutableName()
         val env = HashMap(System.getenv())
         if (env["TERM"] == null) {
             env["TERM"] = "xterm-256color"
@@ -290,17 +316,6 @@ class ADBProxyServer(
         } finally {
             shellToRemoteJob.cancel()
             process.destroy()
-        }
-    }
-
-
-    /**
-     * ADB 设备状态监听器实现。
-     */
-    private inner class DeviceListener : ADBEventListener {
-
-        override fun onDeviceListChange(devices: List<ADBDevice>) {
-            // TODO
         }
     }
 }

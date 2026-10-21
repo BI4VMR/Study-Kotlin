@@ -9,8 +9,10 @@ dependencies {
 
 
     /* 私有组件 */
-    api(privateLibKotlin.external.adb.core)
-    api(privateLibKotlin.external.adb.ktx)
+    api(project(":lib_external:adb_core"))
+    api(project(":lib_external:adb_ktx"))
+    // api(privateLibKotlin.external.adb.core)
+    // api(privateLibKotlin.external.adb.ktx)
 
 
     /* 外部组件 */

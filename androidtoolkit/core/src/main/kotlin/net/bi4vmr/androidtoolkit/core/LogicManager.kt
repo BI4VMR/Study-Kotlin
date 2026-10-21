@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
-import net.bi4vmr.androidtoolkit.core.model.Device
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
@@ -67,7 +67,7 @@ class LogicManager {
      *
      * 跟随当前选中的执行器，若无选中项则为空列表。
      */
-    val devicesFlow: StateFlow<List<Device>> =
+    val devicesFlow: StateFlow<List<ADBDevice>> =
         selectedExecutorFlow
             .flatMapLatest { executor ->
                 executor.getDevicesFlow()
@@ -81,12 +81,12 @@ class LogicManager {
     /**
      * Flow : 当前选中的 ADB 设备。
      */
-    private val _selectedDeviceFlow: MutableStateFlow<Device?> = MutableStateFlow(null)
+    private val _selectedDeviceFlow: MutableStateFlow<ADBDevice?> = MutableStateFlow(null)
 
     /**
      * Flow : 当前选中的 ADB 设备。
      */
-    val selectedDeviceFlow: StateFlow<Device?> = _selectedDeviceFlow
+    val selectedDeviceFlow: StateFlow<ADBDevice?> = _selectedDeviceFlow
 
 
     init {
@@ -99,7 +99,7 @@ class LogicManager {
         _selectedExecutorFlow.value = executor
     }
 
-    fun selectDevice(device: Device?) {
+    fun selectDevice(device: ADBDevice?) {
         _selectedDeviceFlow.value = device
     }
 
@@ -149,7 +149,7 @@ class LogicManager {
         ADBProxyServer().start()
     }
 
-    fun stopProxyServer(){
+    fun stopProxyServer() {
         ADBProxyServer().stop()
     }
 }

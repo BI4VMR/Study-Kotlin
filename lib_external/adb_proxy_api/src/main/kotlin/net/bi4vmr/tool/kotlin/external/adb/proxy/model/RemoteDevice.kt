@@ -5,23 +5,23 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
 /**
- * 远程 ADB 设备。
+ * ADB 远程设备。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
 @Serializable
-data class ADBRemoteDevice(
+data class RemoteDevice(
 
     /**
      * 序列号。
      */
-    val sn: String,
+    private val sn: String,
 
     /**
      * 状态。
      */
-    val state: DeviceState
+    private val state: DeviceState
 ) : ADBDevice {
 
     /*

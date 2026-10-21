@@ -1,15 +1,18 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,24 +41,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
-import net.bi4vmr.androidtoolkit.core.model.Device
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.common.DeviceState
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
 @Composable
 fun GenericPage(globalStateManager: GlobalStateManager) {
     val executors: List<ADBExecutor> by globalStateManager.executorsFlow.collectAsStateWithLifecycle()
     val selectedExecutor: ADBExecutor by globalStateManager.selectedExecutorFlow.collectAsStateWithLifecycle()
-    val devices: List<Device> by globalStateManager.devicesFlow.collectAsStateWithLifecycle()
-    val selectedDevice: Device? by globalStateManager.selectedDeviceFlow.collectAsStateWithLifecycle()
+    val devices: List<ADBDevice> by globalStateManager.devicesFlow.collectAsStateWithLifecycle()
+    val selectedDevice: ADBDevice? by globalStateManager.selectedDeviceFlow.collectAsStateWithLifecycle()
 
     Row(modifier = Modifier.fillMaxSize()) {
         Column {
@@ -65,11 +68,17 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
                 modifier = Modifier.padding(16.dp)
             )
 
-            Row {
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                 executors.forEach { executor ->
-                    Text("${executor.getDisplayName()}", modifier = Modifier.clickable {
-                        globalStateManager.selectExecutor(executor)
-                    })
+                    Text(
+                        executor.getDisplayName(),
+                        modifier = Modifier.clickable {
+                            globalStateManager.selectExecutor(executor)
+                        })
+
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(Modifier.width(1.dp).fillMaxHeight().background(Color.Gray))
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
             }
 
@@ -83,10 +92,10 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
         }
 
         VerticalDivider()
-        // DevicePanel(
-        //     device = selectedDevice,
-        //     modifier = Modifier.weight(1F).fillMaxHeight()
-        // )
+        DevicePanel(
+            device = selectedDevice,
+            modifier = Modifier.weight(1F).fillMaxHeight()
+        )
     }
 }
 
@@ -94,9 +103,9 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
 @Composable
 private fun DeviceList(
     globalStateManager: GlobalStateManager,
-    devices: List<Device>,
-    selected: Device?,
-    onSelect: (Device) -> Unit,
+    devices: List<ADBDevice>,
+    selected: ADBDevice?,
+    onSelect: (ADBDevice) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -264,11 +273,11 @@ private fun DevicePanel(device: ADBDevice?, modifier: Modifier = Modifier) {
 
     val enabled = device.getState() == DeviceState.ONLINE
     Column(modifier = modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(device.getModel(), style = MaterialTheme.typography.headlineSmall)
+        // Text(device.getModel(), style = MaterialTheme.typography.headlineSmall)
         HorizontalDivider()
         InfoRow("序列号", device.getSN())
         InfoRow("状态", device.getState().name)
-        InfoRow("厂商", device.getManufacturer())
+        // InfoRow("厂商", device.getManufacturer())
         InfoRow("Android版本", "-")
         // InfoRow("SDK", device.sdk.toString())
         // InfoRow("CPU架构", device.abi)

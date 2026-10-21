@@ -5,9 +5,10 @@ plugins {
 dependencies {
     /* 私有组件 */
     api(privateLibJava.common.base)
-    api(privateLibKotlin.external.adb.common)
-    api(privateLibKotlin.external.adb.core)
-    api(privateLibKotlin.external.adb.ktx)
+    // api(privateLibKotlin.external.adb.core)
+    // api(privateLibKotlin.external.adb.ktx)
+    api(project(":lib_external:adb_core"))
+    api(project(":lib_external:adb_ktx"))
     api(project(":lib_external:adb_proxy_server"))
     api(project(":lib_external:adb_proxy_client"))
 

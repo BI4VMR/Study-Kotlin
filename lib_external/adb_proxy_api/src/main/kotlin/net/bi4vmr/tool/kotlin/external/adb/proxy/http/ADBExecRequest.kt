@@ -10,8 +10,26 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class ADBExecRequest(
+
+    /**
+     * 设备序列号。
+     */
     val sn: String = "",
+
+    /**
+     * 命令语句。
+     */
     val command: String = ":",
+
+    /**
+     * 是否重定向错误输出。
+     */
     val redirectError: Boolean = true,
+
+    /**
+     * 字符集。
+     *
+     * 空值表示由服务端自动侦测。
+     */
     val charset: String? = null
 )

@@ -6,10 +6,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 
 /**
@@ -26,15 +26,14 @@ class RemoteExecutor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val devicesFlow: StateFlow<List<Device>> = client.devicesFlow
-        .map { list -> list.map { RemoteDevice(it) } }
+    private val devicesFlow: StateFlow<List<ADBDevice>> = client.devicesFlow
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     override fun getType(): ExecutorType = ExecutorType.REMOTE
 
     override fun getDisplayName(): String = "$host:$port"
 
-    override fun getDevicesFlow(): StateFlow<List<Device>> = devicesFlow
+    override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = devicesFlow
 
     override fun getStateFlow(): StateFlow<ServiceState> {
         return client.serviceStateFlow

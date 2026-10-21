@@ -28,10 +28,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import net.bi4vmr.tool.kotlin.external.adb.common.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.ADBRemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.ServerSocket
@@ -105,12 +107,12 @@ class ADBProxyClient(
     /**
      * Flow : 远程设备列表。
      */
-    private val _devicesFlow: MutableStateFlow<List<ADBRemoteDevice>> = MutableStateFlow(emptyList())
+    private val _devicesFlow: MutableStateFlow<List<RemoteDevice>> = MutableStateFlow(emptyList())
 
     /**
      * Flow : 远程设备列表。
      */
-    val devicesFlow: StateFlow<List<ADBRemoteDevice>> = _devicesFlow
+    val devicesFlow: StateFlow<List<RemoteDevice>> = _devicesFlow
 
 
     /* ----- 状态管理 ----- */
@@ -140,7 +142,7 @@ class ADBProxyClient(
                         // 目前控制通道仅用于发送设备列表，无需判断具体的消息类型。
                         if (frame is Frame.Text) {
                             _devicesFlow.value = jsonTool.decodeFromString(
-                                ListSerializer(ADBRemoteDevice.serializer()),
+                                ListSerializer(RemoteDevice.serializer()),
                                 frame.readText().also {
                                     println(it)
                                 }
@@ -193,7 +195,7 @@ class ADBProxyClient(
      * @return 设备列表。
      * @throws[ConnectException] 建立连接失败。
      */
-    suspend fun fetchDeviceList(): List<ADBRemoteDevice> {
+    suspend fun fetchDeviceList(): List<RemoteDevice> {
         val url = buildURL(Constant.PATH_ADB_DEVICE_LIST)
         return client.post(url).body()
     }
@@ -283,15 +285,43 @@ class ADBProxyClient(
         return text.lineSequence().toList()
     }
 
+    /**
+     * 获取远程设备的显示屏信息列表。
+     *
+     * @param[sn] 设备序列号。
+     * @return 显示屏信息列表。若出现异常则返回空列表。
+     */
+    suspend fun getDisplays(sn: String): List<DisplayInfo> {
+        return try {
+            val response = client.post(buildURL(Constant.PATH_ADB_DISPLAYS)) {
+                contentType(ContentType.Application.Json)
+                setBody(ADBExecRequest(sn = sn))
+            }
 
-    fun openShell(device: ADBRemoteDevice) {
+            if (response.status.isSuccess()) {
+                jsonTool.decodeFromString(
+                    ListSerializer(DisplayInfoSerializer),
+                    response.bodyAsText()
+                )
+            } else {
+                logger.warn("Failed to get displays. Reason:[${response.bodyAsText()}]")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to get displays. Reason:[${e.message}]")
+            emptyList()
+        }
+    }
+
+
+    fun openShell(device: RemoteDevice) {
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
                 client.webSocket(
                     host = host,
                     port = port,
-                    path = "${Constant.PATH_ADB_SHELL}?${Constant.PARAM_SN}=${device.sn}"
+                    path = "${Constant.PATH_ADB_SHELL}?${Constant.PARAM_SN}=${device.getSN()}"
                 ) {
                     localServer = ServerSocket(0)
 

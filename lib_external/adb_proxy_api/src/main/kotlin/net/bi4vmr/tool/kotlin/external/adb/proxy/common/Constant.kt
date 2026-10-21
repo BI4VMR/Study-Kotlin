@@ -51,6 +51,8 @@ object Constant {
      */
     const val PATH_ADB_EXEC_TEXT: String = "/adb/exec/text"
 
+    const val PATH_ADB_DISPLAYS: String = "/adb/displays"
+
     /**
      * 路径：信令消息（服务端用于通告设备状态变更等事件）。
      *

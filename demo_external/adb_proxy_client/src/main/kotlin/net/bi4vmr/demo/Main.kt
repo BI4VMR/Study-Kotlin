@@ -86,7 +86,7 @@ fun main() = application {
                 runBlocking {
                     client.fetchDeviceList().firstOrNull()
                         ?.let {
-                            val c = client.runForStatus(it.sn, cmd)
+                            val c = client.runForStatus(it.getSN(), cmd)
                             println("执行命令[$cmd]返回状态码：$c")
                         }
 
