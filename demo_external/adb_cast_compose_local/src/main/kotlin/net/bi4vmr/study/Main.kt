@@ -11,9 +11,8 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBLocalCastView
-import net.bi4vmr.tool.kotlin.external.adb.cast.ScrcpyServerHelper
+import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 
 /**
  * 示例： ADB 屏幕投射控件。
@@ -35,7 +34,7 @@ fun main() = application {
             contentAlignment = Alignment.Center
         ) {
             // 设置 Scrcpy 服务端文件路径
-            ScrcpyServerHelper.setServerFilePath("C:\\Users\\bi4vmr\\Download\\scrcpy-server-v4.1")
+            ScrcpyServerHelper.setServerFile("C:\\Users\\bi4vmr\\Download\\scrcpy-server-v4.1")
             // ScrcpyServerHelper.setServerFilePath("/home/bi4vmr/Downloads/scrcpy-server-v5.0.1")
 
             // 连接本地 ADB 进程

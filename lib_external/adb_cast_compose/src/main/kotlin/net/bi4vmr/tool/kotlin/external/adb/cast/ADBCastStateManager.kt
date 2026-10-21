@@ -2,10 +2,10 @@ package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
-import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
 import org.jetbrains.skia.Shader
 import javax.sound.sampled.AudioFormat

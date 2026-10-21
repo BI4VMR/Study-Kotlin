@@ -21,15 +21,16 @@ dependencies {
     // 本地调试
     api(project(":lib_external:adb_cast_common"))
     api(project(":lib_external:adb_cast_media"))
+    api(project(":lib_external:adb_core"))
 
     // 依赖传递
     // api(privateLibKotlin.external.adb.cast.common)
     // api(privateLibKotlin.external.adb.cast.media)
+    // api(privateLibKotlin.external.adb.core)
 
 
     /* 私有组件 */
     api(privateLibJava.common.base)
-    api(privateLibKotlin.external.adb.core)
 
 
     /* 外部组件 */

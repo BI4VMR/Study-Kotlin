@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast.video
+package net.bi4vmr.tool.kotlin.external.adb.cast.enums
 
 /**
  * 视频编码类型。

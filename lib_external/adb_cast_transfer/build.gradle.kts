@@ -20,19 +20,19 @@ dependencies {
     /* 工程组件 */
     // 本地调试
     api(project(":lib_external:adb_cast_common"))
+    api(project(":lib_external:adb_core"))
 
     // 依赖传递
     // api(privateLibKotlin.external.adb.cast.common)
+    // api(privateLibKotlin.external.adb.core)
 
 
     /* 私有组件 */
     api(privateLibKotlin.common.base)
-    api(privateLibKotlin.external.adb.core)
 
 
     /* 外部组件 */
     api(libJava.slf4j.api)
-    runtimeOnly(libJava.slf4j.simple)
 
 
     /* 测试组件 */

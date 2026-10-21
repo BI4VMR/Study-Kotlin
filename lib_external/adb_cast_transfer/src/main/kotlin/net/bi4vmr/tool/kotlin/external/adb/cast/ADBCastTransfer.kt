@@ -3,16 +3,17 @@ package net.bi4vmr.tool.kotlin.external.adb.cast
 import net.bi4vmr.tool.java.common.base.CLIUtil
 import net.bi4vmr.tool.java.common.base.net.NetUtil
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.FORWARD_PORT_START
-import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
-import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer.start
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
-import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
@@ -37,6 +38,7 @@ object ADBCastTransfer {
      * 端口号达到该值时，回到 [FORWARD_PORT_START] 重新递增尝试。
      */
     private const val FORWARD_PORT_END: Int = 33280
+
 
     /**
      * 日志工具。
@@ -75,7 +77,7 @@ object ADBCastTransfer {
     @JvmStatic
     @JvmOverloads
     fun start(
-        device: ADBDevice,
+        device: LocalDevice,
         displayID: String = "0",
         videoCodec: VideoCodec = VideoCodec.H264,
         bitRate: Int = 8_000_000,
@@ -111,7 +113,7 @@ object ADBCastTransfer {
 
 
                 /* 推送服务端 JAR 文件 */
-                val fileReady = device.pushFile(ScrcpyServerHelper.getServerFile()!!, ScrcpyServerHelper.REMOTE_PATH)
+                val fileReady = device.pushFile(ScrcpyServerHelper.getServerFile()!!, ScrcpyServerHelper.PATH_ON_DEVICE)
                 if (!fileReady) {
                     throw IOException("Push Scrcpy server file to device failed!")
                 }
@@ -134,7 +136,7 @@ object ADBCastTransfer {
 
                 /* 开启服务端 */
                 val cmd = arrayOf(
-                    "CLASSPATH=${ScrcpyServerHelper.REMOTE_PATH}",
+                    "CLASSPATH=${ScrcpyServerHelper.PATH_ON_DEVICE}",
                     "app_process",
                     "/",
                     "com.genymobile.scrcpy.Server",
@@ -153,7 +155,6 @@ object ADBCastTransfer {
                     "scid=000$localPort"
                 ).joinToString(" ")
                 val serverProcess = device.run(cmd, true)
-                    ?: throw IOException("Start Scrcpy server process failed!")
                 context.serverProcess = serverProcess
 
                 thread {

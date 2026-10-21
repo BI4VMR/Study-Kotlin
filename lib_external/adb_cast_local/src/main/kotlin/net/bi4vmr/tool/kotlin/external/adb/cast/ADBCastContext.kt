@@ -1,11 +1,11 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
-import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
-import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import java.net.Socket
 
 /**
@@ -31,7 +31,7 @@ data class ADBCastContext(
     /**
      * ADB 设备。
      */
-    val device: ADBDevice,
+    val device: LocalDevice,
 
     /**
      * 任务控制线程。

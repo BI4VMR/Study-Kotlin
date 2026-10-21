@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast.audio
+package net.bi4vmr.tool.kotlin.external.adb.cast.enums
 
 /**
  * 音频编码类型。

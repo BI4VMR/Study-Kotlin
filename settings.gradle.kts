@@ -125,6 +125,7 @@ include(":lib_external:adb_cast_compose")
 include(":lib_external:adb_proxy_common")
 include(":lib_external:adb_proxy_client")
 include(":lib_external:adb_proxy_server")
+include(":lib_external:adb_proxy_server_cast")
 
 include(":demo_external:adb_cast_compose_local")
 include(":demo_external:adb_cast_compose_remote")

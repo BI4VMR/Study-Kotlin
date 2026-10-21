@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -17,7 +17,7 @@ internal data class ADBCastTransferContext(
     /**
      * ADB 设备。
      */
-    val device: ADBDevice,
+    val device: LocalDevice,
 
     /**
      * 任务控制线程。

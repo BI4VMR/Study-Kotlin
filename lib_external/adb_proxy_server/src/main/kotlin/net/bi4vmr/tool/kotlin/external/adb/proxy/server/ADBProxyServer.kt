@@ -12,6 +12,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.receive
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import java.util.ServiceLoader
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -34,7 +36,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
@@ -197,6 +199,15 @@ class ADBProxyServer(
             webSocket(Constant.PATH_ADB_SHELL) {
                 onADBShellWSConnect(this)
             }
+
+            installOptionalRoutes(this)
+        }
+    }
+
+    private fun installOptionalRoutes(routing: Routing) {
+        ServiceLoader.load(ADBProxyRouteProvider::class.java).forEach { provider ->
+            provider.register(routing)
+            logger.info("Registered optional proxy route provider [{}].", provider.javaClass.name)
         }
     }
 

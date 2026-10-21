@@ -1,7 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common
 
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant.PARAM_SN
-import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 
 /**
  * 全局常量。

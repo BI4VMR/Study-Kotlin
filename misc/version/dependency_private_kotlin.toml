@@ -31,3 +31,4 @@ external_adb-cast-compose = { group = "net.bi4vmr.tool.kotlin", name = "external
 external_adb-proxy-api = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-api", version.ref = "external_adb" }
 external_adb-proxy-client = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-client", version.ref = "external_adb" }
 external_adb-proxy-server = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-server", version.ref = "external_adb" }
+external_adb-cast-proxy-server = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-proxy-server", version.ref = "external_adb" }

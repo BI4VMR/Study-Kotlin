@@ -5,14 +5,15 @@ import net.bi4vmr.tool.java.common.base.net.NetUtil
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.FORWARD_PORT_END
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.FORWARD_PORT_START
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastManager.forwardPort
-import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioProtocolParser
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
-import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoProtocolParser
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
@@ -22,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 /**
- * ADB 屏幕投射管理类。
+ * ADB 屏幕投射管理。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -40,6 +41,7 @@ object ADBCastManager {
      * 端口号达到该值时，回到 [FORWARD_PORT_START] 重新递增尝试。
      */
     private const val FORWARD_PORT_END: Int = 33024
+
 
     /**
      * 日志工具。
@@ -76,7 +78,7 @@ object ADBCastManager {
     @JvmStatic
     @JvmOverloads
     fun start(
-        device: ADBDevice,
+        device: LocalDevice,
         listener: ADBCastMediaListener,
         displayID: String = "0",
         videoCodec: VideoCodec = VideoCodec.H264,
@@ -121,7 +123,7 @@ object ADBCastManager {
                  *
                  * 每次启动服务端其文件都会自行删除，因此每次开始屏幕投射前都要复制。
                  */
-                val fileReady = device.pushFile(ScrcpyServerHelper.getServerFile()!!, ScrcpyServerHelper.REMOTE_PATH)
+                val fileReady = device.pushFile(ScrcpyServerHelper.getServerFile()!!, ScrcpyServerHelper.PATH_ON_DEVICE)
                 if (!fileReady) {
                     val info = "Push Scrcpy server file to device failed!"
                     logger.error(info)
@@ -156,7 +158,7 @@ object ADBCastManager {
 
                 /* 开启服务端 */
                 val cmd = arrayOf(
-                    "CLASSPATH=${ScrcpyServerHelper.REMOTE_PATH}",
+                    "CLASSPATH=${ScrcpyServerHelper.PATH_ON_DEVICE}",
                     "app_process",
                     "/",
                     "com.genymobile.scrcpy.Server",
@@ -176,7 +178,6 @@ object ADBCastManager {
                     "scid=000$localPort"
                 ).joinToString(" ")
                 val serverProcess = device.run(cmd, true)
-                    ?: throw IOException("Start Scrcpy server process failed!")
                 context.serverProcess = serverProcess
 
                 // 普通消息输出线程

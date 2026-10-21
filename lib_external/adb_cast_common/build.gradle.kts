@@ -16,8 +16,13 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    /* 私有组件 */
+    api(privateLibJava.common.base)
+
+
     /* 外部组件 */
     api(libJava.slf4j.api)
+
 
     /* 测试组件 */
     // JUnit5 BOM 版本配置文件

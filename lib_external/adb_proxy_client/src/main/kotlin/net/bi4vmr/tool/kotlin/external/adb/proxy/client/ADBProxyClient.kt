@@ -11,6 +11,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.URLBuilder
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -30,9 +31,10 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.http.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
@@ -198,6 +200,30 @@ class ADBProxyClient(
     suspend fun fetchDeviceList(): List<RemoteDevice> {
         val url = buildURL(Constant.PATH_ADB_DEVICE_LIST)
         return client.post(url).body()
+    }
+
+    /**
+     * 请求服务端为指定设备启动投屏转发。
+     *
+     * 请求成功后可将返回端口传入 `ADBCastReceiver.start(host, port, listener)`，
+     * 由接收端连接服务端建立的投屏通道。投屏接收模块需由调用方单独引入。
+     *
+     * @param[sn] 服务端已连接设备的序列号。
+     * @return 服务端投屏监听端口。
+     * @throws[IllegalStateException] 服务端未启用投屏路由或启动投屏失败。
+     */
+    suspend fun requestCast(sn: String): Int {
+        require(sn.isNotBlank()) { "Device SN is required." }
+
+        val url = URLBuilder(buildURL(API.ADB_CAST)).apply {
+            parameters.append(Constant.PARAM_SN, sn)
+        }.buildString()
+        val response = client.post(url)
+        check(response.status.isSuccess()) {
+            "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
+        }
+        return response.bodyAsText().trim().toIntOrNull()
+            ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
     /**
