@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 
 /**
@@ -44,6 +45,11 @@ class GlobalStateManager {
 
     suspend fun addRemoteExecutor(host: String, port: Int = Constant.PORT_SERVER_DEFAULT) =
         logicManager.addRemoteExecutor(host, port)
+
+    /**
+     * 通过当前选中的执行器获取设备的显示屏列表。
+     */
+    suspend fun getDisplays(sn: String): List<DisplayInfo> = selectedExecutorFlow.value.getDisplays(sn)
 
     fun release() {
         logicManager.release()

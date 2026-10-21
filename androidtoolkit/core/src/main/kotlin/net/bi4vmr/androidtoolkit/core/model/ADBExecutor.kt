@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 
 /**
  * ADB 执行器公共能力接口。
@@ -35,4 +36,12 @@ interface ADBExecutor {
      * Flow : 设备列表。
      */
     fun getDevicesFlow(): StateFlow<List<ADBDevice>>
+
+    /**
+     * 获取设备的显示屏信息列表。
+     *
+     * @param[sn] 设备序列号。
+     * @return 显示屏信息列表，若出现异常则返回空列表。
+     */
+    suspend fun getDisplays(sn: String): List<DisplayInfo>
 }

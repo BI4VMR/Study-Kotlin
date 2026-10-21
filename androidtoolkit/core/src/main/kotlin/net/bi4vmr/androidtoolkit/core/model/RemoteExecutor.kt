@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 
 /**
@@ -34,6 +35,8 @@ class RemoteExecutor(
     override fun getDisplayName(): String = "$host:$port"
 
     override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = devicesFlow
+
+    override suspend fun getDisplays(sn: String): List<DisplayInfo> = client.getDisplays(sn)
 
     override fun getStateFlow(): StateFlow<ServiceState> {
         return client.serviceStateFlow

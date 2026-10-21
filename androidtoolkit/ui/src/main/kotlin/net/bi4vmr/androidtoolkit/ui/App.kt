@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.bi4vmr.androidtoolkit.ui.common.Pages
+import net.bi4vmr.androidtoolkit.ui.display.DisplayPage
 import net.bi4vmr.androidtoolkit.ui.generic.GenericPage
 import net.bi4vmr.androidtoolkit.ui.setting.SettingPage
 
@@ -54,6 +55,7 @@ fun App() {
         /* 右栏：选中的页面 */
         when (currentPage) {
             Pages.GENERAL -> GenericPage(globalStateManager)
+            Pages.DISPLAY -> DisplayPage(globalStateManager)
             Pages.SETTING -> SettingPage()
             else -> {}
         }

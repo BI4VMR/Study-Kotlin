@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import kotlinx.coroutines.withContext
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 
 /**
@@ -48,4 +51,8 @@ object LocalExecutor : ADBExecutor {
     override fun getStateFlow(): StateFlow<ServiceState> = adbObserver.serviceStateFlow
 
     override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = devicesFlow
+
+    override suspend fun getDisplays(sn: String): List<DisplayInfo> = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getDisplays(sn)
+    }
 }
