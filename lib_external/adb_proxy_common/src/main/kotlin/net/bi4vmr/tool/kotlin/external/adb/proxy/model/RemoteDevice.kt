@@ -41,10 +41,4 @@ data class RemoteDevice(
      * @return 状态。
      */
     override fun getState(): DeviceState = state
-
-
-    /*
-     * ----- 常用命令 -----
-     */
-
 }

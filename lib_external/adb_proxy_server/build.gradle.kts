@@ -19,11 +19,11 @@ tasks.withType<Test> {
 dependencies {
     /* 工程组件 */
     // 本地调试
-    api(project(":lib_external:adb_proxy_api"))
+    api(project(":lib_external:adb_proxy_common"))
     api(project(":lib_external:adb_core"))
 
     // 依赖传递
-    // api(privateLibKotlin.external.adb.proxy.api)
+    // api(privateLibKotlin.external.adb.proxy.common)
     // api(privateLibKotlin.external.adb.core)
 
 

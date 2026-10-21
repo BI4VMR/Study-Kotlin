@@ -122,7 +122,7 @@ include(":lib_external:adb_cast_local")
 include(":lib_external:adb_cast_transfer")
 include(":lib_external:adb_cast_receiver")
 include(":lib_external:adb_cast_compose")
-include(":lib_external:adb_proxy_api")
+include(":lib_external:adb_proxy_common")
 include(":lib_external:adb_proxy_client")
 include(":lib_external:adb_proxy_server")
 

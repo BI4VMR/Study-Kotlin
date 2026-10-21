@@ -3,7 +3,9 @@ package net.bi4vmr.tool.kotlin.external.adb.common.model
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 
 /**
- * ADB 设备公共能力接口。
+ * ADB 设备接口。
+ *
+ * 包含本地设备和远程设备的公共能力，专有能力需要使用对应的实现对象调用。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

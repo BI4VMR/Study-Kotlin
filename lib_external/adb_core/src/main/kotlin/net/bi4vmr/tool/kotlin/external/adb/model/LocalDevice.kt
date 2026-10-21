@@ -16,7 +16,7 @@ import java.io.IOException
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-data class Device(
+data class LocalDevice(
 
     /**
      * 设备状态。
@@ -53,15 +53,6 @@ data class Device(
             IDevice.DeviceState.BOOTLOADER -> DeviceState.BOOTLOADER
         }
     }
-
-    /**
-     * 判断设备是否在线。
-     *
-     * 判断设备是否为 [DeviceState.ONLINE] 状态。
-     *
-     * @return `true` 表示在线， `false` 表示其他状态。
-     */
-    override fun isOnline(): Boolean = ddmDevice.isOnline
 
 
     /*
@@ -274,7 +265,7 @@ data class Device(
     fun syncFileSystem() = ADBCLIUtil.syncFileSystem(getSN())
 
     /**
-     * 重新挂载文件系统为可读写。
+     * 将系统分区挂载为可读写。
      *
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */

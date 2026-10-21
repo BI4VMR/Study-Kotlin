@@ -7,7 +7,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.model.Device
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 
 /**
  * ADB 相关状态的协程封装。
@@ -27,12 +27,12 @@ class ADBObserver {
     /**
      * ADB 设备列表。
      */
-    private val _devicesFlow = MutableStateFlow<List<Device>>(emptyList())
+    private val _devicesFlow = MutableStateFlow<List<LocalDevice>>(emptyList())
 
     /**
      * ADB 设备列表。
      */
-    val devicesFlow: StateFlow<List<Device>> = _devicesFlow
+    val devicesFlow: StateFlow<List<LocalDevice>> = _devicesFlow
 
 
     /**

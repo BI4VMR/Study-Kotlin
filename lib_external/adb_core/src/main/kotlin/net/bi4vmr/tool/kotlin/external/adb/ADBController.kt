@@ -9,7 +9,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
-import net.bi4vmr.tool.kotlin.external.adb.model.Device
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -40,7 +40,7 @@ object ADBController {
     /**
      * ADB 设备列表。
      */
-    private val deviceList: MutableList<Device> = mutableListOf()
+    private val deviceList: MutableList<LocalDevice> = mutableListOf()
 
     /**
      * ADB 服务监听器列表。
@@ -209,7 +209,7 @@ object ADBController {
 
         val newList = AndroidDebugBridge.getBridge()
             .devices
-            .map { Device(it.state, it) }
+            .map { LocalDevice(it.state, it) }
 
         deviceList.addAll(newList)
     }
@@ -335,7 +335,7 @@ object ADBController {
      * @return 设备列表。
      */
     @JvmStatic
-    fun getDevices(): List<Device> {
+    fun getDevices(): List<LocalDevice> {
         synchronized(lock) {
             return deviceList.toList()
         }
@@ -401,8 +401,8 @@ object ADBController {
      *
      * @param[devices] 设备列表。
      */
-    private fun notifyDeviceListChange(devices: List<Device>) {
-        var currentDevices: List<Device> = emptyList()
+    private fun notifyDeviceListChange(devices: List<LocalDevice>) {
+        var currentDevices: List<LocalDevice> = emptyList()
         var listeners: List<ADBDeviceListener> = emptyList()
         synchronized(lock) {
             currentDevices = devices.toList()
@@ -425,7 +425,7 @@ object ADBController {
      *
      * @param[device] 设备。
      */
-    private fun notifyDeviceConnect(device: Device) {
+    private fun notifyDeviceConnect(device: LocalDevice) {
         val listeners = synchronized(lock) {
             eventListeners.toList()
         }
@@ -446,7 +446,7 @@ object ADBController {
      *
      * @param[device] 设备。
      */
-    private fun notifyDeviceDisconnect(device: Device) {
+    private fun notifyDeviceDisconnect(device: LocalDevice) {
         val listeners = synchronized(lock) {
             eventListeners.toList()
         }
@@ -467,7 +467,7 @@ object ADBController {
      *
      * @param[device] 设备。
      */
-    private fun notifyDeviceStateChange(device: Device) {
+    private fun notifyDeviceStateChange(device: LocalDevice) {
         val listeners = synchronized(lock) {
             eventListeners.toList()
         }
@@ -493,7 +493,7 @@ object ADBController {
 
         override fun deviceConnected(device: IDevice) {
             logger.debug("DDMLib notify device [{}] connected.", device)
-            val device = Device(device.state, device)
+            val device = LocalDevice(device.state, device)
             synchronized(lock) {
                 // 如果初始化时列表已有该设备，避免重复添加。
                 if (deviceList.any { it.ddmDevice == device.ddmDevice }) {
