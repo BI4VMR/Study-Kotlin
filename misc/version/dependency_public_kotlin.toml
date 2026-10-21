@@ -13,6 +13,7 @@ ktx_io-core = "0.9.1"
 
 # ----- 数据存储 -----
 sqldelight = "2.3.2"
+datastore = "1.2.0"
 
 
 # ----- 网络通讯 -----
@@ -74,6 +75,10 @@ ktx_io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", versi
 
 
 # ----- 数据存储 -----
+# < DataStore >
+# DataStore・Preferences・核心（支持 JVM 平台）
+datastore-preferences = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
+
 # < SQLDelight >
 # SQLDelight・核心
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }

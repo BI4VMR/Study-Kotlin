@@ -5,4 +5,5 @@ plugins {
 dependencies {
     /* 外部组件 */
     api(libKotlin.ktx.coroutines.core)
+    api(libKotlin.datastore.preferences)
 }

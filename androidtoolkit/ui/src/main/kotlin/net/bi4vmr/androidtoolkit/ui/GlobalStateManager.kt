@@ -3,6 +3,7 @@ package net.bi4vmr.androidtoolkit.ui
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
+import net.bi4vmr.androidtoolkit.ui.component.ToastManager
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
@@ -16,6 +17,11 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 class GlobalStateManager {
 
     val logicManager = LogicManager()
+
+    /**
+     * 全局消息气泡管理器。
+     */
+    val toastManager = ToastManager()
 
     /**
      * Flow : ADB 执行器列表。
