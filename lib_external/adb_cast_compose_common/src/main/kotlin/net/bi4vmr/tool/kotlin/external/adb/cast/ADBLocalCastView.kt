@@ -5,7 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 
 /**
  * Android设备屏幕投影视图。
@@ -25,7 +25,7 @@ import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
  */
 @Composable
 fun ADBLocalCastView(
-    device: ADBDevice,
+    device: LocalDevice,
     displayID: String = "0",
     modifier: Modifier = Modifier,
     background: Color = Color(0xFF1E1F22),

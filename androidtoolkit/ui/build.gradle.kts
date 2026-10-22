@@ -14,6 +14,8 @@ dependencies {
     api(project(":lib_external:adb_ktx"))
     // api(privateLibKotlin.external.adb.core)
     // api(privateLibKotlin.external.adb.ktx)
+    api(project(":lib_external:adb_cast_compose_local"))
+    api(project(":lib_external:adb_cast_compose_remote"))
 
 
     /* 外部组件 */

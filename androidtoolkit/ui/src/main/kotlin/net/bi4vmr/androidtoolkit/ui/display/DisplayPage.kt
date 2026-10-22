@@ -1,28 +1,11 @@
 package net.bi4vmr.androidtoolkit.ui.display
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.WindowManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
@@ -72,6 +56,7 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
 
         DisplayDetail(
             display = selectedDisplay,
+            onCast = { globalStateManager.windowManager.addWindow(WindowManager.Record()) },
             modifier = Modifier.weight(1F)
         )
     }
@@ -153,7 +138,7 @@ private fun DisplayListItem(
 }
 
 @Composable
-private fun DisplayDetail(display: DisplayInfo?, modifier: Modifier = Modifier) {
+private fun DisplayDetail(display: DisplayInfo?, onCast: () -> Unit, modifier: Modifier = Modifier) {
     if (display == null) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text("请选择一个显示屏", style = MaterialTheme.typography.bodyLarge)
@@ -166,13 +151,10 @@ private fun DisplayDetail(display: DisplayInfo?, modifier: Modifier = Modifier) 
         HorizontalDivider()
         InfoRow("屏幕 ID", display.id)
         InfoRow("物理 ID", display.uniqueID.ifEmpty { "-" })
-        InfoRow("物理 ID 索引", display.getUniqueIndex().ifEmpty { "-" })
         InfoRow("分辨率", "${display.width} x ${display.height}")
         InfoRow("所属设备", display.sn.ifEmpty { "-" })
 
-        Button(onClick = {
-
-        }) {
+        Button(onClick = onCast) {
             Text("投屏")
         }
     }

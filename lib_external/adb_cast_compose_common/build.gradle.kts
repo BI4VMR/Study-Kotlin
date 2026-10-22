@@ -48,7 +48,8 @@ dependencies {
 }
 
 javaVersionConfig {
-    jdkVersion = JavaVersion.VERSION_1_8
+    // Compose Multiplatform 需要 JDK 11 及以上版本。
+    jdkVersion = JavaVersion.VERSION_11
 }
 
 privatePublishConfig {

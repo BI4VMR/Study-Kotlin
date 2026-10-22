@@ -2,11 +2,11 @@ package net.bi4vmr.tool.kotlin.external.adb.cast
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
-import net.bi4vmr.tool.kotlin.external.adb.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.jetbrains.skia.Shader
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
@@ -20,7 +20,7 @@ import javax.sound.sampled.SourceDataLine
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-internal class ADBCastStateManager {
+open class ADBCastStateManager {
 
     /**
      * 投屏事件监听器。
@@ -97,7 +97,7 @@ internal class ADBCastStateManager {
 
 
     fun startLocal(
-        device: ADBDevice,
+        device: LocalDevice,
         displayID: String = "0",
         videoCodec: VideoCodec = VideoCodec.H264,
         bitRate: Int = 8_000_000,

@@ -17,10 +17,8 @@ compose.desktop {
 }
 
 dependencies {
-    // 声明 Compose Desktop 的依赖组件
-    implementation(compose.desktop.currentOs)
-
-    implementation(project(":lib_external:adb_cast_compose"))
+    implementation(project(":lib_external:adb_cast_compose_remote"))
 
     runtimeOnly(libJava.slf4j.simple)
+    implementation(compose.desktop.currentOs)
 }

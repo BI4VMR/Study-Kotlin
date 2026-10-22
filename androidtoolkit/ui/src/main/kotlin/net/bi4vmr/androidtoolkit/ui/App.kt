@@ -1,26 +1,15 @@
 package net.bi4vmr.androidtoolkit.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.bi4vmr.androidtoolkit.ui.apps.AppsPage
 import net.bi4vmr.androidtoolkit.ui.common.Pages
 import net.bi4vmr.androidtoolkit.ui.component.ToastHost
+import net.bi4vmr.androidtoolkit.ui.display.ADBCastWindow
 import net.bi4vmr.androidtoolkit.ui.display.DisplayPage
 import net.bi4vmr.androidtoolkit.ui.files.FilesPage
 import net.bi4vmr.androidtoolkit.ui.generic.GenericPage
@@ -69,5 +58,13 @@ fun App() {
 
         /* 全局消息气泡层 */
         ToastHost(globalStateManager.toastManager)
+    }
+
+
+    /* 全局窗口管理 */
+    globalStateManager.windowManager.windows.forEach { record ->
+        key(record.id) {
+            ADBCastWindow(globalStateManager,record)
+        }
     }
 }
