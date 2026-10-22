@@ -35,6 +35,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
@@ -218,7 +219,10 @@ class ADBProxyClient(
     suspend fun startCast(sn: String): Int {
         require(sn.isNotBlank()) { "Device SN is required." }
 
-        val response = client.post(buildURL(API.ADB_CAST_START))
+        val response = client.post(buildURL(API.ADB_CAST_START)) {
+            contentType(ContentType.Application.Json)
+            setBody(ADBCastStartRequest(sn = sn))
+        }
         check(response.status.isSuccess()) {
             "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
         }

@@ -20,12 +20,15 @@ import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
+import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
+import java.io.File
 import java.net.ConnectException
 import kotlin.time.Duration.Companion.seconds
 
@@ -41,6 +44,11 @@ object LogicManager {
      * 任务作用域。
      */
     private val taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * 文件管理。
+     */
+    private val fileManager: FileManager = FileManager
 
     /**
      * 配置管理。
@@ -119,7 +127,13 @@ object LogicManager {
 
     init {
         taskScope.launch {
+            fileManager.init()
+
             ADBController.init()
+
+            /* 设置 Scrcpy 服务端文件路径 */
+            val serverFile = File(fileManager.getResourcesDir(), "scrcpy-server-v5.0.1")
+            ScrcpyServerHelper.setServerFile(serverFile)
 
             val proxyStartOnInit = configManager.proxyStartOnInitFlow.first()
             if (proxyStartOnInit) {
