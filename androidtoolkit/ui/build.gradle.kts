@@ -5,6 +5,7 @@ plugins {
 }
 
 dependencies {
+    /* 工程组件 */
     api(project(":androidtoolkit:core"))
 
 
@@ -21,4 +22,6 @@ dependencies {
     api(compose.desktop.currentOs)
     api(libKotlin.compose.material3)
     api(libKotlin.compose.material.icons)
+    api(libKotlin.compose.viewmodel)
+    api(libKotlin.compose.resources)
 }

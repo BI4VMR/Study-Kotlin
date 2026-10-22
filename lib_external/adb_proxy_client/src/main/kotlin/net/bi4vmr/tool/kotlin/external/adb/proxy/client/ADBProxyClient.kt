@@ -1,19 +1,33 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -201,19 +215,16 @@ class ADBProxyClient(
      * @return 服务端投屏监听端口。
      * @throws[IllegalStateException] 服务端未启用投屏路由或启动投屏失败。
      */
-    // suspend fun requestCast(sn: String): Int {
-    //     require(sn.isNotBlank()) { "Device SN is required." }
-    //
-    //     val url = URLBuilder(buildURL(API.ADB_CAST)).apply {
-    //         parameters.append(Constant.PARAM_SN, sn)
-    //     }.buildString()
-    //     val response = client.post(url)
-    //     check(response.status.isSuccess()) {
-    //         "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
-    //     }
-    //     return response.bodyAsText().trim().toIntOrNull()
-    //         ?: throw IllegalStateException("Invalid cast port returned by server.")
-    // }
+    suspend fun startCast(sn: String): Int {
+        require(sn.isNotBlank()) { "Device SN is required." }
+
+        val response = client.post(buildURL(API.ADB_CAST_START))
+        check(response.status.isSuccess()) {
+            "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
+        }
+        return response.bodyAsText().trim().toIntOrNull()
+            ?: throw IllegalStateException("Invalid cast port returned by server.")
+    }
 
     /**
      * 在远程设备上执行 ADB 命令并获取状态码。

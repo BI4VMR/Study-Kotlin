@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,10 +14,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
+import net.bi4vmr.androidtoolkit.data.config.ConfigManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -32,9 +35,23 @@ import kotlin.time.Duration.Companion.seconds
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class LogicManager {
+object LogicManager {
 
-    private val taskScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /**
+     * 任务作用域。
+     */
+    private val taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * 配置管理。
+     */
+    private val configManager: ConfigManager = ConfigManager(scope = taskScope)
+
+    /**
+     * ADB 转发器。
+     */
+    val adbProxyServer: ADBProxyServer by lazy { ADBProxyServer() }
+
 
     /**
      * Flow : 执行器列表。
@@ -89,11 +106,33 @@ class LogicManager {
     val selectedDeviceFlow: StateFlow<ADBDevice?> = _selectedDeviceFlow
 
 
-    init {
-        ADBController.init()
+    /* ----- 配置项 ----- */
 
-        startProxyServer()
+    val proxyStartOnInitFlow: Flow<Boolean> = configManager.proxyStartOnInitFlow
+
+    val proxyInterfaceFlow: Flow<String> = configManager.proxyInterfaceFlow
+
+    val proxyPortFlow: Flow<Int> = configManager.proxyPortFlow
+
+
+    /* ----- 生命周期 ----- */
+
+    init {
+        taskScope.launch {
+            ADBController.init()
+
+            val proxyStartOnInit = configManager.proxyStartOnInitFlow.first()
+            if (proxyStartOnInit) {
+                startProxyServer()
+            }
+        }
     }
+
+    fun release() {
+        // 释放所有远程执行器
+        _executorsFlow.value.forEach { it.release() }
+    }
+
 
     fun selectExecutor(executor: ADBExecutor) {
         _selectedExecutorFlow.value = executor
@@ -140,16 +179,50 @@ class LogicManager {
         }
     }
 
-    fun release() {
-        // 释放所有远程执行器
-        _executorsFlow.value.forEach { it.release() }
+    fun startCast() {
+        val exec = _selectedExecutorFlow.value
+        when (exec) {
+            is LocalExecutor -> {
+                // ADBCastManager.start()
+                // exec.startCast()
+            }
+            is RemoteExecutor -> {
+                taskScope.launch {
+                    // ADBProxyClient().startCast()
+                }
+            }
+        }
     }
 
     fun startProxyServer() {
-        ADBProxyServer().start()
+        taskScope.launch {
+            val address = configManager.proxyInterfaceFlow.first()
+            val port = configManager.proxyPortFlow.first()
+            adbProxyServer.setInterface(address, port)
+            adbProxyServer.start()
+        }
     }
 
-    fun stopProxyServer() {
-        ADBProxyServer().stop()
+    fun stopProxyServer() = adbProxyServer.stop()
+
+
+    /* ----- 配置项 ----- */
+
+    fun setProxyStartOnInit(enabled: Boolean) {
+        taskScope.launch {
+            configManager.setProxyStartOnInit(enabled)
+        }
+    }
+
+    fun setProxyInterface(address: String) {
+        taskScope.launch {
+            configManager.setProxyInterface(address)
+        }
+    }
+
+    fun setProxyPort(port: Int) {
+        taskScope.launch {
+            configManager.setProxyPort(port)
+        }
     }
 }

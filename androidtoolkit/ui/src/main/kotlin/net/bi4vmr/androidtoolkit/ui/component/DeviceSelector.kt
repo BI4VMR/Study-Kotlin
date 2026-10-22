@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,25 +38,29 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 
 /**
- * 侧边栏：ADB 执行器选项卡与设备列表。
+ * ADB 执行器与设备列表。
  *
  * 选中状态由 [GlobalStateManager] 管理，各页面共用。
  */
 @Composable
-fun DeviceSidebar(
+fun DeviceSelector(
     globalStateManager: GlobalStateManager,
     modifier: Modifier = Modifier
 ) {
-    val executors: List<ADBExecutor> by globalStateManager.executorsFlow.collectAsStateWithLifecycle()
-    val selectedExecutor: ADBExecutor by globalStateManager.selectedExecutorFlow.collectAsStateWithLifecycle()
-    val devices: List<ADBDevice> by globalStateManager.devicesFlow.collectAsStateWithLifecycle()
-    val selectedDevice: ADBDevice? by globalStateManager.selectedDeviceFlow.collectAsStateWithLifecycle()
+    val logicManager: LogicManager = globalStateManager.logicManager
+    val executors: List<ADBExecutor> by logicManager.executorsFlow.collectAsStateWithLifecycle()
+    val selectedExecutor: ADBExecutor by logicManager.selectedExecutorFlow.collectAsStateWithLifecycle()
+    val devices: List<ADBDevice> by logicManager.devicesFlow.collectAsStateWithLifecycle()
+    val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
 
     Column(modifier = modifier) {
         Text(
@@ -64,6 +69,7 @@ fun DeviceSidebar(
             modifier = Modifier.padding(16.dp)
         )
 
+        // 执行器列表
         ExecutorTabs(
             executors = executors,
             selectedIndex = executors.indexOf(selectedExecutor),
@@ -71,6 +77,7 @@ fun DeviceSidebar(
             modifier = Modifier.padding(horizontal = 8.dp)
         )
 
+        // 设备列表
         DeviceList(
             globalStateManager = globalStateManager,
             devices = devices,
@@ -174,61 +181,72 @@ private fun DeviceList(
         }
 
         if (connectProxyDialogState) {
-            var host: String by remember { mutableStateOf("127.0.0.1") }
-            var loading: Boolean by remember { mutableStateOf(false) }
-            var errorInfo: String? by remember { mutableStateOf(null) }
-            val scope = rememberCoroutineScope()
 
-            Dialog(
-                // 连接过程中不允许关闭对话框
-                onDismissRequest = { if (!loading) connectProxyDialogState = false },
-            ) {
+        }
+    }
+}
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.padding(16.dp)
+
+@Composable
+fun ConnectProxyDialog(
+    globalStateManager: GlobalStateManager,
+    onCancel: () -> Unit,
+) {
+    val logicManager: LogicManager = globalStateManager.logicManager
+
+    // TODO TEST
+    var host: String by remember { mutableStateOf("127.0.0.1") }
+    var port: Int by remember { mutableIntStateOf(Constant.PORT_SERVER_DEFAULT) }
+    var loading: Boolean by remember { mutableStateOf(false) }
+    var errorInfo: String? by remember { mutableStateOf(null) }
+    val scope = rememberCoroutineScope()
+
+    Dialog(
+        onDismissRequest = { onCancel() },
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.padding(Dimens.Layout.Padding)
+        ) {
+            Column {
+                Text("连接 ADB 转发器")
+
+                Text("主机名或 IP 地址：")
+                OutlinedTextField(
+                    value = host,
+                    onValueChange = { host = it },
+                    enabled = !loading
+                )
+
+                if (errorInfo != null) {
+                    Text(errorInfo ?: "-", color = MaterialTheme.colorScheme.error)
+                }
+
+                Button(
+                    enabled = !loading,
+                    onClick = {
+                        loading = true
+                        errorInfo = null
+                        scope.launch {
+                            try {
+                                logicManager.addRemoteExecutor(host)
+                                // connectProxyDialogState = false
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                errorInfo = e.message ?: "连接失败，请检查主机名或 IP 地址是否正确"
+                            } finally {
+                                loading = false
+                            }
+                        }
+                    }
                 ) {
-                    Column {
-                        Text("连接 ADB 转发器")
-
-                        Text("主机名或 IP 地址：")
-                        OutlinedTextField(
-                            value = host,
-                            onValueChange = { host = it },
-                            enabled = !loading
-                        )
-
-                        if (errorInfo != null) {
-                            Text(errorInfo ?: "-", color = MaterialTheme.colorScheme.error)
-                        }
-
-                        Button(
-                            enabled = !loading,
-                            onClick = {
-                                loading = true
-                                errorInfo = null
-                                scope.launch {
-                                    try {
-                                        globalStateManager.addRemoteExecutor(host)
-                                        connectProxyDialogState = false
-                                    } catch (e: CancellationException) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        errorInfo = e.message ?: "连接失败，请检查主机名或 IP 地址是否正确"
-                                    } finally {
-                                        loading = false
-                                    }
-                                }
-                            }
-                        ) {
-                            if (loading) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Text("连接中…")
-                            } else {
-                                Text("连接")
-                            }
-                        }
+                    if (loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("连接中…")
+                    } else {
+                        Text("连接")
                     }
                 }
             }

@@ -1,15 +1,17 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast.proxy.server
 
-import io.ktor.http.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.request.receive
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.Routing
+import io.ktor.server.routing.post
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer
-import net.bi4vmr.tool.kotlin.external.adb.cast.proxy.common.CastAPI
-import net.bi4vmr.tool.kotlin.external.adb.cast.proxy.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyRouteProvider
 import org.slf4j.LoggerFactory
 
@@ -25,7 +27,7 @@ class ADBCastRoutes : ADBProxyRouteProvider {
 
 
     override fun Routing.register(jsonTool: Json) {
-        post(CastAPI.ADB_CAST_START) {
+        post(API.ADB_CAST_START) {
             try {
                 /* 参数校验 */
                 val params: ADBCastStartRequest = call.receive()

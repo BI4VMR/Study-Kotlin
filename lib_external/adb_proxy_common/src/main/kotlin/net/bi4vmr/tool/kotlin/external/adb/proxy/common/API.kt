@@ -1,5 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common
 
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBDeviceRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 
@@ -45,6 +46,14 @@ object API {
      * 请求方式为 HTTP POST ，请求体为 [ADBDeviceRequest] ；返回纯文本，内容为命令的输出文本。
      */
     const val ADB_DISPLAYS: String = "/adb/displays"
+
+    /**
+     * 请求远程设备开启投屏转发。
+     *
+     * 请求方式为 HTTP POST ，请求体为 [ADBCastStartRequest] ；返回纯文本，内容为服务端音视频数据的转发端口，请求者需要使用
+     * `ADBCastReceiver` 建立连接并进行解码。
+     */
+    const val ADB_CAST_START: String = "/adb/cast/start"
 
     /**
      * 信令消息。

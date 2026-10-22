@@ -5,8 +5,6 @@ import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.ui.component.ToastManager
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 
 /**
  * 全局状态管理。
@@ -16,7 +14,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
  */
 class GlobalStateManager {
 
-    val logicManager = LogicManager()
+    val logicManager = LogicManager
 
     /**
      * 全局消息气泡管理器。
@@ -45,17 +43,10 @@ class GlobalStateManager {
      */
     val selectedDeviceFlow: StateFlow<ADBDevice?> = logicManager.selectedDeviceFlow
 
+
     fun selectExecutor(executor: ADBExecutor) = logicManager.selectExecutor(executor)
 
     fun selectDevice(device: ADBDevice?) = logicManager.selectDevice(device)
-
-    suspend fun addRemoteExecutor(host: String, port: Int = Constant.PORT_SERVER_DEFAULT) =
-        logicManager.addRemoteExecutor(host, port)
-
-    /**
-     * 通过当前选中的执行器获取设备的显示屏列表。
-     */
-    suspend fun getDisplays(sn: String): List<DisplayInfo> = selectedExecutorFlow.value.getDisplays(sn)
 
     fun release() {
         logicManager.release()

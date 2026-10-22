@@ -1,0 +1,32 @@
+package net.bi4vmr.androidtoolkit.data.config
+
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+
+/**
+ * 配置项。
+ *
+ * @author bi4vmr@outlook.com
+ * @since 1.0.0
+ */
+object Configs {
+
+    object Key {
+        val PROXY_START_ON_INIT = booleanPreferencesKey("proxy_start_on_init")
+
+        val PROXY_INTERFACE = stringPreferencesKey("proxy_interface")
+
+        val PROXY_PORT = intPreferencesKey("proxy_port")
+    }
+
+    object Value {
+
+        const val PROXY_START_ON_INIT_DEFAULT: Boolean = true
+
+        const val PROXY_INTERFACE_DEFAULT: String = "0.0.0.0"
+
+        const val PROXY_PORT_DEFAULT: Int = Constant.PORT_SERVER_DEFAULT
+    }
+}

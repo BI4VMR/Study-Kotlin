@@ -20,18 +20,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.androidtoolkit.ui.component.DeviceSidebar
+import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
 @Composable
 fun GenericPage(globalStateManager: GlobalStateManager) {
-    val selectedDevice: ADBDevice? by globalStateManager.selectedDeviceFlow.collectAsStateWithLifecycle()
+    val logicManager: LogicManager = globalStateManager.logicManager
+    val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
 
     Row(modifier = Modifier.fillMaxSize()) {
-        DeviceSidebar(
+        DeviceSelector(
             globalStateManager = globalStateManager,
             modifier = Modifier.width(280.dp).fillMaxHeight()
         )
