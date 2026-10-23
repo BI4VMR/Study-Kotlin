@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -26,6 +25,7 @@ import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
 
 @Composable
 fun GenericPage(globalStateManager: GlobalStateManager) {
@@ -40,6 +40,7 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
 
         VerticalDivider()
         DevicePanel(
+            globalStateManager = globalStateManager,
             device = selectedDevice,
             modifier = Modifier.weight(1F).fillMaxHeight()
         )
@@ -48,7 +49,10 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
 
 
 @Composable
-private fun DevicePanel(device: ADBDevice?, modifier: Modifier = Modifier) {
+private fun DevicePanel(
+    globalStateManager: GlobalStateManager,
+    device: ADBDevice?, modifier: Modifier = Modifier
+) {
     if (device == null) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text("请在左侧选择一台设备", style = MaterialTheme.typography.bodyLarge)
@@ -64,9 +68,15 @@ private fun DevicePanel(device: ADBDevice?, modifier: Modifier = Modifier) {
         InfoRow("Android版本", "-")
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { /* TODO 重启 */ }, enabled = enabled) { Text("重启") }
-            Button(onClick = { /* TODO 截图 */ }, enabled = enabled) { Text("截图") }
-            OutlinedButton(onClick = { /* TODO Root */ }, enabled = enabled) { Text("Root") }
+            if (device is RemoteDevice) {
+                OutlinedButton(onClick = {
+                    globalStateManager.logicManager.selectedExecutorFlow.value.openShell(device.getSN())
+                }, enabled = enabled) { Text("打开 Shell") }
+            }
+
+            // Button(onClick = { /* TODO 重启 */ }, enabled = enabled) { Text("重启") }
+            // Button(onClick = { /* TODO 截图 */ }, enabled = enabled) { Text("截图") }
+            // OutlinedButton(onClick = { /* TODO Root */ }, enabled = enabled) { Text("Root") }
         }
     }
 }

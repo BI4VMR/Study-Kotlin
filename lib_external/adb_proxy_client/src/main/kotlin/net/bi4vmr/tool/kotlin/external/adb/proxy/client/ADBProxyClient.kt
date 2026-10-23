@@ -322,14 +322,14 @@ class ADBProxyClient(
     }
 
 
-    fun openShell(device: RemoteDevice) {
+    fun openShell(sn: String) {
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
                 client.webSocket(
                     host = host,
                     port = port,
-                    path = "${API.ADB_SHELL}?sn=${device.getSN()}"
+                    path = "${API.ADB_SHELL}?sn=${sn}"
                 ) {
                     localServer = ServerSocket(0)
 

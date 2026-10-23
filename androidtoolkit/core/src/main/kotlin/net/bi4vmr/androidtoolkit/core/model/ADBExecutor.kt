@@ -44,4 +44,6 @@ interface ADBExecutor {
      * @return 显示屏信息列表，若出现异常则返回空列表。
      */
     suspend fun getDisplays(sn: String): List<DisplayInfo>
+
+    fun openShell(sn: String)
 }

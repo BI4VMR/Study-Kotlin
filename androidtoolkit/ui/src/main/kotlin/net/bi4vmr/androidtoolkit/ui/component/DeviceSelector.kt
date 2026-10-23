@@ -1,14 +1,39 @@
 package net.bi4vmr.androidtoolkit.ui.component
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -26,7 +51,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 /**
  * ADB 执行器与设备列表。
  *
- * 选中状态由 [GlobalStateManager] 管理，各页面共用。
+ * 选中状态由 [GlobalStateManager] 管理，全局可复用。
  */
 @Composable
 fun DeviceSelector(
@@ -47,12 +72,16 @@ fun DeviceSelector(
         )
 
         // 执行器列表
-        ExecutorTabs(
-            executors = executors,
-            selectedIndex = executors.indexOf(selectedExecutor),
-            onSelect = { logicManager.selectExecutor(executors[it]) },
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
+        SegmentedTabRow(modifier = Modifier.padding(horizontal = 8.dp)) {
+            executors.forEach { executor ->
+                SegmentedTab(
+                    selected = executor == selectedExecutor,
+                    onClick = { logicManager.selectExecutor(executor) }
+                ) {
+                    Text(text = executor.getDisplayName(), maxLines = 1)
+                }
+            }
+        }
 
         // 设备列表
         DeviceList(
@@ -81,19 +110,11 @@ private fun DeviceList(
         ) {
             items(devices, key = { it.getSN() }) { device ->
                 val isSelected = (device.getSN() == selected?.getSN())
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                        .clickable { onSelect(device) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(device.getSN(), style = MaterialTheme.typography.titleSmall)
-                        Text(device.getState().name, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
+                DeviceListItem(
+                    device = device,
+                    selected = isSelected,
+                    onClick = { onSelect(device) }
+                )
             }
         }
 
@@ -158,7 +179,42 @@ private fun DeviceList(
         }
 
         if (connectProxyDialogState) {
+            ConnectProxyDialog(
+                globalStateManager,
+                onDismiss = { connectProxyDialogState = false }
+            )
+        }
+    }
+}
 
+
+@Composable
+private fun DeviceListItem(
+    device: ADBDevice,
+    selected: Boolean,
+    onClick: (device: ADBDevice) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        ),
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { onClick(device) },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(Dimens.Layout.Padding)
+        ) {
+            Icon(Icons.Filled.Devices, null)
+            Spacer(Modifier.width(Dimens.Layout.Space))
+            Text(device.getSN(), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.weight(1F))
+            Text(device.getState().name, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -167,7 +223,7 @@ private fun DeviceList(
 @Composable
 fun ConnectProxyDialog(
     globalStateManager: GlobalStateManager,
-    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val logicManager: LogicManager = globalStateManager.logicManager
 
@@ -179,7 +235,7 @@ fun ConnectProxyDialog(
     val scope = rememberCoroutineScope()
 
     Dialog(
-        onDismissRequest = { onCancel() },
+        onDismissRequest = { onDismiss() },
     ) {
         Surface(
             shape = RoundedCornerShape(8.dp),
@@ -207,7 +263,7 @@ fun ConnectProxyDialog(
                         scope.launch {
                             try {
                                 logicManager.addRemoteExecutor(host)
-                                // connectProxyDialogState = false
+                                onDismiss()
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {

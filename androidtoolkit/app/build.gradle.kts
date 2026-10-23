@@ -23,6 +23,7 @@ compose.desktop {
             vendor = "BI4VMR"
 
             modules("java.sql", "jdk.security.auth")
+            modules("jdk.unsupported")
 
             // 指定程序资源目录
             appResourcesRootDir.set(rootProject.layout.projectDirectory.dir("androidtoolkit/resources"))

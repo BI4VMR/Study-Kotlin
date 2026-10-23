@@ -60,6 +60,14 @@ object FileManager {
         return File(path)
     }
 
+    fun getInternalADBExecFile(): File {
+        return File(getResourcesDir(), "adb")
+    }
+
+    fun getInternalScrcpyServerFile(): File {
+        return File(getResourcesDir(), "scrcpy-server-v5.0.1")
+    }
+
     fun getUserDataDir(): File {
         val home = System.getProperty("user.home")
         return File("$home${File.separator}$DIR_DATA")

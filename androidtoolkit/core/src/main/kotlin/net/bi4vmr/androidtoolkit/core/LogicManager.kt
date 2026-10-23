@@ -25,10 +25,10 @@ import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
-import java.io.File
 import java.net.ConnectException
 import kotlin.time.Duration.Companion.seconds
 
@@ -113,6 +113,12 @@ object LogicManager {
      */
     val selectedDeviceFlow: StateFlow<ADBDevice?> = _selectedDeviceFlow
 
+    /**
+     * 用户上次主动选择的设备序列号。
+     */
+    @Volatile
+    private var preferredSN: String? = null
+
 
     /* ----- 配置项 ----- */
 
@@ -126,18 +132,33 @@ object LogicManager {
     /* ----- 生命周期 ----- */
 
     init {
+        /* 初始化 */
         taskScope.launch {
             fileManager.init()
 
+            // 安装包可能不保留文件的可执行权限，因此启动时主动补全。
+            val adbFile = fileManager.getInternalADBExecFile()
+            if (adbFile.exists() && !adbFile.canExecute()) {
+                adbFile.setExecutable(true, false)
+            }
+            ADBExecutableHelper.setExecutableFile(adbFile)
             ADBController.init()
 
             /* 设置 Scrcpy 服务端文件路径 */
-            val serverFile = File(fileManager.getResourcesDir(), "scrcpy-server-v5.0.1")
+            val serverFile = fileManager.getInternalScrcpyServerFile()
             ScrcpyServerHelper.setServerFile(serverFile)
 
             val proxyStartOnInit = configManager.proxyStartOnInitFlow.first()
             if (proxyStartOnInit) {
                 startProxyServer()
+            }
+        }
+
+        /* 设备列表变化时，优先恢复用户上次选择的设备，找不到则选中第一个 */
+        taskScope.launch {
+            devicesFlow.collect { devices ->
+                // 仅修改选中状态，不改变用户偏好的序列号。
+                _selectedDeviceFlow.value = devices.firstOrNull { it.getSN() == preferredSN } ?: devices.firstOrNull()
             }
         }
     }
@@ -153,6 +174,9 @@ object LogicManager {
     }
 
     fun selectDevice(device: ADBDevice?) {
+        if (device != null) {
+            preferredSN = device.getSN()
+        }
         _selectedDeviceFlow.value = device
     }
 

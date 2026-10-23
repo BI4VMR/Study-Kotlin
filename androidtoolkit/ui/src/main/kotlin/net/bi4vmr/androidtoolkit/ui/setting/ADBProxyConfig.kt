@@ -50,7 +50,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
     var errorInfo: String by remember { mutableStateOf("") }
 
     SettingSection("ADB 转发器") {
-        SettingRow(label = "服务控制") {
+        SettingColumn(label = "服务控制") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("当前状态")
                 Text("$serverState")
@@ -78,7 +78,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
             }
         }
 
-        SettingRow(label = "网络配置") {
+        SettingColumn(label = "网络配置") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("监听地址")
                 OutlinedTextField(

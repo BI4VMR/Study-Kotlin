@@ -18,7 +18,7 @@ import net.bi4vmr.androidtoolkit.ui.common.Dimens
  * @param[content] 内容。根布局为 Column 。
  */
 @Composable
-fun SettingRow(
+fun SettingColumn(
     label: String,
     description: String? = null,
     modifier: Modifier = Modifier,

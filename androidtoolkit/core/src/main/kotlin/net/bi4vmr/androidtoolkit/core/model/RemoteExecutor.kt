@@ -42,6 +42,10 @@ class RemoteExecutor(
         return client.serviceStateFlow
     }
 
+    override fun openShell(sn: String) {
+        client.openShell(sn)
+    }
+
     override fun release() {
         scope.cancel()
         client.release()

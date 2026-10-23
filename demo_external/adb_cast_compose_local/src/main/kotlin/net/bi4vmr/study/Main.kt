@@ -34,13 +34,13 @@ fun main() = application {
             contentAlignment = Alignment.Center
         ) {
             // 设置 Scrcpy 服务端文件路径
-            ScrcpyServerHelper.setServerFile("C:\\Users\\bi4vmr\\Download\\scrcpy-server-v4.1")
+            ScrcpyServerHelper.setServerPath("C:\\Users\\bi4vmr\\Download\\scrcpy-server-v4.1")
             // ScrcpyServerHelper.setServerFilePath("/home/bi4vmr/Downloads/scrcpy-server-v5.0.1")
 
             // 连接本地 ADB 进程
-            if (!ADBController.isInitialized()) {
-                ADBController.init()
-            }
+            // if (!ADBController.isInitialized()) {
+            //     ADBController.init()
+            // }
 
             // 打开首个设备的投屏视图
             ADBController.getDevices()

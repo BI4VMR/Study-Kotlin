@@ -55,4 +55,8 @@ object LocalExecutor : ADBExecutor {
     override suspend fun getDisplays(sn: String): List<DisplayInfo> = withContext(Dispatchers.IO) {
         ADBCLIUtil.getDisplays(sn)
     }
+
+    override fun openShell(sn:String) {
+        // NOP
+    }
 }
