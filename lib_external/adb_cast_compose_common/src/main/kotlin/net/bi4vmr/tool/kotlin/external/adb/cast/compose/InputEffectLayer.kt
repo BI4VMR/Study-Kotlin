@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 
-package net.bi4vmr.tool.kotlin.external.adb.cast
+package net.bi4vmr.tool.kotlin.external.adb.cast.compose
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween

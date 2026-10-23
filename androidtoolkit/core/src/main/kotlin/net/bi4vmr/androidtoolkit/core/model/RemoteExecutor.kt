@@ -22,7 +22,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 class RemoteExecutor(
     private val host: String,
     private val port: Int,
-    private val client: ADBProxyClient
+    val client: ADBProxyClient
 ) : ADBExecutor {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

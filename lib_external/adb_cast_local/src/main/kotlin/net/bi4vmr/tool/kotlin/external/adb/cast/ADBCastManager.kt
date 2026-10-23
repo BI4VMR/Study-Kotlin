@@ -130,6 +130,7 @@ object ADBCastManager {
                     throw IOException(info)
                 }
                 device.syncFileSystem()
+                logger.debug("Push Scrcpy server file to device [{}] success.", device.getSN())
 
 
                 /* 向 JVM 注册清理线程，当应用进程退出时同步终止 ADB 等外部进程。 */

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 /**
  * 全局窗口管理器。
  */
-object WindowManager {
+object GlobalWindowManager {
 
     /**
      * 递增序号。

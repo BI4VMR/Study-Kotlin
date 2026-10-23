@@ -21,6 +21,7 @@ dependencies {
     /* 工程组件 */
     // 本地调试
     api(project(":lib_external:adb_common"))
+    api(project(":lib_external:adb_cast_common"))
     api(project(":lib_external:adb_proxy_common"))
 
     // 依赖传递

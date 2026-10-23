@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBRemoteCastView
+import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBRemoteCastView
 
 /**
  * 示例： ADB 屏幕投射控件。

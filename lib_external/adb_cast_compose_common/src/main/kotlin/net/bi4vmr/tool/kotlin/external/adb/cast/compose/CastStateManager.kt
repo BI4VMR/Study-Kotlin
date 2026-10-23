@@ -1,12 +1,11 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast
+package net.bi4vmr.tool.kotlin.external.adb.cast.compose
 
+import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastMediaListener
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
-import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
-import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
-import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.jetbrains.skia.Shader
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
@@ -20,25 +19,17 @@ import javax.sound.sampled.SourceDataLine
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-open class ADBCastStateManager {
+open class CastStateManager {
 
     /**
      * 投屏事件监听器。
      */
-    private val listener: ADBCastMediaListener = EventListener()
-
-    /**
-     * 是否为本地连接。
-     *
-     * 每个实例只能使用一种模式，空值表示未开启任务， `true` 表示本地连接， `false` 表示远程连接。
-     */
-    @Volatile
-    private var localMode: Boolean? = null
+    protected val listener: ADBCastMediaListener = EventListener()
 
     /**
      * 投屏状态。
      */
-    private val _stateFlow: MutableStateFlow<ADBCastState> = MutableStateFlow(ADBCastState.Loading)
+    private val _stateFlow: MutableStateFlow<ADBCastState> = MutableStateFlow(ADBCastState.IDLE)
 
     /**
      * 投屏状态。
@@ -48,12 +39,12 @@ open class ADBCastStateManager {
     /**
      * 当前画面的尺寸。
      */
-    private val _frameSizeFlow: MutableStateFlow<Pair<Int, Int>> = MutableStateFlow(Pair(0, 0))
+    private val _frameSizeFlow: MutableStateFlow<IntSize> = MutableStateFlow(IntSize.Zero)
 
     /**
      * 当前画面的尺寸。
      */
-    val frameSizeFlow: StateFlow<Pair<Int, Int>> = _frameSizeFlow
+    val frameSizeFlow: StateFlow<IntSize> = _frameSizeFlow
 
     /**
      * 当前画面的 Shader 。
@@ -96,57 +87,6 @@ open class ADBCastStateManager {
     val audioErrorInfoFlow: StateFlow<Exception?> = _audioErrorInfoFlow
 
 
-    fun startLocal(
-        device: LocalDevice,
-        displayID: String = "0",
-        videoCodec: VideoCodec = VideoCodec.H264,
-        bitRate: Int = 8_000_000,
-        maxSize: Int = -1,
-        maxFPS: Int = 360,
-        enableAudio: Boolean = false,
-        audioCodec: AudioCodec = AudioCodec.AAC,
-        audioBitRate: Int = 128_000
-    ) {
-        if (localMode != null) {
-            return
-        }
-
-        localMode = true
-
-        ADBCastManager.start(
-            device,
-            listener,
-            displayID,
-            videoCodec,
-            bitRate,
-            maxSize,
-            maxFPS,
-            enableAudio,
-            audioCodec,
-            audioBitRate
-        )
-    }
-
-    fun startRemote(host: String, port: Int) {
-        if (localMode != null) {
-            return
-        }
-
-        localMode = false
-
-        ADBCastReceiver.start(host, port, listener)
-    }
-
-    fun stop() {
-        val mode = localMode ?: return
-        if (mode) {
-            ADBCastManager.stop(listener)
-        } else {
-            ADBCastReceiver.stop(listener)
-        }
-    }
-
-
     /**
      * 投屏事件监听器实现。
      */
@@ -173,12 +113,12 @@ open class ADBCastStateManager {
 
 
         override fun onConnectError(error: Exception) {
-            _stateFlow.value = ADBCastState.Error
+            _stateFlow.value = ADBCastState.ERROR
             _errorInfoFlow.value = error
         }
 
         override fun onVideoSizeChange(width: Int, height: Int) {
-            _frameSizeFlow.value = Pair(width, height)
+            _frameSizeFlow.value = IntSize(width, height)
         }
 
         override fun onVideoFrame(
@@ -196,11 +136,11 @@ open class ADBCastStateManager {
         }
 
         override fun onVideoReady() {
-            _stateFlow.value = ADBCastState.Casting
+            _stateFlow.value = ADBCastState.CASTING
         }
 
         override fun onVideoError(error: Exception) {
-            _stateFlow.value = ADBCastState.Error
+            _stateFlow.value = ADBCastState.ERROR
             _errorInfoFlow.value = error
         }
 

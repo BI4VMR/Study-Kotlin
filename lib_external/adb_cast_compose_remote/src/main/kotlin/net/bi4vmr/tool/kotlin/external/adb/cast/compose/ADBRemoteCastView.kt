@@ -1,18 +1,20 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast
+package net.bi4vmr.tool.kotlin.external.adb.cast.compose
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
+import kotlinx.coroutines.launch
+import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 
 /**
  * Android设备屏幕投影视图。
  *
  * 利用Scrcpy服务端实现屏幕投屏功能，并支持转发触控事件以远程控制设备。
  *
- * @param[device] 要投屏的Android设备。
+ * @param[client] 要投屏的Android设备。
  * @param[displayID] 要投屏的显示信息，如果为null则使用设备的默认显示。
  * @param[modifier] Compose的Modifier。
  * @param[background] 设备画面未覆盖区域的颜色。
@@ -24,8 +26,9 @@ import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
  * @param[onSwipe] 拖拽手势回调，参数为设备帧坐标(startX, startY, endX, endY)。
  */
 @Composable
-fun ADBLocalCastView(
-    device: LocalDevice,
+fun ADBRemoteCastView(
+    client: ADBProxyClient,
+    deviceSN: String,
     displayID: String = "0",
     modifier: Modifier = Modifier,
     background: Color = Color(0xFF1E1F22),
@@ -36,11 +39,14 @@ fun ADBLocalCastView(
     onLongClick: ((x: Int, y: Int) -> Unit)? = null,
     onSwipe: ((startX: Int, startY: Int, endX: Int, endY: Int) -> Unit)? = null
 ) {
-    val stateManager: ADBCastStateManager = remember(device, displayID) { ADBCastStateManager() }
+    val stateManager: RemoteCastStateManager = remember { RemoteCastStateManager() }
+    val coroutineScope = rememberCoroutineScope()
 
     // 投屏任务控制
-    DisposableEffect(device, displayID) {
-        stateManager.startLocal(device, displayID)
+    DisposableEffect(client, deviceSN, displayID) {
+        coroutineScope.launch {
+            stateManager.start(client, deviceSN, displayID)
+        }
 
         onDispose {
             stateManager.stop()

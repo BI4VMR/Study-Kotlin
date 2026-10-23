@@ -10,6 +10,7 @@ import net.bi4vmr.androidtoolkit.ui.apps.AppsPage
 import net.bi4vmr.androidtoolkit.ui.common.Pages
 import net.bi4vmr.androidtoolkit.ui.component.ToastHost
 import net.bi4vmr.androidtoolkit.ui.display.ADBCastWindow
+import net.bi4vmr.androidtoolkit.ui.display.CastRecord
 import net.bi4vmr.androidtoolkit.ui.display.DisplayPage
 import net.bi4vmr.androidtoolkit.ui.files.FilesPage
 import net.bi4vmr.androidtoolkit.ui.generic.GenericPage
@@ -64,7 +65,9 @@ fun App() {
     /* 全局窗口管理 */
     globalStateManager.windowManager.windows.forEach { record ->
         key(record.id) {
-            ADBCastWindow(globalStateManager,record)
+            if (record is CastRecord) {
+                ADBCastWindow(globalStateManager, record)
+            }
         }
     }
 }

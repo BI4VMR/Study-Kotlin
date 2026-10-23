@@ -1,8 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
-import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
 import java.net.Socket
@@ -30,8 +30,7 @@ internal data class ADBCastReceiverContext(
     override var inputController: InputController? = null,
 
     /**
-     * ADB 设备。
+     * ADB 设备序列号。
      */
-    val deviceID: String,
+    val deviceSN: String,
 ) : ADBCastMediaContext
-

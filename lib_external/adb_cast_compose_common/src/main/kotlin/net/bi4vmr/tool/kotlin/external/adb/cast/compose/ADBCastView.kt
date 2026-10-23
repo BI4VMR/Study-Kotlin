@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast
+package net.bi4vmr.tool.kotlin.external.adb.cast.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -39,8 +39,8 @@ import org.jetbrains.skia.Shader
  * @param[onSwipe] 拖拽手势回调，参数为设备帧坐标(startX, startY, endX, endY)。
  */
 @Composable
-internal fun ADBCastView(
-    stateManager: ADBCastStateManager,
+fun ADBCastView(
+    stateManager: CastStateManager,
     displayID: String = "0",
     modifier: Modifier = Modifier,
     background: Color = Color(0xFF1E1F22),
@@ -51,23 +51,18 @@ internal fun ADBCastView(
     onLongClick: ((x: Int, y: Int) -> Unit)? = null,
     onSwipe: ((startX: Int, startY: Int, endX: Int, endY: Int) -> Unit)? = null
 ) {
-    // 工况
+    // 当前状态
     val state: ADBCastState by stateManager.stateFlow.collectAsState()
 
     // 视频帧尺寸
-    val frameSize: Pair<Int, Int> by stateManager.frameSizeFlow.collectAsState()
-
-    // 视频帧尺寸 (IntSize)
-    val frameIntSize: IntSize = remember(frameSize) {
-        IntSize(frameSize.first, frameSize.second)
-    }
+    val frameSize: IntSize by stateManager.frameSizeFlow.collectAsState()
 
     // 画布尺寸
     var canvasSize: IntSize by remember { mutableStateOf(IntSize.Zero) }
 
     // 有效内容区域
     val renderRect: Rect = remember(canvasSize, frameSize) {
-        fitCanvas(canvasSize, frameIntSize)
+        fitCanvas(canvasSize, frameSize)
     }
 
     // 当前画面的 Shader
@@ -82,8 +77,8 @@ internal fun ADBCastView(
 
     // 视频帧尺寸变化时通知外部，以便其调整画面尺寸。
     LaunchedEffect(frameSize) {
-        val width = frameSize.first
-        val height = frameSize.second
+        val width = frameSize.width
+        val height = frameSize.height
         if (width > 0 && height > 0) {
             onVideoSizeChange?.invoke(width, height)
         }
@@ -98,13 +93,16 @@ internal fun ADBCastView(
             .onSizeChanged { canvasSize = it }
     ) {
         when (state) {
+            /* 初始化 */
+            // TODO 暂时未添加
+            ADBCastState.IDLE -> LoadingView()
             /* 加载中 */
-            ADBCastState.Loading -> LoadingView()
+            ADBCastState.LOADING -> LoadingView()
             /* 正在投屏 */
-            ADBCastState.Casting -> {
+            ADBCastState.CASTING -> {
                 // 设备画面显示
                 SkiaShaderLayer(
-                    frameSize = frameIntSize,
+                    frameSize = frameSize,
                     shader = shader
                 )
 
@@ -119,17 +117,17 @@ internal fun ADBCastView(
                         // 尺寸与有效区域保持一致
                         modifier = Modifier.size(widthDP, heightDP),
                         onPress = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameSize).let {
                                 inputController?.mouseDown(it.x.toInt(), it.y.toInt())
                             }
                         },
                         onMove = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameSize).let {
                                 inputController?.mouseMove(it.x.toInt(), it.y.toInt(), pressed = true)
                             }
                         },
                         onRelease = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameSize).let {
                                 inputController?.mouseUp(it.x.toInt(), it.y.toInt())
                             }
                         },
@@ -138,7 +136,7 @@ internal fun ADBCastView(
                             inputController?.pressBack()
                         },
                         onScroll = { position, delta ->
-                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameSize).let {
                                 inputController?.scroll(
                                     position.x.toInt(),
                                     position.y.toInt(),
@@ -148,18 +146,18 @@ internal fun ADBCastView(
                             }
                         },
                         onClick = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameSize).let {
                                 onClick?.invoke(it.x.toInt(), it.y.toInt())
                             }
                         },
                         onLongClick = { position ->
-                            inputLayerToFramePosition(position, renderRect, frameIntSize).let {
+                            inputLayerToFramePosition(position, renderRect, frameSize).let {
                                 onLongClick?.invoke(it.x.toInt(), it.y.toInt())
                             }
                         },
                         onSwipe = { start, end ->
-                            val startFrame = inputLayerToFramePosition(start, renderRect, frameIntSize)
-                            val endFrame = inputLayerToFramePosition(end, renderRect, frameIntSize)
+                            val startFrame = inputLayerToFramePosition(start, renderRect, frameSize)
+                            val endFrame = inputLayerToFramePosition(end, renderRect, frameSize)
                             onSwipe?.invoke(
                                 startFrame.x.toInt(), startFrame.y.toInt(),
                                 endFrame.x.toInt(), endFrame.y.toInt()
@@ -169,7 +167,7 @@ internal fun ADBCastView(
                 }
             }
             // 出错终止
-            ADBCastState.Error -> ErrorView(info = errorInfo?.message ?: "未知错误")
+            ADBCastState.ERROR -> ErrorView(info = errorInfo?.message ?: "未知错误")
         }
     }
 }

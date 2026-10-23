@@ -21,14 +21,12 @@ tasks.withType<Test> {
 dependencies {
     /* 工程组件 */
     // 本地调试
-    api(project(":lib_external:adb_cast_media"))
+    api(project(":lib_external:adb_cast_compose_common"))
     api(project(":lib_external:adb_cast_local"))
-    api(project(":lib_external:adb_cast_receiver"))
 
     // 依赖传递
-    // api(privateLibKotlin.external.adb.cast.media)
     // api(privateLibKotlin.external.adb.cast.local)
-    // api(privateLibKotlin.external.adb.cast.receiver)
+    // api(privateLibKotlin.external.adb.cast.local)
 
 
     /* 外部组件 */

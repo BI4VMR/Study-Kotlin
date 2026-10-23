@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast
+package net.bi4vmr.tool.kotlin.external.adb.cast.compose
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -36,11 +36,11 @@ fun ADBLocalCastView(
     onLongClick: ((x: Int, y: Int) -> Unit)? = null,
     onSwipe: ((startX: Int, startY: Int, endX: Int, endY: Int) -> Unit)? = null
 ) {
-    val stateManager: ADBCastStateManager = remember(device, displayID) { ADBCastStateManager() }
+    val stateManager: LocalCastStateManager = remember { LocalCastStateManager() }
 
     // 投屏任务控制
     DisposableEffect(device, displayID) {
-        stateManager.startLocal(device, displayID)
+        stateManager.start(device, displayID)
 
         onDispose {
             stateManager.stop()

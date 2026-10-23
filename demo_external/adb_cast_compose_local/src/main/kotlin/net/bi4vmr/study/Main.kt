@@ -11,7 +11,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.cast.ADBLocalCastView
+import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBLocalCastView
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 
 /**

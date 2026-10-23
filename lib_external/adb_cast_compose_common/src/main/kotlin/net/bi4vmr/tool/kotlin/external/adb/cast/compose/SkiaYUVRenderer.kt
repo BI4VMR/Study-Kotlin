@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast
+package net.bi4vmr.tool.kotlin.external.adb.cast.compose
 
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
@@ -20,7 +20,7 @@ import java.nio.ByteOrder
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-internal object SkiaYUVRenderer {
+object SkiaYUVRenderer {
 
     /**
      * SkSL 着色器。

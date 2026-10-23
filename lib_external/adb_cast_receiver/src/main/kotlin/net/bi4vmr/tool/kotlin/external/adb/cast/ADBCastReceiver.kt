@@ -1,9 +1,9 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast
 
-import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.audio.AudioProtocolParser
 import net.bi4vmr.tool.kotlin.external.adb.cast.control.InputController
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoDecoder
 import net.bi4vmr.tool.kotlin.external.adb.cast.video.VideoProtocolParser
@@ -15,7 +15,7 @@ import kotlin.concurrent.thread
 /**
  * ADB 屏幕投射管理（接收端）。
  *
- * 从 [ADBCastTransfer] 接收 Scrcpy 数据并进行解码，可显示投屏画面或播放音频。
+ * 从 `ADBCastTransfer` 接收 Scrcpy 数据并进行解码，可显示投屏画面或播放音频。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -29,13 +29,10 @@ object ADBCastReceiver {
 
 
     /**
-     * 启动屏幕投射接收任务（接收端）。
-     *
-     * 连接发送端的监听端口，并依次建立视频、音频（若启用）与控制三个连接，音视频帧与控制器通过 [listener] 回调。
+     * 启动屏幕投射接收任务。
      *
      * @param[host] 发送端地址。
-     * @param[port] 发送端监听的端口，由 [ADBCastTransfer.start] 返回。
-     * @param[enableAudio] 发送端是否启用音频，需与发送端保持一致。
+     * @param[port] 发送端端口。
      * @param[listener] 事件监听器。
      */
     @JvmStatic
@@ -43,32 +40,27 @@ object ADBCastReceiver {
         host: String,
         port: Int,
         listener: ADBCastMediaListener,
-        enableAudio: Boolean = false
+        videoCodec: VideoCodec = VideoCodec.H264,
+        enableAudio: Boolean = false,
+        audioCodec: AudioCodec = AudioCodec.AAC
     ) {
+        /* 创建投屏任务 */
         val context = ADBCastReceiverContext(
             listener = listener,
-            deviceID = "1",
-            videoCodec = VideoCodec.H264,
-            audioCodec = AudioCodec.AAC
+            deviceSN = "1",
+            videoCodec = videoCodec,
+            audioCodec = audioCodec
         )
 
         thread {
             try {
-                // 连接顺序固定：视频 -> 音频（若启用） -> 控制，发送端按此顺序区分通道。
-                val videoSocket = Socket(host, port).apply { tcpNoDelay = true }
+                /* 建立视频通道（第一个 TCP 连接） */
+                // 发送端与 Android 设备连接时已消耗握手字节，因此接收端无需处理该字节，直接解析后续数据包即可。
+                val videoSocket = Socket(host, port)
+                videoSocket.tcpNoDelay = true
                 context.videoSocket = videoSocket
 
-                val audioSocket = if (enableAudio) Socket(host, port).apply { tcpNoDelay = true } else null
-                context.audioSocket = audioSocket
-
-                val controlSocket = Socket(host, port).apply { tcpNoDelay = true }
-                context.controlSocket = controlSocket
-
-                // 控制器需先于视频解析器创建，视频尺寸变化时会更新控制器的坐标基准。
-                val inputController = InputController(controlSocket.getOutputStream())
-                context.inputController = inputController
-                listener.onControlReady(inputController)
-
+                // 循环读取视频通道数据并进行解码
                 thread {
                     try {
                         val videoDecoder = VideoDecoder()
@@ -80,7 +72,16 @@ object ADBCastReceiver {
                     }
                 }
 
-                if (audioSocket != null) {
+                /*
+                 * 建立音频通道（第二个 TCP 连接）
+                 *
+                 * 服务端按照客户端连接顺序分配数据通道，分别为：视频 -> 音频 -> 控制，未启用音频时，第二通道为控制通道。
+                 */
+                if (enableAudio) {
+                    val audioSocket = Socket(host, port)
+                    audioSocket.tcpNoDelay = true
+                    context.audioSocket = audioSocket
+
                     thread {
                         try {
                             val audioDecoder = AudioDecoder()
@@ -92,6 +93,15 @@ object ADBCastReceiver {
                         }
                     }
                 }
+
+                /* 建立远程控制通道（第三个 TCP 连接） */
+                val controlSocket = Socket(host, port)
+                controlSocket.tcpNoDelay = true
+                context.controlSocket = controlSocket
+
+                val inputController = InputController(controlSocket.getOutputStream())
+                context.inputController = inputController
+                listener.onControlReady(inputController)
             } catch (e: Exception) {
                 listener.onConnectError(e)
             }
@@ -99,14 +109,12 @@ object ADBCastReceiver {
     }
 
     /**
-     * 停止屏幕投射接收任务（接收端）。
-     *
-     * 关闭视频、音频与控制三个连接，并释放资源。
+     * 停止屏幕投射接收任务。
      *
      * @param[listener] 事件监听器。
      */
     @JvmStatic
     fun stop(listener: ADBCastMediaListener) {
-        // listener.onStop()
+        // TODO
     }
 }

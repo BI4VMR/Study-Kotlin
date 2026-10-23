@@ -15,7 +15,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.androidtoolkit.ui.WindowManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
@@ -56,7 +55,15 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
 
         DisplayDetail(
             display = selectedDisplay,
-            onCast = { globalStateManager.windowManager.addWindow(WindowManager.Record()) },
+            onCast = {
+                val device = logicManager.selectedDeviceFlow.value
+                val display = selectedDisplay
+                if (device != null && display != null) {
+                    globalStateManager.windowManager.addWindow(
+                        CastRecord(logicManager.selectedExecutorFlow.value, device, display.id)
+                    )
+                }
+            },
             modifier = Modifier.weight(1F)
         )
     }

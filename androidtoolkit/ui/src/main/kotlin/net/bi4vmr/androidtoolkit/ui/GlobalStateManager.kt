@@ -19,7 +19,7 @@ class GlobalStateManager {
     /**
      * 全局窗口管理器。
      */
-    val windowManager = WindowManager
+    val windowManager = GlobalWindowManager
 
     /**
      * 全局消息气泡管理器。

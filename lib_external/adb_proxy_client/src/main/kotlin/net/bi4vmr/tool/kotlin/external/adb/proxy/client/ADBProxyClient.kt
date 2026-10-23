@@ -30,6 +30,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
+import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
@@ -53,14 +55,14 @@ class ADBProxyClient(
     /**
      * 监听地址。
      */
-    private val host: String,
+    val host: String,
 
     /**
      * 监听端口。
      *
      * 默认值为 [Constant.PORT_SERVER_DEFAULT]。
      */
-    private val port: Int = Constant.PORT_SERVER_DEFAULT,
+    val port: Int = Constant.PORT_SERVER_DEFAULT,
 ) {
 
     /**
@@ -204,30 +206,6 @@ class ADBProxyClient(
     suspend fun fetchDeviceList(): List<RemoteDevice> {
         val url = buildURL(API.ADB_DEVICES)
         return client.post(url).body()
-    }
-
-    /**
-     * 请求服务端为指定设备启动投屏转发。
-     *
-     * 请求成功后可将返回端口传入 `ADBCastReceiver.start(host, port, listener)`，
-     * 由接收端连接服务端建立的投屏通道。投屏接收模块需由调用方单独引入。
-     *
-     * @param[sn] 服务端已连接设备的序列号。
-     * @return 服务端投屏监听端口。
-     * @throws[IllegalStateException] 服务端未启用投屏路由或启动投屏失败。
-     */
-    suspend fun startCast(sn: String): Int {
-        require(sn.isNotBlank()) { "Device SN is required." }
-
-        val response = client.post(buildURL(API.ADB_CAST_START)) {
-            contentType(ContentType.Application.Json)
-            setBody(ADBCastStartRequest(sn = sn))
-        }
-        check(response.status.isSuccess()) {
-            "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
-        }
-        return response.bodyAsText().trim().toIntOrNull()
-            ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
     /**
@@ -391,6 +369,55 @@ class ADBProxyClient(
         }
     }
 
+    /**
+     * 请求服务端为指定设备启动投屏转发。
+     *
+     * 请求成功后可将返回端口传入 `ADBCastReceiver.start(host, port, listener)`，
+     * 由接收端连接服务端建立的投屏通道。投屏接收模块需由调用方单独引入。
+     *
+     * @param[sn] 服务端已连接设备的序列号。
+     * @return 服务端投屏监听端口。
+     * @throws[IllegalStateException] 服务端未启用投屏路由或启动投屏失败。
+     */
+    suspend fun startCast(
+        sn: String,
+        displayID: String = "0",
+        videoCodec: VideoCodec = VideoCodec.H264,
+        bitRate: Int = 8_000_000,
+        maxSize: Int = -1,
+        maxFPS: Int = 360,
+        enableAudio: Boolean = false,
+        audioCodec: AudioCodec = AudioCodec.AAC,
+        audioBitRate: Int = 128_000
+    ): Int {
+        /* 参数校验 */
+        require(sn.isNotBlank()) { "Device SN is required!" }
+
+        val params = ADBCastStartRequest(
+            sn = sn,
+            displayID = displayID,
+            videoCodec = videoCodec,
+            bitRate = bitRate,
+            maxSize = maxSize,
+            maxFPS = maxFPS,
+            enableAudio = enableAudio,
+            audioCodec = audioCodec,
+            audioBitRate = audioBitRate
+        )
+
+        /* 发起 HTTP 请求 */
+        val response = client.post(buildURL(API.ADB_CAST_START)) {
+            contentType(ContentType.Application.Json)
+            setBody(params)
+        }
+
+        check(response.status.isSuccess()) {
+            "Failed to start remote cast. Reason:[${response.bodyAsText()}]"
+        }
+
+        return response.bodyAsText().trim().toIntOrNull()
+            ?: throw IllegalStateException("Invalid cast port returned by server.")
+    }
 
     private fun buildURL(path: String): String = "http://$host:$port$path"
 }
