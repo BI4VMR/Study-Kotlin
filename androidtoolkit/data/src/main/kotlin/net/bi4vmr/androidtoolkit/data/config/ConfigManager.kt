@@ -8,7 +8,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import java.io.File
 
 /**
@@ -19,7 +21,7 @@ import java.io.File
  * @param file 配置文件，扩展名必须为 "preferences_pb"。
  */
 class ConfigManager(
-    file: File = File(System.getProperty("user.home"), ".AndroidToolkit_Exp/system_config.preferences_pb"),
+    file: File,
     scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
 
@@ -28,8 +30,18 @@ class ConfigManager(
         file
     }
 
+    val adbExecFileModeFlow: Flow<ADBExecFileMode> =
+        dataStore.data.map {
+            val code = it[Configs.Key.ADB_EXEC_MODE] ?: Configs.Value.ADB_EXEC_MODE_DEFAULT
+            ADBExecFileMode.fromCode(code)
+        }
 
-    /** 是否开启代理服务（默认关闭）。 */
+    val adbExecFileOfUser: Flow<File?> =
+        dataStore.data.map {
+            val path = it[Configs.Key.ADB_EXEC_PATH_USER]
+            if (path.isNullOrBlank()) null else File(path)
+        }
+
     val proxyStartOnInitFlow: Flow<Boolean> =
         dataStore.data.map {
             it[Configs.Key.PROXY_START_ON_INIT] ?: Configs.Value.PROXY_START_ON_INIT_DEFAULT
@@ -45,6 +57,20 @@ class ConfigManager(
             it[Configs.Key.PROXY_PORT] ?: Configs.Value.PROXY_PORT_DEFAULT
         }
 
+
+    suspend fun getADBExecFileMode(): ADBExecFileMode =
+        adbExecFileModeFlow.first()
+
+    suspend fun getADBExecFileOfUser(): File? =
+        adbExecFileOfUser.first()
+
+    suspend fun setADBExecMode(mode: ADBExecFileMode) {
+        dataStore.edit { it[Configs.Key.ADB_EXEC_MODE] = mode.code }
+    }
+
+    suspend fun setADBExecFileOfUser(file: File) {
+        dataStore.edit { it[Configs.Key.ADB_EXEC_PATH_USER] = file.absolutePath }
+    }
 
     suspend fun setProxyStartOnInit(enabled: Boolean) {
         dataStore.edit { it[Configs.Key.PROXY_START_ON_INIT] = enabled }

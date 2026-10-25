@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 
@@ -20,7 +21,7 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
  */
 @Composable
 fun ADBLocalConfig(globalStateManager: GlobalStateManager) {
-    var adbExecMode: ADBExecFileMode by remember { mutableStateOf(ADBExecFileMode.INTERNAL) }
+    val adbExecMode: ADBExecFileMode by globalStateManager.logicManager.adbExecFileModeFlow.collectAsStateWithLifecycle(ADBExecFileMode.INTERNAL)
     var adbPath: String by remember { mutableStateOf("") }
 
     SettingSection("ADB 本地进程") {
@@ -29,19 +30,19 @@ fun ADBLocalConfig(globalStateManager: GlobalStateManager) {
                 RadioButton(
                     selected = (adbExecMode == ADBExecFileMode.INTERNAL),
                     onClick = {
-                        adbExecMode = ADBExecFileMode.INTERNAL
+                        globalStateManager.logicManager.setADBExecMode(ADBExecFileMode.INTERNAL)
                     })
                 Text("内置")
                 RadioButton(
                     selected = (adbExecMode == ADBExecFileMode.AUTO),
                     onClick = {
-                        adbExecMode = ADBExecFileMode.AUTO
+                        globalStateManager.logicManager.setADBExecMode(ADBExecFileMode.AUTO)
                     })
                 Text("自动侦测")
                 RadioButton(
                     selected = (adbExecMode == ADBExecFileMode.USER),
                     onClick = {
-                        adbExecMode = ADBExecFileMode.USER
+                        globalStateManager.logicManager.setADBExecMode(ADBExecFileMode.USER)
                     })
                 Text("用户定义")
             }

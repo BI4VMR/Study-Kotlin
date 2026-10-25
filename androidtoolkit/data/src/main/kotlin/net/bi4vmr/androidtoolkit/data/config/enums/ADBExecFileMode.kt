@@ -6,20 +6,33 @@ package net.bi4vmr.androidtoolkit.data.config.enums
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-enum class ADBExecFileMode {
+enum class ADBExecFileMode(
+
+    /**
+     * 配置编码。
+     */
+    val code: Int
+) {
 
     /**
      * 程序内置。
      */
-    INTERNAL,
+    INTERNAL(1),
 
     /**
      * 自动侦测。
      */
-    AUTO,
+    AUTO(2),
 
     /**
      * 用户定义。
      */
-    USER;
+    USER(3);
+
+    companion object {
+
+        fun fromCode(code: Int): ADBExecFileMode {
+            return entries.firstOrNull { it.code == code } ?: INTERNAL
+        }
+    }
 }

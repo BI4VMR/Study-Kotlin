@@ -84,4 +84,6 @@ object FileManager {
     fun getDBDir(): File {
         return File(getUserDataDir(), DIR_DB)
     }
+
+    fun getConfigFile(): File = File(getConfigDir(), "config.preferences_pb")
 }

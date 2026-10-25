@@ -2,24 +2,13 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
+import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
@@ -53,7 +42,7 @@ object LogicManager {
     /**
      * 配置管理。
      */
-    private val configManager: ConfigManager = ConfigManager(scope = taskScope)
+    private val configManager: ConfigManager = ConfigManager(FileManager.getConfigFile(), taskScope)
 
     /**
      * ADB 转发器。
@@ -122,6 +111,8 @@ object LogicManager {
 
     /* ----- 配置项 ----- */
 
+    val adbExecFileModeFlow: Flow<ADBExecFileMode> = configManager.adbExecFileModeFlow
+
     val proxyStartOnInitFlow: Flow<Boolean> = configManager.proxyStartOnInitFlow
 
     val proxyInterfaceFlow: Flow<String> = configManager.proxyInterfaceFlow
@@ -136,12 +127,26 @@ object LogicManager {
         taskScope.launch {
             fileManager.init()
 
-            // 安装包可能不保留文件的可执行权限，因此启动时主动补全。
-            val adbFile = fileManager.getInternalADBExecFile()
-            if (adbFile.exists() && !adbFile.canExecute()) {
-                adbFile.setExecutable(true, false)
+            val adbExecMode = configManager.getADBExecFileMode()
+            when (adbExecMode) {
+                ADBExecFileMode.INTERNAL -> {
+                    val adbFile = fileManager.getInternalADBExecFile()
+                    if (adbFile.exists() && !adbFile.canExecute()) {
+                        adbFile.setExecutable(true, false)
+                    }
+                    ADBExecutableHelper.setExecutableFile(adbFile)
+                }
+
+                ADBExecFileMode.AUTO -> {
+                    println("LogicManager init: detected adb exec file = ${ADBExecutableHelper.detectExecutable()}")
+                }
+
+                ADBExecFileMode.USER -> {
+                    val user = configManager.getADBExecFileOfUser()
+                    println("LogicManager init: user adb exec file = $user")
+                }
             }
-            ADBExecutableHelper.setExecutableFile(adbFile)
+
             ADBController.init()
 
             /* 设置 Scrcpy 服务端文件路径 */
@@ -224,6 +229,7 @@ object LogicManager {
                 // ADBCastManager.start()
                 // exec.startCast()
             }
+
             is RemoteExecutor -> {
                 taskScope.launch {
                     // ADBProxyClient().startCast()
@@ -245,6 +251,12 @@ object LogicManager {
 
 
     /* ----- 配置项 ----- */
+
+    fun setADBExecMode(mode: ADBExecFileMode) {
+        taskScope.launch {
+            configManager.setADBExecMode(mode)
+        }
+    }
 
     fun setProxyStartOnInit(enabled: Boolean) {
         taskScope.launch {
