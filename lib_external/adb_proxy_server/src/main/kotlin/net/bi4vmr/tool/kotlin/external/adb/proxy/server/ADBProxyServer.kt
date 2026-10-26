@@ -4,9 +4,11 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ServerReady
 import io.ktor.server.application.install
-import io.ktor.server.cio.CIO
+import io.ktor.server.netty.Netty
 import io.ktor.server.engine.EmbeddedServer
+import io.ktor.network.tls.certificates.generateCertificate
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.engine.sslConnector
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.routing
@@ -19,6 +21,9 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
 import org.slf4j.LoggerFactory
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurity
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.installSecurity
+import java.security.KeyStore
 import java.util.ServiceLoader
 
 /**
@@ -57,6 +62,19 @@ class ADBProxyServer(
     private var server: EmbeddedServer<*, *>? = null
 
     /**
+     * 安全配置，启动前必须通过 [setSecurity] 设置。
+     */
+    @Volatile
+    private var security: ADBProxySecurity? = null
+
+    private val _fingerprintFlow: MutableStateFlow<String?> = MutableStateFlow(null)
+
+    /**
+     * Flow : 服务端证书的 SHA-256 指纹（十六进制），启动后可用，供客户端核对。
+     */
+    val fingerprintFlow: StateFlow<String?> = _fingerprintFlow
+
+    /**
      * 全局 JSON 工具。
      */
     private val jsonTool: Json = Json {
@@ -83,6 +101,13 @@ class ADBProxyServer(
             return
         }
 
+        val sec = security
+        if (sec == null) {
+            logger.error("Security config is required, call setSecurity() before start().")
+            _errorFlow.value = IllegalStateException("Security config is not set.")
+            return
+        }
+
         _errorFlow.value = null
         _stateFlow.value = ServerState.STARTING
 
@@ -91,11 +116,25 @@ class ADBProxyServer(
         }
 
         try {
-            server = embeddedServer(CIO, host = address, port = port) {
+            val keyStore = loadKeyStore(sec)
+            _fingerprintFlow.value = ADBProxySecurity.fingerprintOf(keyStore).also { sec.fingerprint = it }
+
+            // 仅提供 TLS 端口，不开放明文连接（Ktor CIO 服务端不支持 HTTPS，故使用 Netty）。
+            server = embeddedServer(Netty, configure = {
+                sslConnector(
+                    keyStore = keyStore,
+                    keyAlias = ADBProxySecurity.KEY_ALIAS,
+                    keyStorePassword = { ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray() },
+                    privateKeyPassword = { ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray() }
+                ) {
+                    host = address
+                    port = this@ADBProxyServer.port
+                }
+            }) {
                 // 监听服务器就绪状态
                 monitor.subscribe(ServerReady) { _stateFlow.value = ServerState.RUNNING }
 
-                configure()
+                configure(sec)
             }.start(wait = false)
         } catch (e: Exception) {
             // TODO
@@ -138,11 +177,39 @@ class ADBProxyServer(
     }
 
 
-    private fun Application.configure() {
+    /**
+     * 设置安全配置。
+     *
+     * 如果服务端已经启动，该设置不会影响已启动的服务端，若要刷新需先终止后重新启动；
+     * 但 [ADBProxySecurity.trustAllClients] 为即时生效。
+     */
+    fun setSecurity(security: ADBProxySecurity) {
+        this.security = security
+    }
+
+    private fun loadKeyStore(sec: ADBProxySecurity): KeyStore {
+        val file = sec.keyStoreFile
+        if (!file.exists()) {
+            file.parentFile?.mkdirs()
+            generateCertificate(
+                file = file,
+                algorithm = "SHA256withRSA",
+                keyAlias = ADBProxySecurity.KEY_ALIAS,
+                keyPassword = ADBProxySecurity.KEYSTORE_PASSWORD,
+                jksPassword = ADBProxySecurity.KEYSTORE_PASSWORD,
+                keySizeInBits = 2048
+            )
+        }
+        return KeyStore.getInstance(file, ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray())
+    }
+
+    private fun Application.configure(security: ADBProxySecurity) {
         // 自动反序列化
         install(ContentNegotiation) { json(jsonTool) }
         // WebSocket 支持
         install(WebSockets)
+        // 认证与配对
+        installSecurity(security)
 
         routing {
             installInternalRoutes(this)

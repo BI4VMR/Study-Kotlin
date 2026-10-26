@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +76,25 @@ fun App() {
 
         /* 全局消息气泡层 */
         ToastHost(globalStateManager.toastManager)
+    }
+
+
+    /* 配对申请确认 */
+    val pending by globalStateManager.logicManager.pendingPairingFlow.collectAsState()
+    pending?.let { p ->
+        AlertDialog(
+            onDismissRequest = { p.respond(false) },
+            title = { Text("配对申请") },
+            text = {
+                Column {
+                    Text("客户端「${p.request.clientName}」（${p.request.clientId}）请求与本机配对，批准后其可以操作本机的设备。")
+                    Text("配对码：${p.code}", style = MaterialTheme.typography.headlineMedium)
+                    Text("请核对客户端显示的配对码，仅在两端完全一致时批准；不一致说明通信可能被劫持。")
+                }
+            },
+            confirmButton = { TextButton(onClick = { p.respond(true) }) { Text("批准") } },
+            dismissButton = { TextButton(onClick = { p.respond(false) }) { Text("拒绝") } }
+        )
     }
 
 

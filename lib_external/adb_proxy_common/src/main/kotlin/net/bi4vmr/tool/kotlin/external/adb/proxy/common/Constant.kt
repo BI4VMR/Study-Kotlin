@@ -18,5 +18,5 @@ object Constant {
      *
      * 出现破坏性变更时应增加版本号，客户端建立连接后应检查双方版本号是否兼容。
      */
-    const val PROTOCOL_VERSION: String = "1"
+    const val PROTOCOL_VERSION: String = "2"
 }

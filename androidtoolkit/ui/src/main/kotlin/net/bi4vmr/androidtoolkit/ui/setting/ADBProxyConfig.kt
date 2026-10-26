@@ -1,6 +1,7 @@
 package net.bi4vmr.androidtoolkit.ui.setting
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -11,6 +12,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +29,7 @@ import net.bi4vmr.androidtoolkit.data.config.Configs
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClient
 
 /**
  * ADB 转发器配置。
@@ -43,6 +46,13 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
         .proxyInterfaceFlow.collectAsStateWithLifecycle("")
     val proxyPort: Int by globalStateManager.logicManager
         .proxyPortFlow.collectAsStateWithLifecycle(0)
+
+    val proxyTrustAll: Boolean by globalStateManager.logicManager
+        .proxyTrustAllFlow.collectAsStateWithLifecycle(false)
+    val fingerprint: String? by globalStateManager.logicManager
+        .adbProxyServer.fingerprintFlow.collectAsStateWithLifecycle(null)
+    val pairedClients: List<PairedClient> by globalStateManager.logicManager
+        .pairedClientsFlow.collectAsStateWithLifecycle(emptyList())
 
     var interfaceText: String by remember(proxyInterface) { mutableStateOf(proxyInterface) }
     var portText: String by remember(proxyPort) { mutableStateOf(proxyPort.toString()) }
@@ -75,6 +85,37 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                         globalStateManager.logicManager.setProxyStartOnInit(new)
                     })
                 Text("自动启动转发器")
+            }
+        }
+
+        SettingColumn(label = "安全") {
+            Text("通信使用 TLS 加密，客户端需配对并经服务端批准后才能操作设备。")
+            Text("证书指纹（SHA-256）：${fingerprint ?: "服务启动后生成"}")
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = proxyTrustAll,
+                    onCheckedChange = { new ->
+                        globalStateManager.logicManager.setProxyTrustAll(new)
+                    })
+                Text("信任所有连接（仅用于调试，将跳过配对与认证）", color = if (proxyTrustAll) Color.Red else Color.Unspecified)
+            }
+
+            Text("已配对的客户端")
+            if (pairedClients.isEmpty()) {
+                Text("无")
+            }
+            Column {
+                pairedClients.forEach { client ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${client.name}（${client.id}）", modifier = Modifier.weight(1F))
+                        TextButton(onClick = {
+                            globalStateManager.logicManager.revokePairedClient(client.id)
+                        }) {
+                            Text("撤销")
+                        }
+                    }
+                }
             }
         }
 

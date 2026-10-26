@@ -33,7 +33,9 @@ dependencies {
     api(libKotlin.ktx.coroutines.core)
     api(libKotlin.ktor.server.core)
     api(libKotlin.ktor.server.cio)
+    api(libKotlin.ktor.server.netty)
     api(libKotlin.ktor.server.websockets)
+    api(libKotlin.ktor.network.tls.certificates)
     api(libKotlin.ktor.server.content.negotiation)
     api(libKotlin.ktor.serialization.kotlinx.json)
 

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import java.io.File
+import java.util.UUID
 
 /**
  * 系统配置管理器。
@@ -57,6 +58,11 @@ class ConfigManager(
             it[Configs.Key.PROXY_PORT] ?: Configs.Value.PROXY_PORT_DEFAULT
         }
 
+    val proxyTrustAllFlow: Flow<Boolean> =
+        dataStore.data.map {
+            it[Configs.Key.PROXY_TRUST_ALL] ?: Configs.Value.PROXY_TRUST_ALL_DEFAULT
+        }
+
 
     suspend fun getADBExecFileMode(): ADBExecFileMode =
         adbExecFileModeFlow.first()
@@ -82,5 +88,51 @@ class ConfigManager(
 
     suspend fun setProxyPort(port: Int) {
         dataStore.edit { it[Configs.Key.PROXY_PORT] = port }
+    }
+
+    suspend fun setProxyTrustAll(enabled: Boolean) {
+        dataStore.edit { it[Configs.Key.PROXY_TRUST_ALL] = enabled }
+    }
+
+    suspend fun getProxyTrustAll(): Boolean = proxyTrustAllFlow.first()
+
+
+    /* ----- 配对信息 ----- */
+
+    /**
+     * 本客户端的唯一标识，首次调用时生成。
+     */
+    suspend fun getClientID(): String {
+        var id = dataStore.data.first()[Configs.Key.CLIENT_ID]
+        if (id == null) {
+            dataStore.edit {
+                id = it[Configs.Key.CLIENT_ID] ?: UUID.randomUUID().toString().also { new ->
+                    it[Configs.Key.CLIENT_ID] = new
+                }
+            }
+        }
+        return requireNotNull(id)
+    }
+
+    /**
+     * 服务端侧：已配对的客户端。条目格式： `id|pairedAt|tokenHash|name` ，名称置于末尾以允许包含分隔符。
+     */
+    val pairedClientsFlow: Flow<Set<String>> =
+        dataStore.data.map { it[Configs.Key.PAIRED_CLIENTS] ?: emptySet() }
+
+    suspend fun getPairedClients(): Set<String> = pairedClientsFlow.first()
+
+    suspend fun setPairedClients(entries: Set<String>) {
+        dataStore.edit { it[Configs.Key.PAIRED_CLIENTS] = entries }
+    }
+
+    /**
+     * 客户端侧：已配对的服务端。条目格式： `host:port|fingerprint|token` 。
+     */
+    suspend fun getPairedServers(): Set<String> =
+        dataStore.data.first()[Configs.Key.PAIRED_SERVERS] ?: emptySet()
+
+    suspend fun setPairedServers(entries: Set<String>) {
+        dataStore.edit { it[Configs.Key.PAIRED_SERVERS] = entries }
     }
 }

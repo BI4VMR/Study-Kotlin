@@ -7,12 +7,18 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.websocket.wss
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -36,9 +42,14 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.PairingCode
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairInitResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRevealRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
@@ -63,6 +74,26 @@ class ADBProxyClient(
      * 默认值为 [Constant.PORT_SERVER_DEFAULT]。
      */
     val port: Int = Constant.PORT_SERVER_DEFAULT,
+
+    /**
+     * 访问令牌，配对成功后获得；尚未配对时为空值。
+     */
+    token: String? = null,
+
+    /**
+     * 已信任的服务端证书指纹；为空值表示首次连接，将在连接后通过 [observedFingerprint] 提供。
+     */
+    pinnedFingerprint: String? = null,
+
+    /**
+     * 本客户端的唯一标识，配对申请时提交。
+     */
+    val clientId: String = "",
+
+    /**
+     * 本客户端的名称，将展示在服务端的配对确认界面。
+     */
+    val clientName: String = "",
 ) {
 
     /**
@@ -83,7 +114,36 @@ class ADBProxyClient(
     /**
      * Ktor 客户端。
      */
+    @Volatile
+    private var accessToken: String? = token
+
+    private val trustManager = PinningTrustManager(pinnedFingerprint)
+
+    /**
+     * 本次连接中观察到的服务端证书指纹。
+     *
+     * 在首次成功建立 TLS 连接后可用，上层应在用户确认后持久化并在后续连接中传入 `pinnedFingerprint` 。
+     */
+    val observedFingerprint: String?
+        get() = trustManager.observedFingerprint
+
+    /**
+     * 当前访问令牌。
+     */
+    val currentToken: String?
+        get() = accessToken
+
     private val client = HttpClient(CIO) {
+        engine {
+            https {
+                this.trustManager = this@ADBProxyClient.trustManager
+            }
+        }
+        install(HttpTimeout)
+        // 所有请求（含 WebSocket 握手）自动携带令牌
+        defaultRequest {
+            accessToken?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+        }
         // 日志输出
         install(Logging) { level = LogLevel.INFO }
         // 自动反序列化
@@ -140,8 +200,8 @@ class ADBProxyClient(
         taskScope.launch {
             _serviceStateFlow.value = ServiceState.PREPARING
             try {
-                // Ktor 的 WebSocket 请求只能填写路径，不能携带 `ws://` 等前缀。
-                client.webSocket(host = host, port = port, path = API.ADB_EVENTS) {
+                // Ktor 的 WebSocket 请求只能填写路径，不能携带 `wss://` 等前缀。
+                client.wss(host = host, port = port, path = API.ADB_EVENTS) {
                     logger.info("Connect to [$host:$port] successfully.")
                     _serviceStateFlow.value = ServiceState.READY
 
@@ -151,9 +211,7 @@ class ADBProxyClient(
                         if (frame is Frame.Text) {
                             _devicesFlow.value = jsonTool.decodeFromString(
                                 ListSerializer(RemoteDevice.serializer()),
-                                frame.readText().also {
-                                    println(it)
-                                }
+                                frame.readText()
                             )
                         }
                     }
@@ -179,6 +237,63 @@ class ADBProxyClient(
     fun release() {
         taskScope.cancel()
         client.close()
+    }
+
+
+    /* ----- 配对 ----- */
+
+    /**
+     * 向服务端申请配对。
+     *
+     * 流程中会计算 6 位配对码并通过 [onCode] 通知上层展示，服务端也会展示同样的配对码，
+     * 用户核对一致后在服务端批准；若两端不一致，说明通信可能被中间人劫持，应拒绝。
+     * 调用将被挂起直至服务端用户操作或超时。
+     *
+     * 配对成功后客户端自动使用返回的令牌，上层应持久化令牌与 [observedFingerprint] 。
+     *
+     * @param[onCode] 配对码就绪的回调。
+     * @return 访问令牌。
+     * @throws[IllegalStateException] 配对被拒绝、超时或服务端繁忙。
+     */
+    suspend fun pair(onCode: (String) -> Unit = {}): String {
+        require(clientId.isNotBlank()) { "Client ID is required!" }
+
+        val clientNonce = PairingCode.newNonce()
+        val initResponse = client.post(buildURL(API.PAIR_INIT)) {
+            contentType(ContentType.Application.Json)
+            setBody(PairRequest(clientId, clientName, PairingCode.commit(clientNonce)))
+        }
+        check(initResponse.status.isSuccess()) {
+            "Pairing failed. Reason:[${initResponse.bodyAsText()}]"
+        }
+        val init = initResponse.body<PairInitResponse>()
+
+        // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
+        val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }
+        onCode(PairingCode.compute(fingerprint, clientNonce, init.serverNonce))
+
+        val response = client.post(buildURL(API.PAIR_REVEAL)) {
+            contentType(ContentType.Application.Json)
+            setBody(PairRevealRequest(init.pairId, clientNonce))
+            // 等待服务端用户批准，超时时间与服务端一致并留出余量。
+            timeout { requestTimeoutMillis = 70_000 }
+        }
+        check(response.status.isSuccess()) {
+            "Pairing failed. Reason:[${response.bodyAsText()}]"
+        }
+
+        return response.body<PairResponse>().token.also { accessToken = it }
+    }
+
+    /**
+     * 检查当前凭据是否已被服务端接受。
+     *
+     * @return `true` 表示已配对， `false` 表示未配对或配对已被服务端撤销。
+     * @throws[ConnectException] 建立连接失败。
+     */
+    suspend fun isPaired(): Boolean {
+        val response = client.get(buildURL(API.PAIR_STATUS))
+        return response.status != HttpStatusCode.Unauthorized && response.status.isSuccess()
     }
 
 
@@ -326,7 +441,7 @@ class ADBProxyClient(
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
-                client.webSocket(
+                client.wss(
                     host = host,
                     port = port,
                     path = "${API.ADB_SHELL}?sn=${sn}"
@@ -419,5 +534,5 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
-    private fun buildURL(path: String): String = "http://$host:$port$path"
+    private fun buildURL(path: String): String = "https://$host:$port$path"
 }

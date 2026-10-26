@@ -126,6 +126,8 @@ ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.re
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 # Ktor・序列化・KotlinX JSON 支持
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+# Ktor・通用・TLS 证书生成工具
+ktor-network-tls-certificates = { module = "io.ktor:ktor-network-tls-certificates", version.ref = "ktor" }
 
 
 # ----- 人工智能 -----

@@ -231,6 +231,7 @@ fun ConnectProxyDialog(
     var host: String by remember { mutableStateOf("127.0.0.1") }
     var port: Int by remember { mutableIntStateOf(Constant.PORT_SERVER_DEFAULT) }
     var loading: Boolean by remember { mutableStateOf(false) }
+    var pairingCode: String? by remember { mutableStateOf(null) }
     var errorInfo: String? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
 
@@ -251,6 +252,11 @@ fun ConnectProxyDialog(
                     enabled = !loading
                 )
 
+                pairingCode?.let {
+                    Text("配对码：$it", style = MaterialTheme.typography.headlineMedium)
+                    Text("请与对方设备上显示的配对码核对，一致时在对方设备上批准配对。")
+                }
+
                 if (errorInfo != null) {
                     Text(errorInfo ?: "-", color = MaterialTheme.colorScheme.error)
                 }
@@ -262,7 +268,7 @@ fun ConnectProxyDialog(
                         errorInfo = null
                         scope.launch {
                             try {
-                                logicManager.addRemoteExecutor(host)
+                                logicManager.addRemoteExecutor(host) { pairingCode = it }
                                 onDismiss()
                             } catch (e: CancellationException) {
                                 throw e
@@ -270,6 +276,7 @@ fun ConnectProxyDialog(
                                 errorInfo = e.message ?: "连接失败，请检查主机名或 IP 地址是否正确"
                             } finally {
                                 loading = false
+                                pairingCode = null
                             }
                         }
                     }
