@@ -111,13 +111,29 @@ object ADBCastTransfer {
                 context.remoteControlSocket = remoteControl
                 logger.info("Receiver connected. Starting scrcpy server.")
 
+                /* 检查 Scrcpy 服务端配置 */
+                val serverFile = ScrcpyServerHelper.getServerFile()
+                val serverVersion = ScrcpyServerHelper.getServerVersion()
+                if (serverFile?.canRead() != true || serverVersion.isBlank()) {
+                    val info =
+                        "Scrcpy server file or version not set! Path:[${serverFile?.absolutePath}] Version:[$serverVersion]"
+                    logger.error(info)
+                    throw IOException(info)
+                }
 
-                /* 推送服务端 JAR 文件 */
-                val fileReady = device.pushFile(ScrcpyServerHelper.getServerFile()!!, ScrcpyServerHelper.PATH_ON_DEVICE)
-                if (!fileReady) {
-                    throw IOException("Push Scrcpy server file to device failed!")
+                /*
+                 * 将服务端复制到设备上。
+                 *
+                 * 每次启动服务端其文件都会自行删除，因此每次开始屏幕投射前都要复制。
+                 */
+                val filePushReady = device.pushFile(serverFile, ScrcpyServerHelper.PATH_ON_DEVICE)
+                if (!filePushReady) {
+                    val info = "Push Scrcpy server file to device failed!"
+                    logger.error(info)
+                    throw IOException(info)
                 }
                 device.syncFileSystem()
+                logger.debug("Push Scrcpy server file to device [{}] success.", device.getSN())
 
                 // val clearThread = Thread { clearContext(listener, context) }
                 // context.clearThread = clearThread

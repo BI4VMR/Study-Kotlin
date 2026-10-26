@@ -1,6 +1,5 @@
 package net.bi4vmr.tool.kotlin.external.adb.cast.util
 
-import net.bi4vmr.tool.java.common.base.FileUtil
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper.setServerFile
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper.setServerVersion
 import org.slf4j.Logger
@@ -35,7 +34,7 @@ object ScrcpyServerHelper {
      * `scrcpy-server-v4.1` ，尾部为可变版本号，无 `.jar` 后缀。
      */
     @Volatile
-    private var serverFile: File = FileUtil.FILE_INVALID
+    private var serverFile: File? = null
 
     /**
      * Scrcpy 服务端版本。
@@ -49,10 +48,10 @@ object ScrcpyServerHelper {
     /**
      * 获取 Scrcpy 服务端文件。
      *
-     * @return 服务端文件。未设置时返回 [FileUtil.FILE_INVALID] 。
+     * @return 服务端文件。用户未设置时返回空值。
      */
     @JvmStatic
-    fun getServerFile(): File = serverFile
+    fun getServerFile(): File? = serverFile
 
     /**
      * 设置 Scrcpy 服务端文件。
@@ -113,5 +112,6 @@ object ScrcpyServerHelper {
      * @return `true` 表示文件可读且版本号已设置； `false` 表示不可用。
      */
     @JvmStatic
-    fun isValid(): Boolean = (serverFile.canRead() && serverVersion.isNotBlank())
+    fun isValid(): Boolean = (serverFile?.canRead() == true && serverVersion.isNotBlank())
+    fun isValid(f:File?): Boolean = (f?.canRead()==true)
 }
