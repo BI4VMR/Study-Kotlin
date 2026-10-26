@@ -4,6 +4,7 @@ package net.bi4vmr.androidtoolkit.core
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import net.bi4vmr.androidtoolkit.core.mcp.McpService
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
@@ -152,6 +153,13 @@ object LogicManager {
             /* 设置 Scrcpy 服务端文件路径 */
             val serverFile = fileManager.getInternalScrcpyServerFile()
             ScrcpyServerHelper.setServerFile(serverFile)
+
+            /* 启动 MCP 服务，环境变量 ANDROIDTOOLKIT_MCP_PORT=0 可禁用 */
+            val mcpPort = System.getenv("ANDROIDTOOLKIT_MCP_PORT")?.toIntOrNull() ?: McpService.PORT_DEFAULT
+            if (mcpPort > 0) {
+                runCatching { McpService.start(mcpPort) }
+                    .onFailure { println("LogicManager init: failed to start MCP service: $it") }
+            }
 
             val proxyStartOnInit = configManager.proxyStartOnInitFlow.first()
             if (proxyStartOnInit) {

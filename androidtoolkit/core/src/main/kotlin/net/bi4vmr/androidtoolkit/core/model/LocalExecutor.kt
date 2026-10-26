@@ -56,6 +56,10 @@ object LocalExecutor : ADBExecutor {
         ADBCLIUtil.getDisplays(sn)
     }
 
+    override suspend fun runForText(sn: String, command: String): String? = withContext(Dispatchers.IO) {
+        ADBCLIUtil.runForText(sn, command)
+    }
+
     override fun openShell(sn:String) {
         // NOP
     }

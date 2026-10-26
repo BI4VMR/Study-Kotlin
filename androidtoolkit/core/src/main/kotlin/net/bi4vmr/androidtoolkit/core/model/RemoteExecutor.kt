@@ -38,6 +38,8 @@ class RemoteExecutor(
 
     override suspend fun getDisplays(sn: String): List<DisplayInfo> = client.getDisplays(sn)
 
+    override suspend fun runForText(sn: String, command: String): String? = client.runForText(sn, command)
+
     override fun getStateFlow(): StateFlow<ServiceState> {
         return client.serviceStateFlow
     }

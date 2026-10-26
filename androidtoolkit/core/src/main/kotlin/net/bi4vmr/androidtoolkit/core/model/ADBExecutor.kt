@@ -45,5 +45,14 @@ interface ADBExecutor {
      */
     suspend fun getDisplays(sn: String): List<DisplayInfo>
 
+    /**
+     * 在设备上执行 ADB 命令并获取文本输出。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句，默认以 `adb shell` 方式执行。
+     * @return 命令输出文本，若出现异常则返回空值。
+     */
+    suspend fun runForText(sn: String, command: String): String?
+
     fun openShell(sn: String)
 }

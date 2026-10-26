@@ -41,6 +41,10 @@ object GlobalWindowManager {
      * 调用者可以继承该类并添加一些自定义属性，以便在显示窗口时传递数据。
      */
     open class Record {
+
+        /**
+         * 自增 ID ，用于唯一标识每个窗口。
+         */
         val id: Long = currentID++
     }
 }

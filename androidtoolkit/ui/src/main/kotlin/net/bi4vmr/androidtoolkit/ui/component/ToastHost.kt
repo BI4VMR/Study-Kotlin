@@ -38,10 +38,28 @@ enum class ToastType { INFO, SUCCESS, ERROR }
  */
 data class ToastMessage(
     val id: Long,
-    val text: String,
-    val type: ToastType,
-    val durationMs: Long
+    val durationMs: Long,
+    val content: @Composable () -> Unit
 )
+
+/**
+ * 默认样式的消息气泡。
+ */
+@Composable
+fun DefaultToastContent(text: String, type: ToastType = ToastType.INFO) {
+    val color = when (type) {
+        ToastType.INFO -> MaterialTheme.colorScheme.secondaryContainer
+        ToastType.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
+        ToastType.ERROR -> MaterialTheme.colorScheme.errorContainer
+    }
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = color,
+        shadowElevation = 4.dp
+    ) {
+        Text(text, Modifier.padding(12.dp))
+    }
+}
 
 /**
  * 全局消息管理器。
@@ -53,8 +71,18 @@ class ToastManager {
     private var nextId = 0L
     val messages = mutableStateListOf<ToastMessage>()
 
+    /**
+     * 显示默认样式的文本消息。
+     */
     fun show(text: String, type: ToastType = ToastType.INFO, durationMs: Long = 3000L) {
-        messages.add(0, ToastMessage(nextId++, text, type, durationMs))
+        show(durationMs) { DefaultToastContent(text, type) }
+    }
+
+    /**
+     * 显示由调用者自定义内容的消息。
+     */
+    fun show(durationMs: Long = 3000L, content: @Composable () -> Unit) {
+        messages.add(0, ToastMessage(nextId++, durationMs, content))
     }
 
     fun dismiss(id: Long) {
@@ -110,24 +138,12 @@ private fun ToastItem(msg: ToastMessage, fromStart: Boolean, modifier: Modifier,
     val visibleState = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visibleState.value = true }
 
-    val color = when (msg.type) {
-        ToastType.INFO -> MaterialTheme.colorScheme.secondaryContainer
-        ToastType.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
-        ToastType.ERROR -> MaterialTheme.colorScheme.errorContainer
-    }
-
     androidx.compose.animation.AnimatedVisibility(
         visible = visibleState.value,
         modifier = modifier,
         enter = slideInHorizontally(tween(250)) { if (fromStart) -it else it } + fadeIn(tween(250))
     ) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = color,
-            shadowElevation = 4.dp
-        ) {
-            Text(msg.text, Modifier.padding(12.dp))
-        }
+        msg.content()
     }
 }
 
