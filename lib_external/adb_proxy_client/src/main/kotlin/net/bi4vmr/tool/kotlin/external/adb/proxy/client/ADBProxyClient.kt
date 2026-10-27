@@ -1,41 +1,20 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.timeout
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
@@ -44,15 +23,10 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.PairingCode
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairInitResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRevealRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
+import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.ServerSocket
@@ -267,10 +241,10 @@ class ADBProxyClient(
     suspend fun pair(onCode: (String) -> Unit = {}): String {
         require(clientId.isNotBlank()) { "Client ID is required!" }
 
-        val clientNonce = PairingCode.newNonce()
+        val clientNonce = PairUtil.generateNonce()
         val initResponse = client.post(buildURL(API.PAIR_INIT)) {
             contentType(ContentType.Application.Json)
-            setBody(PairRequest(clientId, clientName, PairingCode.commit(clientNonce)))
+            setBody(PairRequest(clientId, clientName, PairUtil.getCommit(clientNonce)))
         }
         check(initResponse.status.isSuccess()) {
             "Pairing failed. Reason:[${initResponse.bodyAsText()}]"
@@ -279,7 +253,7 @@ class ADBProxyClient(
 
         // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
         val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }
-        onCode(PairingCode.compute(fingerprint, clientNonce, init.serverNonce))
+        onCode(PairUtil.generatePairCode(fingerprint, fingerprint, clientNonce, init.serverNonce))
 
         val response = client.post(buildURL(API.PAIR_REVEAL)) {
             contentType(ContentType.Application.Json)
@@ -317,7 +291,7 @@ class ADBProxyClient(
      * @throws[ConnectException] 建立连接失败。
      */
     suspend fun getServerVersion(): String {
-        val url = buildURL(API.VERSION)
+        val url = buildURL(API.SERVER_VERSION)
         return client.get(url).bodyAsText()
     }
 

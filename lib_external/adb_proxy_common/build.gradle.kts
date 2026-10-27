@@ -27,6 +27,10 @@ dependencies {
     // api(privateLibKotlin.external.adb.common)
 
 
+    /* 私有组件 */
+    api(privateLibJava.security.digest)
+
+
     /* 外部组件 */
     api(libKotlin.ktx.serial.json)
 

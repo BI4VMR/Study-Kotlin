@@ -1,18 +1,10 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes
 
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCallPipeline
-import io.ktor.server.application.call
-import io.ktor.server.request.path
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.coroutines.withTimeoutOrNull
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairInitResponse
@@ -28,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 private val logger = LoggerFactory.getLogger("ADBSecurityRoutes")
 
 // 版本查询与配对不需要令牌，其余路径（含 WebSocket 握手）都必须通过令牌校验。
-private val PUBLIC_PATHS = setOf(API.VERSION, API.PAIR_INIT, API.PAIR_REVEAL)
+private val PUBLIC_PATHS = setOf(API.SERVER_VERSION, API.PAIR_INIT, API.PAIR_REVEAL)
 
 private const val BEARER = "Bearer "
 

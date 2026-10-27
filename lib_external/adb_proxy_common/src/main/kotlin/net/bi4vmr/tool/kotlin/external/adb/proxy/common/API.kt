@@ -12,14 +12,37 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
  */
 object API {
 
-    /* ----- 基础功能 ----- */
+    /* ----- 系统信息 ----- */
+
+    /**
+     * 查询服务器 ID 。
+     *
+     * 用于唯一标识服务器实例。
+     *
+     * 请求方式为 HTTP POST ，返回纯文本，内容为服务器 ID 。
+     */
+    const val SERVER_ID: String = "/server/id"
+
+    /**
+     * 查询服务器名称。
+     *
+     * 服务端可以声明任意名称，以便客户端进行识别。
+     *
+     * 请求方式为 HTTP POST ，返回纯文本，内容为服务器名称。
+     */
+    const val SERVER_NAME: String = "/server/name"
 
     /**
      * 查询通信协议版本。
      *
-     * 请求方式为 HTTP GET ，返回纯文本，内容为版本号。
+     * 调用其他方法之前，客户端应当检查自身版本号是否与服务端版本号相匹配，避免出现兼容性问题。
+     *
+     * 请求方式为 HTTP POST ，返回纯文本，内容为版本号。
      */
-    const val VERSION: String = "/version"
+    const val SERVER_VERSION: String = "/server/version"
+
+
+    /* ----- 基础功能 ----- */
 
     /**
      * 查询设备列表。
