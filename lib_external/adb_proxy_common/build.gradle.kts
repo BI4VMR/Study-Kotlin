@@ -1,4 +1,4 @@
-val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.proxy.api.get()
+val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.proxy.common.get()
 val mvnGroupID: String = requireNotNull(depInTOML.group)
 val mvnArtifactID: String = depInTOML.name
 val mvnVersion: String = requireNotNull(depInTOML.version)

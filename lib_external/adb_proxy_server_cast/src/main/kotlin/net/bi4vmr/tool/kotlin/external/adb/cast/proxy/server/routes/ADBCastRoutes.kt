@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.cast.proxy.server
+package net.bi4vmr.tool.kotlin.external.adb.cast.proxy.server.routes
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -12,7 +12,7 @@ import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyRouteProvider
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes.ADBProxyRouteProvider
 import org.slf4j.LoggerFactory
 
 /**

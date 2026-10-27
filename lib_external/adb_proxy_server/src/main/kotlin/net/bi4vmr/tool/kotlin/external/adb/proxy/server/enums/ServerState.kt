@@ -1,5 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums
 
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
+
 /**
  * 服务端状态。
  *
@@ -10,8 +12,6 @@ enum class ServerState {
 
     /**
      * 未启动。
-     *
-     * 启动遇到错误或已停止的状态，错误信息可从 [net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer.stateFlow] 获取。
      */
     INIT,
 
@@ -27,6 +27,15 @@ enum class ServerState {
 
     /**
      * 正在停止。
+     *
+     * 停止后将回到 [INIT] 状态。
      */
-    STOPPING;
+    STOPPING,
+
+    /**
+     * 启动错误。
+     *
+     * 错误信息可从 [ADBProxyServer.stateFlow] 获取。
+     */
+    ERROR;
 }

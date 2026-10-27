@@ -1,4 +1,4 @@
-val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.cast.proxy.server.get()
+val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.proxy.server.cast.get()
 val mvnGroupID: String = requireNotNull(depInTOML.group)
 val mvnArtifactID: String = depInTOML.name
 val mvnVersion: String = requireNotNull(depInTOML.version)
@@ -36,6 +36,7 @@ dependencies {
 }
 
 javaVersionConfig {
+    // 主模块 `adb_proxy_server` 要求 JDK 版本至少为 11 。
     jdkVersion = JavaVersion.VERSION_11
 }
 

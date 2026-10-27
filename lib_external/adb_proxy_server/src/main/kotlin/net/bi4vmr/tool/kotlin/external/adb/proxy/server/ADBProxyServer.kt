@@ -4,11 +4,11 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ServerReady
 import io.ktor.server.application.install
-import io.ktor.server.netty.Netty
 import io.ktor.server.engine.EmbeddedServer
-import io.ktor.network.tls.certificates.generateCertificate
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.engine.sslConnector
+import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.routing
@@ -20,10 +20,10 @@ import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes.ADBCoreRoutes
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes.ADBProxyRouteProvider
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.SSLConfig
 import org.slf4j.LoggerFactory
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurity
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.installSecurity
-import java.security.KeyStore
 import java.util.ServiceLoader
 
 /**
@@ -62,17 +62,11 @@ class ADBProxyServer(
     private var server: EmbeddedServer<*, *>? = null
 
     /**
-     * 安全配置，启动前必须通过 [setSecurity] 设置。
+     * SSL / TLS 配置。
+     *
+     * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
      */
-    @Volatile
-    private var security: ADBProxySecurity? = null
-
-    private val _fingerprintFlow: MutableStateFlow<String?> = MutableStateFlow(null)
-
-    /**
-     * Flow : 服务端证书的 SHA-256 指纹（十六进制），启动后可用，供客户端核对。
-     */
-    val fingerprintFlow: StateFlow<String?> = _fingerprintFlow
+    private var sslConfig: SSLConfig? = null
 
     /**
      * 全局 JSON 工具。
@@ -85,29 +79,37 @@ class ADBProxyServer(
     }
 
 
+    /**
+     * Flow : 服务端状态。
+     */
     private val _stateFlow: MutableStateFlow<ServerState> = MutableStateFlow(ServerState.INIT)
 
+    /**
+     * Flow : 服务端状态。
+     */
     val stateFlow: StateFlow<ServerState> = _stateFlow
 
+    /**
+     * Flow : 服务端错误。
+     */
     private val _errorFlow: MutableStateFlow<Exception?> = MutableStateFlow(null)
 
+    /**
+     * Flow : 服务端错误。
+     */
     val errorFlow: StateFlow<Exception?> = _errorFlow
 
 
+    /* ----- 服务状态 ----- */
+
     @Synchronized
     fun start() {
-        if (stateFlow.value != ServerState.INIT) {
+        if (!canStart()) {
             logger.warn("This server is already running, ignored.")
             return
         }
 
-        val sec = security
-        if (sec == null) {
-            logger.error("Security config is required, call setSecurity() before start().")
-            _errorFlow.value = IllegalStateException("Security config is not set.")
-            return
-        }
-
+        /* 重置状态 */
         _errorFlow.value = null
         _stateFlow.value = ServerState.STARTING
 
@@ -116,25 +118,30 @@ class ADBProxyServer(
         }
 
         try {
-            val keyStore = loadKeyStore(sec)
-            _fingerprintFlow.value = ADBProxySecurity.fingerprintOf(keyStore).also { sec.fingerprint = it }
-
-            // 仅提供 TLS 端口，不开放明文连接（Ktor CIO 服务端不支持 HTTPS，故使用 Netty）。
             server = embeddedServer(Netty, configure = {
-                sslConnector(
-                    keyStore = keyStore,
-                    keyAlias = ADBProxySecurity.KEY_ALIAS,
-                    keyStorePassword = { ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray() },
-                    privateKeyPassword = { ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray() }
-                ) {
-                    host = address
-                    port = this@ADBProxyServer.port
+                val ssl = sslConfig
+                if (ssl != null) {
+                    sslConnector(
+                        keyStore = ssl.getKeyStore(),
+                        keyStorePassword = { ssl.keyStorePassword.toCharArray() },
+                        keyAlias = ssl.keyAlias,
+                        privateKeyPassword = { ssl.keyPassword.toCharArray() }
+                    ) {
+                        host = address
+                        port = this@ADBProxyServer.port
+                    }
+                } else {
+                    connector {
+                        host = address
+                        port = this@ADBProxyServer.port
+                    }
                 }
             }) {
                 // 监听服务器就绪状态
                 monitor.subscribe(ServerReady) { _stateFlow.value = ServerState.RUNNING }
 
-                configure(sec)
+                // 注册路由与配置插件
+                configure()
             }.start(wait = false)
         } catch (e: Exception) {
             // TODO
@@ -143,13 +150,13 @@ class ADBProxyServer(
             println("e.type: ${e}")
 
             _errorFlow.value = e
-            _stateFlow.value = ServerState.INIT
+            _stateFlow.value = ServerState.ERROR
         }
     }
 
     @Synchronized
     fun stop() {
-        if (stateFlow.value != ServerState.RUNNING) {
+        if (!canStop()) {
             logger.warn("This server is not running, ignored.")
             return
         }
@@ -176,40 +183,25 @@ class ADBProxyServer(
         this.port = port
     }
 
-
     /**
-     * 设置安全配置。
+     * 设置 SSL 配置。
      *
-     * 如果服务端已经启动，该设置不会影响已启动的服务端，若要刷新需先终止后重新启动；
-     * 但 [ADBProxySecurity.trustAllClients] 为即时生效。
+     * 传入空值表示不启用加密，传入非空的值将使用该证书启用 SSL / TLS 加密。
+     *
+     * 如果服务端已经启动，该设置不会影响已启动的服务端，若要刷新需先终止后重新启动。
+     *
+     * @param[config] SSL 配置。
      */
-    fun setSecurity(security: ADBProxySecurity) {
-        this.security = security
+    fun setSSLConfig(config: SSLConfig?) {
+        sslConfig = config
     }
 
-    private fun loadKeyStore(sec: ADBProxySecurity): KeyStore {
-        val file = sec.keyStoreFile
-        if (!file.exists()) {
-            file.parentFile?.mkdirs()
-            generateCertificate(
-                file = file,
-                algorithm = "SHA256withRSA",
-                keyAlias = ADBProxySecurity.KEY_ALIAS,
-                keyPassword = ADBProxySecurity.KEYSTORE_PASSWORD,
-                jksPassword = ADBProxySecurity.KEYSTORE_PASSWORD,
-                keySizeInBits = 2048
-            )
-        }
-        return KeyStore.getInstance(file, ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray())
-    }
 
-    private fun Application.configure(security: ADBProxySecurity) {
+    private fun Application.configure() {
         // 自动反序列化
         install(ContentNegotiation) { json(jsonTool) }
         // WebSocket 支持
         install(WebSockets)
-        // 认证与配对
-        installSecurity(security)
 
         routing {
             installInternalRoutes(this)
@@ -229,4 +221,9 @@ class ADBProxyServer(
             logger.info("Optional module [{}] has been registered.", provider.javaClass.name)
         }
     }
+
+    private fun canStart(): Boolean =
+        (stateFlow.value == ServerState.INIT) || (stateFlow.value == ServerState.ERROR)
+
+    private fun canStop(): Boolean = (stateFlow.value == ServerState.RUNNING)
 }

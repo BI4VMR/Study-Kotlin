@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.server.security
+package net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -6,7 +6,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
-import io.ktor.server.application.install
 import io.ktor.server.request.path
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -16,11 +15,13 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.withTimeoutOrNull
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.PairingCode
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairInitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRevealRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRevealRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurity
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClient
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairingCode
 import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicReference
 
@@ -34,9 +35,10 @@ private const val BEARER = "Bearer "
 /**
  * 安装认证拦截器与配对路由。
  *
- * 需在 `ContentNegotiation` 之后调用。
+ * 需在 `ContentNegotiation` 安装之后调用。
  */
 internal fun Application.installSecurity(security: ADBProxySecurity) {
+    // 注册拦截器，受控接口被访问时，检查客户端是否已与服务端配对。
     intercept(ApplicationCallPipeline.Plugins) {
         if (call.request.path() in PUBLIC_PATHS) return@intercept
 
@@ -108,8 +110,8 @@ internal fun Application.installSecurity(security: ADBProxySecurity) {
             }
 
             val code = PairingCode.compute(security.fingerprint, reveal.clientNonce, current.serverNonce)
-            val approved = security.trustAllClients ||
-                    withTimeoutOrNull(remaining) { security.pairingApprover(current.request, code) } == true
+            val approved = security.config.trustAllClients ||
+                    withTimeoutOrNull(remaining) { security.config.pairingApprover(current.request, code) } == true
             if (!approved) {
                 logger.info("Pairing request from [{}] was rejected or timed out.", current.request.clientName)
                 call.respondText("Pairing rejected.", status = HttpStatusCode.Forbidden)

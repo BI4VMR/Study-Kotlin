@@ -16,7 +16,7 @@ object Constant {
     /**
      * 通信协议版本。
      *
-     * 出现破坏性变更时应增加版本号，客户端建立连接后应检查双方版本号是否兼容。
+     * 出现不兼容的变更时应提升版本号，客户端建立连接后应检查双方版本号是否兼容。
      */
-    const val PROTOCOL_VERSION: String = "2"
+    const val PROTOCOL_VERSION: String = "1"
 }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -231,6 +232,7 @@ fun ConnectProxyDialog(
     var host: String by remember { mutableStateOf("127.0.0.1") }
     var port: Int by remember { mutableIntStateOf(Constant.PORT_SERVER_DEFAULT) }
     var loading: Boolean by remember { mutableStateOf(false) }
+    var secure: Boolean by remember { mutableStateOf(true) }
     var pairingCode: String? by remember { mutableStateOf(null) }
     var errorInfo: String? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
@@ -252,6 +254,11 @@ fun ConnectProxyDialog(
                     enabled = !loading
                 )
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = secure, onCheckedChange = { secure = it }, enabled = !loading)
+                    Text("使用加密连接（需与转发器设置一致）")
+                }
+
                 pairingCode?.let {
                     Text("配对码：$it", style = MaterialTheme.typography.headlineMedium)
                     Text("请与对方设备上显示的配对码核对，一致时在对方设备上批准配对。")
@@ -268,7 +275,7 @@ fun ConnectProxyDialog(
                         errorInfo = null
                         scope.launch {
                             try {
-                                logicManager.addRemoteExecutor(host) { pairingCode = it }
+                                logicManager.addRemoteExecutor(host, secure = secure) { pairingCode = it }
                                 onDismiss()
                             } catch (e: CancellationException) {
                                 throw e

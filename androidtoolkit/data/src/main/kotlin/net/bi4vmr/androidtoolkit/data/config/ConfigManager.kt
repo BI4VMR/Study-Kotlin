@@ -58,6 +58,11 @@ class ConfigManager(
             it[Configs.Key.PROXY_PORT] ?: Configs.Value.PROXY_PORT_DEFAULT
         }
 
+    val proxyEncryptFlow: Flow<Boolean> =
+        dataStore.data.map {
+            it[Configs.Key.PROXY_ENCRYPT] ?: Configs.Value.PROXY_ENCRYPT_DEFAULT
+        }
+
     val proxyTrustAllFlow: Flow<Boolean> =
         dataStore.data.map {
             it[Configs.Key.PROXY_TRUST_ALL] ?: Configs.Value.PROXY_TRUST_ALL_DEFAULT
@@ -89,6 +94,12 @@ class ConfigManager(
     suspend fun setProxyPort(port: Int) {
         dataStore.edit { it[Configs.Key.PROXY_PORT] = port }
     }
+
+    suspend fun setProxyEncrypt(enabled: Boolean) {
+        dataStore.edit { it[Configs.Key.PROXY_ENCRYPT] = enabled }
+    }
+
+    suspend fun getProxyEncrypt(): Boolean = proxyEncryptFlow.first()
 
     suspend fun setProxyTrustAll(enabled: Boolean) {
         dataStore.edit { it[Configs.Key.PROXY_TRUST_ALL] = enabled }

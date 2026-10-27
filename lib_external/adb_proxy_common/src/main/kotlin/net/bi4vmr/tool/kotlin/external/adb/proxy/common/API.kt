@@ -12,6 +12,8 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
  */
 object API {
 
+    /* ----- 基础功能 ----- */
+
     /**
      * 查询通信协议版本。
      *
@@ -48,14 +50,6 @@ object API {
     const val ADB_DISPLAYS: String = "/adb/displays"
 
     /**
-     * 请求远程设备开启投屏转发。
-     *
-     * 请求方式为 HTTP POST ，请求体为 [ADBCastStartRequest] ；返回纯文本，内容为服务端音视频数据的转发端口，请求者需要使用
-     * `ADBCastReceiver` 建立连接并进行解码。
-     */
-    const val ADB_CAST_START: String = "/adb/cast/start"
-
-    /**
      * 信令消息。
      *
      * 服务端用于通告设备状态变更等事件。
@@ -70,6 +64,9 @@ object API {
      * 协议为 WebSocket ，请求体为 [ADBDeviceRequest] 。
      */
     const val ADB_SHELL: String = "/adb/shell"
+
+
+    /* ----- 安全策略 ----- */
 
     /**
      * 配对第一步：客户端提交身份与随机数承诺，服务端返回会话 ID 与服务端随机数。
@@ -91,4 +88,22 @@ object API {
      * 需要认证，返回 200 表示当前凭据有效。
      */
     const val PAIR_STATUS: String = "/pair/status"
+
+
+    /* ----- 屏幕投射 ----- */
+
+    /**
+     * 请求远程设备开启投屏转发。
+     *
+     * 请求方式为 HTTP POST ，请求体为 [ADBCastStartRequest] ；返回纯文本，内容为服务端音视频数据的转发端口，请求者需要使用
+     * `ADBCastReceiver` 建立连接并进行解码。
+     */
+    const val ADB_CAST_START: String = "/adb/cast/start"
+
+    /**
+     * 请求远程设备停止投屏转发。
+     *
+     * 请求方式为 HTTP POST ，请求体为 [ADBCastStopRequest] ；返回纯文本。
+     */
+    const val ADB_CAST_STOP: String = "/adb/cast/stop"
 }

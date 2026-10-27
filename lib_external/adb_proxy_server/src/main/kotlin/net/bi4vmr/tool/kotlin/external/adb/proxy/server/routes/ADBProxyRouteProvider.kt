@@ -1,10 +1,10 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.server
+package net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes
 
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
 
 /**
- * 服务端路由注册接口.
+ * 服务端路由注册接口。
  */
 interface ADBProxyRouteProvider {
 

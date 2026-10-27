@@ -47,10 +47,13 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
     val proxyPort: Int by globalStateManager.logicManager
         .proxyPortFlow.collectAsStateWithLifecycle(0)
 
+    val proxyEncrypt: Boolean by globalStateManager.logicManager
+        .proxyEncryptFlow.collectAsStateWithLifecycle(true)
+    val serverError: Exception? by globalStateManager.logicManager
+        .adbProxyServer.errorFlow.collectAsStateWithLifecycle(null)
     val proxyTrustAll: Boolean by globalStateManager.logicManager
         .proxyTrustAllFlow.collectAsStateWithLifecycle(false)
-    val fingerprint: String? by globalStateManager.logicManager
-        .adbProxyServer.fingerprintFlow.collectAsStateWithLifecycle(null)
+    val fingerprint: String? = "TODO"
     val pairedClients: List<PairedClient> by globalStateManager.logicManager
         .pairedClientsFlow.collectAsStateWithLifecycle(emptyList())
 
@@ -89,7 +92,18 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
         }
 
         SettingColumn(label = "安全") {
-            Text("通信使用 TLS 加密，客户端需配对并经服务端批准后才能操作设备。")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = proxyEncrypt,
+                    onCheckedChange = { new ->
+                        globalStateManager.logicManager.setProxyEncrypt(new)
+                    })
+                Text("启用加密与配对（需重启转发器生效）")
+            }
+            if (!proxyEncrypt) {
+                Text("加密已关闭：通信为明文，且任何人都可以操作本机设备。", color = Color.Red)
+            }
+            serverError?.let { Text("转发器启动失败：${it.message}", color = Color.Red) }
             Text("证书指纹（SHA-256）：${fingerprint ?: "服务启动后生成"}")
 
             Row(verticalAlignment = Alignment.CenterVertically) {

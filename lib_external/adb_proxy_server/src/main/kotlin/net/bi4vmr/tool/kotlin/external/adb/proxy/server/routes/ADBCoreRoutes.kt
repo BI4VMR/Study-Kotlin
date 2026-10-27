@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.server
+package net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes
 
 import com.pty4j.PtyProcessBuilder
 import io.ktor.http.*

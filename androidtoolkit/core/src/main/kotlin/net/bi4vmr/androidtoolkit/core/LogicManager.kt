@@ -20,7 +20,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurity
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurityConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClientStore
 import java.net.InetAddress
@@ -83,7 +83,7 @@ object LogicManager {
     val pairedClientsFlow: StateFlow<List<PairedClient>> = _pairedClientsFlow
 
     @Volatile
-    private var proxySecurity: ADBProxySecurity? = null
+    private var proxySecurity: ADBProxySecurityConfig? = null
 
     /**
      * 已配对客户端存储，变更时同步写入配置文件。
@@ -179,6 +179,8 @@ object LogicManager {
 
     val proxyPortFlow: Flow<Int> = configManager.proxyPortFlow
 
+    val proxyEncryptFlow: Flow<Boolean> = configManager.proxyEncryptFlow
+
     val proxyTrustAllFlow: Flow<Boolean> = configManager.proxyTrustAllFlow
 
 
@@ -264,6 +266,7 @@ object LogicManager {
     suspend fun addRemoteExecutor(
         host: String,
         port: Int = Constant.PORT_SERVER_DEFAULT,
+        secure: Boolean = true,
         onPairingCode: (String) -> Unit = {}
     ) {
         /* 读取该服务端已保存的配对信息：host:port|fingerprint|token */
@@ -276,10 +279,11 @@ object LogicManager {
         val client = ADBProxyClient(
             host = host,
             port = port,
-            token = saved?.get(2)?.takeIf { it.isNotEmpty() },
-            pinnedFingerprint = saved?.get(1)?.takeIf { it.isNotEmpty() },
+            token = saved?.get(2)?.takeIf { secure && it.isNotEmpty() },
+            pinnedFingerprint = saved?.get(1)?.takeIf { secure && it.isNotEmpty() },
             clientId = configManager.getClientID(),
-            clientName = localName
+            clientName = localName,
+            secure = secure
         )
 
         try {
@@ -288,16 +292,18 @@ object LogicManager {
                 throw IllegalStateException("Server version is [$serverVersion], mismatch with [${Constant.PROTOCOL_VERSION}].")
             }
 
-            // 未配对或配对已被服务端撤销时，申请配对并等待服务端用户批准。
-            if (!client.isPaired()) {
-                client.pair(onPairingCode)
-            }
+            // 加密连接需要配对：未配对或配对已被服务端撤销时，申请配对并等待服务端用户批准。
+            if (secure) {
+                if (!client.isPaired()) {
+                    client.pair(onPairingCode)
+                }
 
-            val fingerprint = client.observedFingerprint.orEmpty()
-            val token = client.currentToken.orEmpty()
-            val entries = configManager.getPairedServers()
-                .filterNot { it.startsWith("$serverKey|") } + "$serverKey|$fingerprint|$token"
-            configManager.setPairedServers(entries.toSet())
+                val fingerprint = client.observedFingerprint.orEmpty()
+                val token = client.currentToken.orEmpty()
+                val entries = configManager.getPairedServers()
+                    .filterNot { it.startsWith("$serverKey|") } + "$serverKey|$fingerprint|$token"
+                configManager.setPairedServers(entries.toSet())
+            }
         } catch (e: Exception) {
             client.release()
             throw e
@@ -347,12 +353,17 @@ object LogicManager {
                 }
             }
 
-            val security = ADBProxySecurity(
-                keyStoreFile = fileManager.getConfigDir().resolve("server.jks"),
-                store = pairedClientStore,
-                trustAllClients = configManager.getProxyTrustAll(),
-                pairingApprover = { request, code -> askPairingApproval(request, code) }
-            )
+            // 是否加密由配置项决定，修改后需重启转发器生效；若未引入安全模块，启动时将报错。
+            val security: ADBProxySecurityConfig? = if (configManager.getProxyEncrypt()) {
+                ADBProxySecurityConfig(
+                    keyStoreFile = fileManager.getConfigDir().resolve("server.jks"),
+                    store = pairedClientStore,
+                    trustAllClients = configManager.getProxyTrustAll(),
+                    pairingApprover = { request, code -> askPairingApproval(request, code) }
+                )
+            } else {
+                null
+            }
             proxySecurity = security
 
             adbProxyServer.setInterface(address, port)
@@ -403,6 +414,15 @@ object LogicManager {
     /**
      * 设置是否信任所有连接（仅用于调试），即时生效。
      */
+    /**
+     * 设置是否启用加密与配对，需要重启转发器后生效。
+     */
+    fun setProxyEncrypt(enabled: Boolean) {
+        taskScope.launch {
+            configManager.setProxyEncrypt(enabled)
+        }
+    }
+
     fun setProxyTrustAll(enabled: Boolean) {
         proxySecurity?.trustAllClients = enabled
         taskScope.launch {

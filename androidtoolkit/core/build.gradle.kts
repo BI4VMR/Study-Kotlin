@@ -15,6 +15,7 @@ dependencies {
     api(project(":lib_external:adb_ktx"))
     api(project(":lib_external:adb_proxy_server"))
     api(project(":lib_external:adb_proxy_server_cast"))
+    api(project(":lib_external:adb_proxy_server_pair"))
     api(project(":lib_external:adb_proxy_client"))
     api(project(":lib_external:adb_cast_local"))
     api(project(":lib_external:adb_cast_transfer"))
@@ -24,4 +25,5 @@ dependencies {
     /* 外部组件 */
     api(libKotlin.ktx.coroutines.core)
     implementation(libKotlin.mcp.server)
+    implementation(libKotlin.ktor.server.cio)
 }

@@ -10,6 +10,8 @@ import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.plugins.websocket.wss
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -94,6 +96,13 @@ class ADBProxyClient(
      * 本客户端的名称，将展示在服务端的配对确认界面。
      */
     val clientName: String = "",
+
+    /**
+     * 是否使用加密连接（HTTPS 与 WSS）。
+     *
+     * 必须与服务端是否启用加密一致；为 `false` 时使用明文 HTTP 与 WS ，且不涉及配对。
+     */
+    val secure: Boolean = true,
 ) {
 
     /**
@@ -201,7 +210,7 @@ class ADBProxyClient(
             _serviceStateFlow.value = ServiceState.PREPARING
             try {
                 // Ktor 的 WebSocket 请求只能填写路径，不能携带 `wss://` 等前缀。
-                client.wss(host = host, port = port, path = API.ADB_EVENTS) {
+                openWebSocket(API.ADB_EVENTS) {
                     logger.info("Connect to [$host:$port] successfully.")
                     _serviceStateFlow.value = ServiceState.READY
 
@@ -441,11 +450,7 @@ class ADBProxyClient(
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
-                client.wss(
-                    host = host,
-                    port = port,
-                    path = "${API.ADB_SHELL}?sn=${sn}"
-                ) {
+                openWebSocket("${API.ADB_SHELL}?sn=${sn}") {
                     localServer = ServerSocket(0)
 
                     val script = "stty raw -echo; socat - TCP:127.0.0.1:${localServer.localPort}; stty sane"
@@ -534,5 +539,13 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
-    private fun buildURL(path: String): String = "https://$host:$port$path"
+    private fun buildURL(path: String): String = "${if (secure) "https" else "http"}://$host:$port$path"
+
+    private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
+        if (secure) {
+            client.wss(host = host, port = port, path = path, block = block)
+        } else {
+            client.webSocket(host = host, port = port, path = path, block = block)
+        }
+    }
 }

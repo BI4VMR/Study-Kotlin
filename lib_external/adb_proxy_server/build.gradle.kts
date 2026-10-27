@@ -1,4 +1,4 @@
-val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.proxy.server.get()
+val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.proxy.server.asProvider().get()
 val mvnGroupID: String = requireNotNull(depInTOML.group)
 val mvnArtifactID: String = depInTOML.name
 val mvnVersion: String = requireNotNull(depInTOML.version)
@@ -32,10 +32,8 @@ dependencies {
     api(libJava.pty4j)
     api(libKotlin.ktx.coroutines.core)
     api(libKotlin.ktor.server.core)
-    api(libKotlin.ktor.server.cio)
     api(libKotlin.ktor.server.netty)
     api(libKotlin.ktor.server.websockets)
-    api(libKotlin.ktor.network.tls.certificates)
     api(libKotlin.ktor.server.content.negotiation)
     api(libKotlin.ktor.serialization.kotlinx.json)
 

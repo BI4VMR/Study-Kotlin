@@ -1,4 +1,4 @@
-val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.cast.compose.get()
+val depInTOML: MinimalExternalModuleDependency = privateLibKotlin.external.adb.cast.compose.local.get()
 val mvnGroupID: String = requireNotNull(depInTOML.group)
 val mvnArtifactID: String = depInTOML.name
 val mvnVersion: String = requireNotNull(depInTOML.version)

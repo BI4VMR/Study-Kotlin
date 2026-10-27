@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.common
+package net.bi4vmr.tool.kotlin.external.adb.proxy.server.security
 
 import java.security.MessageDigest
 import java.security.SecureRandom

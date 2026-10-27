@@ -26,6 +26,8 @@ object Configs {
 
         val PROXY_PORT = intPreferencesKey("proxy_port")
 
+        val PROXY_ENCRYPT = booleanPreferencesKey("proxy_encrypt")
+
         val PROXY_TRUST_ALL = booleanPreferencesKey("proxy_trust_all")
 
         /** 服务端已配对的客户端，条目格式见 [ConfigManager]。 */
@@ -45,6 +47,8 @@ object Configs {
         const val PROXY_INTERFACE_DEFAULT: String = "0.0.0.0"
 
         const val PROXY_PORT_DEFAULT: Int = Constant.PORT_SERVER_DEFAULT
+
+        const val PROXY_ENCRYPT_DEFAULT: Boolean = true
 
         // 调试开关：开启后服务端信任所有连接，默认关闭。
         const val PROXY_TRUST_ALL_DEFAULT: Boolean = false

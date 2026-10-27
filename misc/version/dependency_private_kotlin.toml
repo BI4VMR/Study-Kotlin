@@ -29,10 +29,13 @@ external_adb-cast-media = { group = "net.bi4vmr.tool.kotlin", name = "external-a
 external_adb-cast-local = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-local", version.ref = "external_adb" }
 external_adb-cast-transfer = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-transfer", version.ref = "external_adb" }
 external_adb-cast-receiver = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-receiver", version.ref = "external_adb" }
-external_adb-cast-compose = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-compose", version.ref = "external_adb" }
-external_adb-proxy-api = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-api", version.ref = "external_adb" }
-external_adb-proxy-client = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-client", version.ref = "external_adb" }
+external_adb-cast-compose-common = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-compose-common", version.ref = "external_adb" }
+external_adb-cast-compose-local = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-compose-local", version.ref = "external_adb" }
+external_adb-cast-compose-remote = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-compose-remote", version.ref = "external_adb" }
+external_adb-proxy-common = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-api", version.ref = "external_adb" }
 external_adb-proxy-server = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-server", version.ref = "external_adb" }
-external_adb-cast-proxy-server = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-cast-proxy-server", version.ref = "external_adb" }
+external_adb-proxy-server-cast = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-server-cast", version.ref = "external_adb" }
+external_adb-proxy-server-pair = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-server-pair", version.ref = "external_adb" }
+external_adb-proxy-client = { group = "net.bi4vmr.tool.kotlin", name = "external-adb-proxy-client", version.ref = "external_adb" }
 
 gui_interaction = { group = "net.bi4vmr.tool.kotlin", name = "gui-interaction", version.ref = "gui_interaction" }
