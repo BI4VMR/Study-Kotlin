@@ -173,7 +173,7 @@ class ADBProxyServer(
     /**
      * 设置监听地址和端口。
      *
-     * 如果服务端已经启动，该设置不会影响已启动的服务端，若要刷新需先终止后重新启动。
+     * 该配置不会影响已启动的服务端，若要刷新需终止服务端并重新启动。
      *
      * @param[address] 监听地址。
      * @param[port] 监听端口。
@@ -188,7 +188,7 @@ class ADBProxyServer(
      *
      * 传入空值表示不启用加密，传入非空的值将使用该证书启用 SSL / TLS 加密。
      *
-     * 如果服务端已经启动，该设置不会影响已启动的服务端，若要刷新需先终止后重新启动。
+     * 该配置不会影响已启动的服务端，若要刷新需终止服务端并重新启动。
      *
      * @param[config] SSL 配置。
      */
@@ -206,6 +206,16 @@ class ADBProxyServer(
         routing {
             installInternalRoutes(this)
             installOptionalRoutes(this)
+        }
+
+        installOptionalModules()
+    }
+
+    // 通过 SPI 机制加载可选模块，模块可配置路由之外的内容
+    private fun Application.installOptionalModules() {
+        ServiceLoader.load(ADBProxyModule::class.java).forEach { module ->
+            with(module) { install(jsonTool) }
+            logger.info("Optional module [{}] has been installed.", module.javaClass.name)
         }
     }
 

@@ -38,6 +38,7 @@ dependencies {
     api(libKotlin.ktor.client.websockets)
     api(libKotlin.ktor.client.content.negotiation)
     api(libKotlin.ktor.serialization.kotlinx.json)
+    implementation(libKotlin.ktor.network.tls.certificates)
 
 
     /* 测试组件 */

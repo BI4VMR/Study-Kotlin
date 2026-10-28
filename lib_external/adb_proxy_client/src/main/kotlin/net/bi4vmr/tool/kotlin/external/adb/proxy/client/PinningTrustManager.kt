@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import java.security.MessageDigest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager
@@ -30,8 +30,7 @@ internal class PinningTrustManager(
 
     override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
         val leaf = chain?.firstOrNull() ?: throw CertificateException("Empty certificate chain.")
-        val fingerprint = MessageDigest.getInstance("SHA-256").digest(leaf.encoded)
-            .joinToString("") { "%02x".format(it) }
+        val fingerprint = PairUtil.getFingerprint(leaf)
 
         val expected = pinnedFingerprint ?: observedFingerprint
         if (expected != null && !expected.equals(fingerprint, ignoreCase = true)) {

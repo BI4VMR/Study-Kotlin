@@ -1,6 +1,5 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.security
 
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
 import java.io.File
 
 /**
@@ -27,16 +26,29 @@ class ADBProxySecurityConfig(
     /**
      * 是否信任所有连接。
      *
-     * 开启后跳过令牌校验与配对流程，仅用于调试，传输仍然加密；即时生效。
+     * 开启后跳过客户端配对校验，仅用于调试，传输仍然加密；即时生效。
      */
     @Volatile
     var trustAllClients: Boolean = false,
 
     /**
-     * 配对审批回调：参数为申请信息与 6 位配对码，返回 `true` 表示批准配对。
+     * 配对审批回调：参数为配对申请，返回 `true` 表示批准配对。
      *
      * 界面需展示配对码，由用户与客户端展示的配对码核对一致后再批准。
      * 回调可以挂起以等待用户操作，超时时间为 60 秒。
      */
-    val pairingApprover: suspend (PairRequest, String) -> Boolean = { _, _ -> false }
+    val pairingApprover: suspend (PairApproval) -> Boolean = { false }
+)
+
+/**
+ * 待审批的配对申请。
+ *
+ * @property[clientName] 客户端自报的名称，仅供参考。
+ * @property[clientFingerprint] 客户端证书指纹，是客户端的真实身份。
+ * @property[code] 6 位配对码，需与客户端展示的配对码一致。
+ */
+data class PairApproval(
+    val clientName: String,
+    val clientFingerprint: String,
+    val code: String
 )

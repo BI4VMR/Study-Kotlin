@@ -10,6 +10,7 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.network.tls.addKeyStore
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -52,19 +53,14 @@ class ADBProxyClient(
     val port: Int = Constant.PORT_SERVER_DEFAULT,
 
     /**
-     * 访问令牌，配对成功后获得；尚未配对时为空值。
+     * 本客户端的身份（证书与私钥），服务端据此识别并授权客户端。
      */
-    token: String? = null,
+    val identity: ClientIdentity,
 
     /**
      * 已信任的服务端证书指纹；为空值表示首次连接，将在连接后通过 [observedFingerprint] 提供。
      */
     pinnedFingerprint: String? = null,
-
-    /**
-     * 本客户端的唯一标识，配对申请时提交。
-     */
-    val clientId: String = "",
 
     /**
      * 本客户端的名称，将展示在服务端的配对确认界面。
@@ -94,12 +90,6 @@ class ADBProxyClient(
         encodeDefaults = true
     }
 
-    /**
-     * Ktor 客户端。
-     */
-    @Volatile
-    private var accessToken: String? = token
-
     private val trustManager = PinningTrustManager(pinnedFingerprint)
 
     /**
@@ -110,23 +100,19 @@ class ADBProxyClient(
     val observedFingerprint: String?
         get() = trustManager.observedFingerprint
 
-    /**
-     * 当前访问令牌。
-     */
-    val currentToken: String?
-        get() = accessToken
 
+    /**
+     * Ktor 客户端。
+     */
     private val client = HttpClient(CIO) {
         engine {
             https {
                 this.trustManager = this@ADBProxyClient.trustManager
+                // 向服务端出示客户端证书（双向 TLS）
+                addKeyStore(identity.keyStore, ClientIdentity.PASSWORD.toCharArray(), ClientIdentity.ALIAS)
             }
         }
         install(HttpTimeout)
-        // 所有请求（含 WebSocket 握手）自动携带令牌
-        defaultRequest {
-            accessToken?.let { header(HttpHeaders.Authorization, "Bearer $it") }
-        }
         // 日志输出
         install(Logging) { level = LogLevel.INFO }
         // 自动反序列化
@@ -232,28 +218,26 @@ class ADBProxyClient(
      * 用户核对一致后在服务端批准；若两端不一致，说明通信可能被中间人劫持，应拒绝。
      * 调用将被挂起直至服务端用户操作或超时。
      *
-     * 配对成功后客户端自动使用返回的令牌，上层应持久化令牌与 [observedFingerprint] 。
+     * 服务端以 TLS 握手中的客户端证书识别身份，配对成功后无需令牌；
+     * 上层应持久化 [identity] 文件与 [observedFingerprint] 。
      *
      * @param[onCode] 配对码就绪的回调。
-     * @return 访问令牌。
      * @throws[IllegalStateException] 配对被拒绝、超时或服务端繁忙。
      */
-    suspend fun pair(onCode: (String) -> Unit = {}): String {
-        require(clientId.isNotBlank()) { "Client ID is required!" }
-
+    suspend fun pair(onCode: (String) -> Unit = {}) {
         val clientNonce = PairUtil.generateNonce()
         val initResponse = client.post(buildURL(API.PAIR_INIT)) {
             contentType(ContentType.Application.Json)
-            setBody(PairRequest(clientId, clientName, PairUtil.getCommit(clientNonce)))
+            setBody(PairRequest(clientName, PairUtil.getCommit(clientNonce)))
         }
         check(initResponse.status.isSuccess()) {
-            "Pairing failed. Reason:[${initResponse.bodyAsText()}]"
+            "Pairing failed. Status:[${initResponse.status}] Reason:[${initResponse.bodyAsText()}]"
         }
         val init = initResponse.body<PairInitResponse>()
 
         // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
         val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }
-        onCode(PairUtil.generatePairCode(fingerprint, fingerprint, clientNonce, init.serverNonce))
+        onCode(PairUtil.generatePairCode(identity.fingerprint, fingerprint, clientNonce, init.serverNonce))
 
         val response = client.post(buildURL(API.PAIR_REVEAL)) {
             contentType(ContentType.Application.Json)
@@ -262,14 +246,12 @@ class ADBProxyClient(
             timeout { requestTimeoutMillis = 70_000 }
         }
         check(response.status.isSuccess()) {
-            "Pairing failed. Reason:[${response.bodyAsText()}]"
+            "Pairing failed. Status:[${response.status}] Reason:[${response.bodyAsText()}]"
         }
-
-        return response.body<PairResponse>().token.also { accessToken = it }
     }
 
     /**
-     * 检查当前凭据是否已被服务端接受。
+     * 检查本客户端证书是否已被服务端接受。
      *
      * @return `true` 表示已配对， `false` 表示未配对或配对已被服务端撤销。
      * @throws[ConnectException] 建立连接失败。

@@ -26,6 +26,8 @@ dependencies {
     implementation(libJava.slf4j.api)
     implementation(libKotlin.ktor.server.core)
     implementation(libKotlin.ktor.network.tls.certificates)
+    // 通过 Netty 管道配置客户端证书认证，并读取对端证书。
+    api(libKotlin.ktor.server.netty)
 
 
     /* 测试组件 */

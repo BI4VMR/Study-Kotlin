@@ -1,12 +1,18 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes
 
 import com.pty4j.PtyProcessBuilder
-import io.ktor.http.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.server.websocket.*
-import io.ktor.websocket.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.request.receive
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.Routing
+import io.ktor.server.routing.post
+import io.ktor.server.websocket.DefaultWebSocketServerSession
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,7 +45,15 @@ class ADBCoreRoutes : ADBProxyRouteProvider {
 
 
     override fun Routing.register(jsonTool: Json) {
-        get(API.VERSION) {
+        post(API.SERVER_ID) {
+            call.respondText("", ContentType.Text.Plain)
+        }
+
+        post(API.SERVER_NAME) {
+            call.respondText("", ContentType.Text.Plain)
+        }
+
+        post(API.SERVER_VERSION) {
             call.respondText(Constant.PROTOCOL_VERSION, ContentType.Text.Plain)
         }
 

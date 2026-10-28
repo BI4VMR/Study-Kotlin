@@ -13,11 +13,11 @@ interface PairedClientStore {
     fun list(): List<PairedClient>
 
     /**
-     * 保存配对信息，已存在相同 ID 的记录时覆盖。
+     * 保存配对信息，已存在相同指纹的记录时覆盖。
      */
     fun save(client: PairedClient)
 
-    fun remove(clientId: String)
+    fun remove(fingerprint: String)
 }
 
 /**
@@ -30,11 +30,11 @@ class InMemoryPairedClientStore : PairedClientStore {
     override fun list(): List<PairedClient> = clients.toList()
 
     override fun save(client: PairedClient) {
-        clients.removeAll { it.id == client.id }
+        clients.removeAll { it.fingerprint == client.fingerprint }
         clients.add(client)
     }
 
-    override fun remove(clientId: String) {
-        clients.removeAll { it.id == clientId }
+    override fun remove(fingerprint: String) {
+        clients.removeAll { it.fingerprint == fingerprint }
     }
 }

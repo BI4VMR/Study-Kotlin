@@ -1,7 +1,9 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.util
 
 import net.bi4vmr.tool.java.security.digest.MessageDigestUtil
+import java.security.MessageDigest
 import java.security.SecureRandom
+import java.security.cert.Certificate
 
 /**
  * 配对工具。
@@ -34,6 +36,25 @@ object PairUtil {
 
     fun getCommit(cNonce: String): String = MessageDigestUtil.getSHA256("commit|$cNonce")
 
+    /**
+     * 计算证书指纹。
+     *
+     * @param[cert] 证书。
+     * @return SHA-256 摘要的十六进制小写字符串。
+     */
+    fun getFingerprint(cert: Certificate): String =
+        MessageDigest.getInstance("SHA-256").digest(cert.encoded)
+            .joinToString("") { "%02x".format(it) }
+
+    /**
+     * 生成配对码。
+     *
+     * 双方分别使用「所见的客户端证书指纹、所见的服务端证书指纹、两个随机数」计算，用户核对两端展示的配对码是否一致，
+     * 任意一端的证书被中间人替换，两端的配对码都将不同。
+     *
+     * @param[cfingerprint] 客户端证书指纹。
+     * @param[sfingerprint] 服务端证书指纹。
+     */
     fun generatePairCode(cfingerprint: String, sfingerprint: String, cNonce: String, sNonce: String): String {
 
         /*

@@ -1,12 +1,12 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.security
 
 import java.security.KeyStore
-import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
+import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
 
 /**
- * 服务端安全策略的运行时逻辑：令牌签发与校验。
+ * 服务端安全策略的运行时逻辑：基于客户端证书指纹的认证。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.2
@@ -30,34 +30,25 @@ internal class ADBProxySecurity(
 
         private val random = SecureRandom()
 
-        fun generateToken(): String {
+        fun generateSessionID(): String {
             val bytes = ByteArray(32).also { random.nextBytes(it) }
             return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         }
 
-        fun hashToken(token: String): String =
-            MessageDigest.getInstance("SHA-256").digest(token.toByteArray()).toHex()
-
         fun fingerprintOf(keyStore: KeyStore): String =
-            MessageDigest.getInstance("SHA-256")
-                .digest(keyStore.getCertificate(KEY_ALIAS).encoded)
-                .toHex()
-
-        private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+            PairUtil.getFingerprint(keyStore.getCertificate(KEY_ALIAS))
     }
 
     val store get() = config.store
 
-    fun isTokenValid(token: String?): Boolean {
+    /**
+     * 检查客户端是否已配对。
+     *
+     * @param[fingerprint] TLS 握手中客户端证书的指纹，没有出示证书时为空值。
+     */
+    fun isPaired(fingerprint: String?): Boolean {
         if (config.trustAllClients) return true
-        if (token.isNullOrEmpty()) return false
-
-        val hash = hashToken(token).toByteArray()
-        // 恒定时间比较，并遍历全部记录，避免时序差异。
-        var matched = false
-        for (client in store.list()) {
-            if (MessageDigest.isEqual(hash, client.tokenHash.toByteArray())) matched = true
-        }
-        return matched
+        if (fingerprint == null) return false
+        return store.list().any { it.fingerprint == fingerprint }
     }
 }

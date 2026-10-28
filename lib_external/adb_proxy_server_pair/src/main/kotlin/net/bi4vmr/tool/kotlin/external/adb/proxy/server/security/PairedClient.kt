@@ -9,19 +9,14 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.server.security
 data class PairedClient(
 
     /**
-     * 客户端唯一标识。
+     * 客户端证书的 SHA-256 指纹（十六进制小写），作为客户端的唯一身份。
      */
-    val id: String,
+    val fingerprint: String,
 
     /**
-     * 客户端名称。
+     * 客户端名称，仅用于界面展示，不参与认证。
      */
     val name: String,
-
-    /**
-     * 访问令牌的 SHA-256 摘要（十六进制），服务端不保存令牌明文。
-     */
-    val tokenHash: String,
 
     /**
      * 配对时间（毫秒时间戳）。
