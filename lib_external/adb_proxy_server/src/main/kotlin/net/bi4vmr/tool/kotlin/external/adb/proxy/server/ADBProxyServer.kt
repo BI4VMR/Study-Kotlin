@@ -1,16 +1,11 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.Application
-import io.ktor.server.application.ServerReady
-import io.ktor.server.application.install
-import io.ktor.server.engine.EmbeddedServer
-import io.ktor.server.engine.connector
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.engine.sslConnector
-import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.websocket.WebSockets
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.websocket.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
@@ -22,7 +17,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBCoreModule
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBProxyModule
 import org.slf4j.LoggerFactory
-import java.util.ServiceLoader
+import java.util.*
 
 /**
  * ADB 代理服务器。
@@ -68,6 +63,11 @@ class ADBProxyServer(
     private var sslConfig: SSLConfig? = null
 
     /**
+     * 已加载的模块列表。
+     */
+    private val modules: MutableList<ADBProxyModule> = mutableListOf()
+
+    /**
      * 全局 JSON 工具。
      */
     val jsonTool: Json = Json {
@@ -109,6 +109,7 @@ class ADBProxyServer(
         }
 
         /* 重置状态 */
+        modules.clear()
         _errorFlow.value = null
         _stateFlow.value = ServerState.STARTING
 
@@ -165,6 +166,10 @@ class ADBProxyServer(
         server?.stop(500, 2000)
         server = null
 
+        // 使子模块释放资源
+        modules.forEach { runCatching { it.unregister() } }
+        modules.clear()
+
         _errorFlow.value = null
         _stateFlow.value = ServerState.INIT
     }
@@ -209,17 +214,23 @@ class ADBProxyServer(
         installOptionalModules(this)
     }
 
-    // 加载核心组件
+    // 加载内部组件
     private fun installInternalModules(ktor: Application) {
-        with(ADBCoreModule()) { ktor.register(this@ADBProxyServer) }
+        val coreModule = ADBCoreModule()
+        with(coreModule) { ktor.register(this@ADBProxyServer) }
+        modules.add(coreModule)
     }
 
     // 通过 SPI 机制加载可选组件
     private fun installOptionalModules(ktor: Application) {
-        ServiceLoader.load(ADBProxyModule::class.java).forEach { provider ->
-            with(provider) { ktor.register(this@ADBProxyServer) }
-            logger.info("Optional module [{}] has been registered.", provider.javaClass.name)
-        }
+        ServiceLoader.load(ADBProxyModule::class.java)
+            .forEach { provider ->
+                logger.info("Optional module [{}] detected.", provider.javaClass.simpleName)
+                with(provider) { ktor.register(this@ADBProxyServer) }
+                logger.info("Optional module [{}] has been registered.", provider.javaClass.simpleName)
+
+                modules.add(provider)
+            }
     }
 
     private fun canStart(): Boolean =

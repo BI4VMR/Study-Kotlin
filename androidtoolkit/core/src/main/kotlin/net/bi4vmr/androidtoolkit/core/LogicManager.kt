@@ -2,6 +2,7 @@
 
 package net.bi4vmr.androidtoolkit.core
 
+import io.ktor.network.tls.certificates.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.core.mcp.McpService
@@ -18,13 +19,14 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurityConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClientStore
-import java.net.InetAddress
+import java.io.File
 import java.net.ConnectException
+import java.net.InetAddress
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -59,7 +61,7 @@ object LogicManager {
      * 待用户处理的配对申请。
      */
     class PendingPairing(
-        val request: PairRequest,
+        val request: PairCommitRequest,
         val code: String,
         internal val result: CompletableDeferred<Boolean>
     ) {
@@ -82,9 +84,6 @@ object LogicManager {
      */
     val pairedClientsFlow: StateFlow<List<PairedClient>> = _pairedClientsFlow
 
-    @Volatile
-    private var proxySecurity: ADBProxySecurityConfig? = null
-
     /**
      * 已配对客户端存储，变更时同步写入配置文件。
      */
@@ -92,19 +91,19 @@ object LogicManager {
         override fun list(): List<PairedClient> = _pairedClientsFlow.value
 
         override fun save(client: PairedClient) {
-            _pairedClientsFlow.update { old -> old.filterNot { it.id == client.id } + client }
+            // _pairedClientsFlow.update { old -> old.filterNot { it.id == client.id } + client }
             persistPairedClients()
         }
 
         override fun remove(clientId: String) {
-            _pairedClientsFlow.update { old -> old.filterNot { it.id == clientId } }
+            // _pairedClientsFlow.update { old -> old.filterNot { it.id == clientId } }
             persistPairedClients()
         }
     }
 
     private fun persistPairedClients() {
         val entries = _pairedClientsFlow.value
-            .map { "${it.id}|${it.pairedAt}|${it.tokenHash}|${it.name}" }
+            .map { "it.id|${it.pairedAt}|it.tokenHash|${it.name}" }
             .toSet()
         taskScope.launch { configManager.setPairedClients(entries) }
     }
@@ -279,10 +278,6 @@ object LogicManager {
         val client = ADBProxyClient(
             host = host,
             port = port,
-            token = saved?.get(2)?.takeIf { secure && it.isNotEmpty() },
-            pinnedFingerprint = saved?.get(1)?.takeIf { secure && it.isNotEmpty() },
-            clientId = configManager.getClientID(),
-            clientName = localName,
             secure = secure
         )
 
@@ -293,17 +288,17 @@ object LogicManager {
             }
 
             // 加密连接需要配对：未配对或配对已被服务端撤销时，申请配对并等待服务端用户批准。
-            if (secure) {
-                if (!client.isPaired()) {
-                    client.pair(onPairingCode)
-                }
-
-                val fingerprint = client.observedFingerprint.orEmpty()
-                val token = client.currentToken.orEmpty()
-                val entries = configManager.getPairedServers()
-                    .filterNot { it.startsWith("$serverKey|") } + "$serverKey|$fingerprint|$token"
-                configManager.setPairedServers(entries.toSet())
-            }
+            // if (secure) {
+            //     if (!client.isPaired()) {
+            //         client.pair(onPairingCode)
+            //     }
+            //
+            //     val fingerprint = client.observedFingerprint.orEmpty()
+            //     val token = client.currentToken.orEmpty()
+            //     val entries = configManager.getPairedServers()
+            //         .filterNot { it.startsWith("$serverKey|") } + "$serverKey|$fingerprint|$token"
+            //     configManager.setPairedServers(entries.toSet())
+            // }
         } catch (e: Exception) {
             client.release()
             throw e
@@ -341,6 +336,27 @@ object LogicManager {
 
     fun startProxyServer() {
         taskScope.launch {
+            // TODO TEST KEY
+            val file = File(fileManager.getUserDataDir(), "server.jks")
+            if (!file.exists()) {
+                generateCertificate(
+                    file = file,
+                    algorithm = "SHA256withRSA",
+                    keyAlias = "Key1",
+                    keyPassword = "1",
+                    jksPassword = "1",
+                    keySizeInBits = 2048
+                )
+            }
+            val conf = SSLConfig(
+                keyStoreFile = file,
+                keyStorePassword = "1",
+                keyAlias = "Key1",
+                keyPassword = "1"
+            )
+            adbProxyServer.setSSLConfig(conf)
+
+
             val address = configManager.proxyInterfaceFlow.first()
             val port = configManager.proxyPortFlow.first()
 
@@ -349,39 +365,26 @@ object LogicManager {
                     val parts = entry.split("|", limit = 4)
                     val pairedAt = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
                     if (parts.size < 4) return@mapNotNull null
-                    PairedClient(id = parts[0], name = parts[3], tokenHash = parts[2], pairedAt = pairedAt)
+                    // PairedClient(id = parts[0], name = parts[3], tokenHash = parts[2], pairedAt = pairedAt)
+                    null
                 }
             }
 
-            // 是否加密由配置项决定，修改后需重启转发器生效；若未引入安全模块，启动时将报错。
-            val security: ADBProxySecurityConfig? = if (configManager.getProxyEncrypt()) {
-                ADBProxySecurityConfig(
-                    keyStoreFile = fileManager.getConfigDir().resolve("server.jks"),
-                    store = pairedClientStore,
-                    trustAllClients = configManager.getProxyTrustAll(),
-                    pairingApprover = { request, code -> askPairingApproval(request, code) }
-                )
-            } else {
-                null
-            }
-            proxySecurity = security
-
             adbProxyServer.setInterface(address, port)
-            adbProxyServer.setSecurity(security)
             adbProxyServer.start()
         }
     }
 
     // 挂起等待界面处理配对申请，界面无响应时由服务端超时机制取消。
-    private suspend fun askPairingApproval(request: PairRequest, code: String): Boolean {
-        val pending = PendingPairing(request, code, CompletableDeferred())
-        _pendingPairingFlow.value = pending
-        return try {
-            pending.result.await()
-        } finally {
-            _pendingPairingFlow.compareAndSet(pending, null)
-        }
-    }
+    // private suspend fun askPairingApproval(request: PairRequest, code: String): Boolean {
+    //     val pending = PendingPairing(request, code, CompletableDeferred())
+    //     _pendingPairingFlow.value = pending
+    //     return try {
+    //         pending.result.await()
+    //     } finally {
+    //         _pendingPairingFlow.compareAndSet(pending, null)
+    //     }
+    // }
 
     /**
      * 撤销客户端的配对，其令牌立即失效。
@@ -424,7 +427,7 @@ object LogicManager {
     }
 
     fun setProxyTrustAll(enabled: Boolean) {
-        proxySecurity?.trustAllClients = enabled
+        // proxySecurity?.trustAllClients = enabled
         taskScope.launch {
             configManager.setProxyTrustAll(enabled)
         }

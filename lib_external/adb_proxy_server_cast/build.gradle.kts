@@ -18,15 +18,15 @@ tasks.withType<Test> {
 
 dependencies {
     /* 工程组件 */
-    implementation(project(":lib_external:adb_core"))
-    implementation(project(":lib_external:adb_cast_transfer"))
-    implementation(project(":lib_external:adb_proxy_server"))
+    api(project(":lib_external:adb_core"))
+    api(project(":lib_external:adb_cast_transfer"))
+    api(project(":lib_external:adb_proxy_server"))
 
 
     /* 外部组件 */
-    implementation(libJava.slf4j.api)
-    implementation(libKotlin.ktor.server.core)
-    implementation(libKotlin.ktor.server.websockets)
+    api(libJava.slf4j.api)
+    api(libKotlin.ktor.server.core)
+    api(libKotlin.ktor.server.websockets)
 
 
     /* 测试组件 */

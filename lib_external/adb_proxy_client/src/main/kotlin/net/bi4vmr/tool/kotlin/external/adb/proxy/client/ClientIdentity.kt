@@ -46,7 +46,7 @@ class ClientIdentity private constructor(
                 )
             }
             val keyStore = KeyStore.getInstance(file, PASSWORD.toCharArray())
-            return ClientIdentity(keyStore, PairUtil.getFingerprint(keyStore.getCertificate(ALIAS)))
+            return ClientIdentity(keyStore, "PairUtil.getFingerprint(keyStore.getCertificate(ALIAS))")
         }
     }
 }

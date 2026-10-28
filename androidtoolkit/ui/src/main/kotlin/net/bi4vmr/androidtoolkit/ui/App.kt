@@ -87,7 +87,7 @@ fun App() {
             title = { Text("配对申请") },
             text = {
                 Column {
-                    Text("客户端「${p.request.clientName}」（${p.request.clientId}）请求与本机配对，批准后其可以操作本机的设备。")
+                    // Text("客户端「${p.request.clientName}」（${p.request.clientId}）请求与本机配对，批准后其可以操作本机的设备。")
                     Text("配对码：${p.code}", style = MaterialTheme.typography.headlineMedium)
                     Text("请核对客户端显示的配对码，仅在两端完全一致时批准；不一致说明通信可能被劫持。")
                 }

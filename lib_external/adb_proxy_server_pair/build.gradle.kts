@@ -18,16 +18,15 @@ tasks.withType<Test> {
 
 dependencies {
     /* 工程组件 */
-    implementation(project(":lib_external:adb_proxy_common"))
-    implementation(project(":lib_external:adb_proxy_server"))
+    api(project(":lib_external:adb_proxy_common"))
+    api(project(":lib_external:adb_proxy_server"))
 
 
     /* 外部组件 */
-    implementation(libJava.slf4j.api)
-    implementation(libKotlin.ktor.server.core)
-    implementation(libKotlin.ktor.network.tls.certificates)
-    // 通过 Netty 管道配置客户端证书认证，并读取对端证书。
+    api(libJava.slf4j.api)
+    api(libKotlin.ktor.server.core)
     api(libKotlin.ktor.server.netty)
+    api(libKotlin.ktor.network.tls.certificates)
 
 
     /* 测试组件 */

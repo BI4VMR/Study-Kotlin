@@ -13,7 +13,7 @@ import java.security.cert.Certificate
  */
 data class SSLConfig(
 
-    val keyStorePath: String = FileUtil.PATH_INVALID,
+    val keyStoreFile: File = FileUtil.FILE_INVALID,
 
     val keyStorePassword: String = "",
 
@@ -23,8 +23,8 @@ data class SSLConfig(
 ) {
 
     fun getKeyStore(): KeyStore =
-        KeyStore.getInstance(File(keyStorePath), keyStorePassword.toCharArray())
+        KeyStore.getInstance(keyStoreFile, keyStorePassword.toCharArray())
 
-    fun getFirstCertificate(): Certificate? =
+    fun getCertificate(): Certificate? =
         getKeyStore().getCertificate(keyAlias)
 }

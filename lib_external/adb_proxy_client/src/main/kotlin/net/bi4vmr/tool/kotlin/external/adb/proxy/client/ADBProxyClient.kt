@@ -10,7 +10,7 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.network.tls.addKeyStore
+import io.ktor.network.tls.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -25,7 +25,9 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.*
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
@@ -54,26 +56,11 @@ class ADBProxyClient(
     val port: Int = Constant.PORT_SERVER_DEFAULT,
 
     /**
-     * 本客户端的身份（证书与私钥），服务端据此识别并授权客户端。
-     */
-    val identity: ClientIdentity,
-
-    /**
-     * 已信任的服务端证书指纹；为空值表示首次连接，将在连接后通过 [observedFingerprint] 提供。
-     */
-    pinnedFingerprint: String? = null,
-
-    /**
-     * 本客户端的名称，将展示在服务端的配对确认界面。
-     */
-    val clientName: String = "",
-
-    /**
      * 是否使用加密连接（HTTPS 与 WSS）。
      *
      * 必须与服务端是否启用加密一致；为 `false` 时使用明文 HTTP 与 WS ，且不涉及配对。
      */
-    val secure: Boolean = true,
+    val secure: Boolean = false,
 ) {
 
     /**
@@ -105,9 +92,9 @@ class ADBProxyClient(
     private val client = HttpClient(CIO) {
         engine {
             https {
-                // this.trustManager = this@ADBProxyClient.trustManager
+                this.trustManager = PinningTrustManager(null)
                 // 向服务端出示客户端证书（双向 TLS）
-                addKeyStore(identity.keyStore, ClientIdentity.PASSWORD.toCharArray(), ClientIdentity.ALIAS)
+                // addKeyStore(identity.keyStore, ClientIdentity.PASSWORD.toCharArray(), ClientIdentity.ALIAS)
             }
         }
         install(HttpTimeout)
@@ -237,30 +224,30 @@ class ADBProxyClient(
      */
     suspend fun pair(onCode: (String) -> Unit = {}) {
         val clientNonce = PairUtil.generateNonce()
-        val clientHash = sslConfig?.getKeyStore()?.getCertificate()
+        val clientHash = sslConfig?.getKeyStore()?.getCertificate(sslConfig!!.keyAlias)
         val commitRequest = PairCommitRequest()
-        val commitResponse = client.post(buildURL(API.PAIR_COMMIT)) {
-            contentType(ContentType.Application.Json)
-            setBody(PairRequest(clientName, PairUtil.getCommit(clientNonce)))
-        }
-        check(commitResponse.status.isSuccess()) {
-            "Pairing failed. Status:[${commitResponse.status}] Reason:[${commitResponse.bodyAsText()}]"
-        }
-        val init = commitResponse.body<PairInitResponse>()
-
-        // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
-        val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }
-        onCode(PairUtil.generatePairCode(identity.fingerprint, fingerprint, clientNonce, init.serverNonce))
-
-        val response = client.post(buildURL(API.PAIR_REVEAL)) {
-            contentType(ContentType.Application.Json)
-            setBody(PairRevealRequest(init.pairId, clientNonce))
-            // 等待服务端用户批准，超时时间与服务端一致并留出余量。
-            timeout { requestTimeoutMillis = 70_000 }
-        }
-        check(response.status.isSuccess()) {
-            "Pairing failed. Status:[${response.status}] Reason:[${response.bodyAsText()}]"
-        }
+        // val commitResponse = client.post(buildURL(API.PAIR_COMMIT)) {
+        //     contentType(ContentType.Application.Json)
+        //     setBody(PairRequest(clientName, PairUtil.getCommit(clientNonce)))
+        // }
+        // check(commitResponse.status.isSuccess()) {
+        //     "Pairing failed. Status:[${commitResponse.status}] Reason:[${commitResponse.bodyAsText()}]"
+        // }
+        // val init = commitResponse.body<PairInitResponse>()
+        //
+        // // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
+        // val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }
+        // onCode(PairUtil.generatePairCode(identity.fingerprint, fingerprint, clientNonce, init.serverNonce))
+        //
+        // val response = client.post(buildURL(API.PAIR_REVEAL)) {
+        //     contentType(ContentType.Application.Json)
+        //     setBody(PairRevealRequest(init.pairId, clientNonce))
+        //     // 等待服务端用户批准，超时时间与服务端一致并留出余量。
+        //     timeout { requestTimeoutMillis = 70_000 }
+        // }
+        // check(response.status.isSuccess()) {
+        //     "Pairing failed. Status:[${response.status}] Reason:[${response.bodyAsText()}]"
+        // }
     }
 
     /**
@@ -287,7 +274,7 @@ class ADBProxyClient(
      */
     suspend fun getServerVersion(): String {
         val url = buildURL(API.SERVER_VERSION)
-        return client.get(url).bodyAsText()
+        return client.post(url).bodyAsText()
     }
 
     /**
@@ -508,7 +495,11 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
-    private fun buildURL(path: String): String = "${if (secure) "https" else "http"}://$host:$port$path"
+    private fun buildURL(path: String): String =
+        // URLBuilder(
+        //     protocol = if (secure) URLProtocol.HTTPS else URLProtocol.HTTP,
+        // )
+        "${if (secure) "https" else "http"}://$host:$port$path"
 
     private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
         if (secure) {

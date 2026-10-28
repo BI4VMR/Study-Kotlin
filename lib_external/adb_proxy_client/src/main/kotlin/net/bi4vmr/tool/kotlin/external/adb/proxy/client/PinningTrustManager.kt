@@ -30,7 +30,7 @@ internal class PinningTrustManager(
 
     override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
         val leaf = chain?.firstOrNull() ?: throw CertificateException("Empty certificate chain.")
-        val fingerprint = PairUtil.getFingerprint(leaf)
+        val fingerprint = PairUtil.calculateCertFingerprint(leaf)
 
         val expected = pinnedFingerprint ?: observedFingerprint
         if (expected != null && !expected.equals(fingerprint, ignoreCase = true)) {

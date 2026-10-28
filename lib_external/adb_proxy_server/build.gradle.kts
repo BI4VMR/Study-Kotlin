@@ -32,6 +32,7 @@ dependencies {
     api(libJava.pty4j)
     api(libKotlin.ktx.coroutines.core)
     api(libKotlin.ktor.server.core)
+    // Ktor 的 CIO 引擎对 SSL/TLS 支持不佳，因此使用 Netty 引擎。
     api(libKotlin.ktor.server.netty)
     api(libKotlin.ktor.server.websockets)
     api(libKotlin.ktor.server.content.negotiation)

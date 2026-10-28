@@ -122,9 +122,9 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
             Column {
                 pairedClients.forEach { client ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${client.name}（${client.id}）", modifier = Modifier.weight(1F))
+                        // Text("${client.name}（${client.id}）", modifier = Modifier.weight(1F))
                         TextButton(onClick = {
-                            globalStateManager.logicManager.revokePairedClient(client.id)
+                            // globalStateManager.logicManager.revokePairedClient(client.id)
                         }) {
                             Text("撤销")
                         }

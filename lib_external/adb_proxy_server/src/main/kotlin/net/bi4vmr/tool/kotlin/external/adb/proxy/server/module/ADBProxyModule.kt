@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
-import io.ktor.server.application.Application
+import io.ktor.server.application.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 
 /**
@@ -19,8 +19,10 @@ interface ADBProxyModule {
 
     /**
      * 注销模块。
+     *
+     * 服务端关闭时回调，子模块可在此释放资源。
      */
     fun unregister() {
-        // 服务端关闭时回调，子模块可在此释放资源。
+        // 默认不执行任何操作。
     }
 }

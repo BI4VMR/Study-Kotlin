@@ -1,29 +1,22 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCallPipeline
-import io.ktor.server.application.call
-import io.ktor.server.request.path
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
-import io.ktor.util.AttributeKey
-import kotlinx.coroutines.withTimeoutOrNull
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.netty.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.util.*
+import io.netty.handler.ssl.SslHandler
+import net.bi4vmr.tool.java.security.digest.MessageDigestUtil
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairInitResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairRevealRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.ADBProxySecurity
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairApproval
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.peerFingerprint
 import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
 import org.slf4j.LoggerFactory
+import java.security.cert.Certificate
 import java.util.concurrent.atomic.AtomicReference
 
 private val logger = LoggerFactory.getLogger("ADBSecurityRoutes")
@@ -41,7 +34,6 @@ class ADBPairModule : ADBProxyModule {
 
     class PairSession(
         val id: String,
-        val request: PairRequest,
         val clientFingerprint: String,
         val serverNonce: String,
         val expireAt: Long
@@ -55,39 +47,37 @@ class ADBPairModule : ADBProxyModule {
             val path = call.request.path()
             if (path in PUBLIC_PATHS) return@intercept
 
-            // 路由阶段的 call 是包装对象，无法直接读取连接信息，故在此提取并保存。
-            val fingerprint = call.peerFingerprint()
-            fingerprint?.let { call.attributes.put(ClientFingerprintKey, it) }
-            val allowed = if (path in PAIR_PATHS) fingerprint != null else security.isPaired(fingerprint)
-            if (!allowed) {
-                call.respondText("Unauthorized, pairing required.", status = HttpStatusCode.Unauthorized)
-                finish()
-            }
+            val clientCert = requireClientCertificate(call)
+            val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
+            fingerprint.let { call.attributes.put(ClientFingerprintKey, it) }
+            // val allowed = if (path in PAIR_PATHS) fingerprint != null else security.isPaired(fingerprint)
+            // if (!allowed) {
+            //     call.respondText("Unauthorized, pairing required.", status = HttpStatusCode.Unauthorized)
+            //     finish()
+            // }
         }
 
 
         routing {
             post(API.PAIR_COMMIT) {
-                // 拦截器已确保证书存在。
                 val clientFingerprint = call.attributes.getOrNull(ClientFingerprintKey) ?: return@post
-                val request: PairRequest = try {
+                val request: PairCommitRequest = try {
                     call.receive()
                 } catch (e: Exception) {
                     call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
                     return@post
                 }
-                if (request.clientName.length > 64 || request.commit.length != 64) {
-                    call.respondText("Invalid client information.", status = HttpStatusCode.BadRequest)
-                    return@post
-                }
+                // if (request.clientName.length > 64 || request.commit.length != 64) {
+                //     call.respondText("Invalid client information.", status = HttpStatusCode.BadRequest)
+                //     return@post
+                // }
 
                 val now = System.currentTimeMillis()
                 val created = PairSession(
-                    id = ADBProxySecurity.generateSessionID(),
-                    request = request,
+                    id = "1",
                     clientFingerprint = clientFingerprint,
                     serverNonce = PairUtil.generateNonce(),
-                    expireAt = now + ADBProxySecurity.PAIR_TIMEOUT_MS
+                    expireAt = now + 5000
                 )
                 val current = session.get()
                 val free = current == null || current.expireAt < now
@@ -95,7 +85,7 @@ class ADBPairModule : ADBProxyModule {
                     call.respondText("Another pairing request is pending.", status = HttpStatusCode.TooManyRequests)
                     return@post
                 }
-                call.respond(PairInitResponse(created.id, created.serverNonce))
+                call.respond(PairCommitResponse(created.id, created.serverNonce))
             }
 
             post(API.PAIR_REVEAL) {
@@ -109,7 +99,7 @@ class ADBPairModule : ADBProxyModule {
 
                 // 会话只能使用一次，无论成败都会被消耗，防止对承诺或配对码的重复尝试。
                 val current = session.get()
-                if (current == null || current.id != reveal.pairId || !session.compareAndSet(current, null)) {
+                if (current == null || current.id != "reveal.pairId" || !session.compareAndSet(current, null)) {
                     call.respondText("Pairing session not found.", status = HttpStatusCode.NotFound)
                     return@post
                 }
@@ -123,22 +113,22 @@ class ADBPairModule : ADBProxyModule {
                     call.respondText("Pairing session expired.", status = HttpStatusCode.Gone)
                     return@post
                 }
-                if (PairUtil.getCommit(reveal.clientNonce) != current.request.commit) {
-                    call.respondText("Commitment mismatch.", status = HttpStatusCode.BadRequest)
-                    return@post
-                }
+                // if (PairUtil.getCommit(reveal.clientNonce) != current.request.commit) {
+                //     call.respondText("Commitment mismatch.", status = HttpStatusCode.BadRequest)
+                //     return@post
+                // }
 
-                val code = PairUtil.generatePairCode(
-                    clientFingerprint, security.fingerprint, reveal.clientNonce, current.serverNonce
-                )
-                val approval = PairApproval(current.request.clientName, clientFingerprint, code)
-                val approved = security.config.trustAllClients ||
-                        withTimeoutOrNull(remaining) { security.config.pairingApprover(approval) } == true
-                if (!approved) {
-                    logger.info("Pairing request from [{}] was rejected or timed out.", clientFingerprint)
-                    call.respondText("Pairing rejected.", status = HttpStatusCode.Forbidden)
-                    return@post
-                }
+                // val code = PairUtil.generatePairCode(
+                //     clientFingerprint, security.fingerprint, reveal.clientNonce, current.serverNonce
+                // )
+                // val approval = PairApproval(current.request.clientName, clientFingerprint, code)
+                // val approved = security.config.trustAllClients ||
+                //         withTimeoutOrNull(remaining) { security.config.pairingApprover(approval) } == true
+                // if (!approved) {
+                //     logger.info("Pairing request from [{}] was rejected or timed out.", clientFingerprint)
+                //     call.respondText("Pairing rejected.", status = HttpStatusCode.Forbidden)
+                //     return@post
+                // }
 
                 // security.store.save(
                 //     PairedClient(
@@ -155,5 +145,11 @@ class ADBPairModule : ADBProxyModule {
                 call.respondText("OK", ContentType.Text.Plain)
             }
         }
+    }
+
+    private fun requireClientCertificate(call: ApplicationCall): Certificate {
+        val sslHandler = (call as NettyApplicationCall).context.pipeline().get(SslHandler::class.java)
+        val chain: Array<Certificate> = sslHandler.engine().session.peerCertificates
+        return chain.first()
     }
 }

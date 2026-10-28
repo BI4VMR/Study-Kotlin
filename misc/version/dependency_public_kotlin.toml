@@ -110,14 +110,14 @@ ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negoti
 ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 # Ktor・客户端・核心
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
-# Ktor・客户端・引擎（Tomcat）
-ktor-client-tomcat = { module = "io.ktor:ktor-client-tomcat", version.ref = "ktor" }
-# Ktor・客户端・引擎（Netty）
-ktor-client-netty = { module = "io.ktor:ktor-client-netty", version.ref = "ktor" }
+# Ktor・客户端・引擎（OkHTTP）
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 # Ktor・客户端・引擎（Jetty）
 ktor-client-jetty = { module = "io.ktor:ktor-client-jetty", version.ref = "ktor" }
 # Ktor・客户端・引擎（Coroutine-based I/O）
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+# Ktor・客户端・引擎（KMP 环境默认依赖，将为每个平台实现自动选择合适的引擎。）
+ktor-client-defaults = { module = "io.ktor:ktor-client-engine-defaults", version.ref = "ktor" }
 # Ktor・客户端・内容协定（配合序列化工具自动解析 JSON 等内容为对象。）
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 # Ktor・客户端・WebSocket 支持
