@@ -45,7 +45,8 @@ dependencies {
 }
 
 javaVersionConfig {
-    jdkVersion = JavaVersion.VERSION_1_8
+    // JDK KeyStore 库的部分功能要求版本至少为 9 。
+    jdkVersion = JavaVersion.VERSION_1_9
 }
 
 privatePublishConfig {

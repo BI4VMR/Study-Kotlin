@@ -10,8 +10,6 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.engine.sslConnector
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,10 +17,10 @@ import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes.ADBCoreRoutes
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes.ADBProxyRouteProvider
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.SSLConfig
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBCoreModule
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBProxyModule
 import org.slf4j.LoggerFactory
 import java.util.ServiceLoader
 
@@ -66,12 +64,13 @@ class ADBProxyServer(
      *
      * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
      */
+    @Volatile
     private var sslConfig: SSLConfig? = null
 
     /**
      * 全局 JSON 工具。
      */
-    private val jsonTool: Json = Json {
+    val jsonTool: Json = Json {
         // 解码时忽略未知字段
         ignoreUnknownKeys = true
         // 编码时对于未指明的字段填入默认值
@@ -183,6 +182,8 @@ class ADBProxyServer(
         this.port = port
     }
 
+    fun getSSLConfig(): SSLConfig? = sslConfig
+
     /**
      * 设置 SSL 配置。
      *
@@ -197,37 +198,26 @@ class ADBProxyServer(
     }
 
 
+    // 配置服务器
     private fun Application.configure() {
         // 自动反序列化
         install(ContentNegotiation) { json(jsonTool) }
         // WebSocket 支持
         install(WebSockets)
 
-        routing {
-            installInternalRoutes(this)
-            installOptionalRoutes(this)
-        }
-
-        installOptionalModules()
-    }
-
-    // 通过 SPI 机制加载可选模块，模块可配置路由之外的内容
-    private fun Application.installOptionalModules() {
-        ServiceLoader.load(ADBProxyModule::class.java).forEach { module ->
-            with(module) { install(jsonTool) }
-            logger.info("Optional module [{}] has been installed.", module.javaClass.name)
-        }
+        installInternalModules(this)
+        installOptionalModules(this)
     }
 
     // 加载核心组件
-    private fun installInternalRoutes(routing: Routing) {
-        with(ADBCoreRoutes()) { routing.register(jsonTool) }
+    private fun installInternalModules(ktor: Application) {
+        with(ADBCoreModule()) { ktor.register(this@ADBProxyServer) }
     }
 
     // 通过 SPI 机制加载可选组件
-    private fun installOptionalRoutes(routing: Routing) {
-        ServiceLoader.load(ADBProxyRouteProvider::class.java).forEach { provider ->
-            with(provider) { routing.register(jsonTool) }
+    private fun installOptionalModules(ktor: Application) {
+        ServiceLoader.load(ADBProxyModule::class.java).forEach { provider ->
+            with(provider) { ktor.register(this@ADBProxyServer) }
             logger.info("Optional module [{}] has been registered.", provider.javaClass.name)
         }
     }

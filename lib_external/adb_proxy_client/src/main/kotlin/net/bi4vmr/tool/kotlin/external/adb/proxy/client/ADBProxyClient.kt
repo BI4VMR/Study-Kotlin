@@ -26,6 +26,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.*
+import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
 import org.slf4j.LoggerFactory
@@ -81,6 +82,14 @@ class ADBProxyClient(
     private val logger = LoggerFactory.getLogger(ADBProxyClient::class.java)
 
     /**
+     * SSL / TLS 配置。
+     *
+     * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
+     */
+    @Volatile
+    private var sslConfig: SSLConfig? = null
+
+    /**
      * 全局 JSON 工具。
      */
     private val jsonTool: Json = Json {
@@ -90,24 +99,13 @@ class ADBProxyClient(
         encodeDefaults = true
     }
 
-    private val trustManager = PinningTrustManager(pinnedFingerprint)
-
-    /**
-     * 本次连接中观察到的服务端证书指纹。
-     *
-     * 在首次成功建立 TLS 连接后可用，上层应在用户确认后持久化并在后续连接中传入 `pinnedFingerprint` 。
-     */
-    val observedFingerprint: String?
-        get() = trustManager.observedFingerprint
-
-
     /**
      * Ktor 客户端。
      */
     private val client = HttpClient(CIO) {
         engine {
             https {
-                this.trustManager = this@ADBProxyClient.trustManager
+                // this.trustManager = this@ADBProxyClient.trustManager
                 // 向服务端出示客户端证书（双向 TLS）
                 addKeyStore(identity.keyStore, ClientIdentity.PASSWORD.toCharArray(), ClientIdentity.ALIAS)
             }
@@ -209,6 +207,19 @@ class ADBProxyClient(
     }
 
 
+    fun getSSLConfig(): SSLConfig? = sslConfig
+
+    /**
+     * 设置 SSL 配置。
+     *
+     * 传入空值表示不启用加密，传入非空的值将使用该证书启用 SSL / TLS 加密。
+     *
+     * @param[config] SSL 配置。
+     */
+    fun setSSLConfig(config: SSLConfig?) {
+        sslConfig = config
+    }
+
     /* ----- 配对 ----- */
 
     /**
@@ -226,14 +237,16 @@ class ADBProxyClient(
      */
     suspend fun pair(onCode: (String) -> Unit = {}) {
         val clientNonce = PairUtil.generateNonce()
-        val initResponse = client.post(buildURL(API.PAIR_INIT)) {
+        val clientHash = sslConfig?.getKeyStore()?.getCertificate()
+        val commitRequest = PairCommitRequest()
+        val commitResponse = client.post(buildURL(API.PAIR_COMMIT)) {
             contentType(ContentType.Application.Json)
             setBody(PairRequest(clientName, PairUtil.getCommit(clientNonce)))
         }
-        check(initResponse.status.isSuccess()) {
-            "Pairing failed. Status:[${initResponse.status}] Reason:[${initResponse.bodyAsText()}]"
+        check(commitResponse.status.isSuccess()) {
+            "Pairing failed. Status:[${commitResponse.status}] Reason:[${commitResponse.bodyAsText()}]"
         }
-        val init = initResponse.body<PairInitResponse>()
+        val init = commitResponse.body<PairInitResponse>()
 
         // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
         val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }

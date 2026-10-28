@@ -34,17 +34,18 @@ object PairUtil {
      */
     fun generateNonce(): String = random.nextLong().toString()
 
-    fun getCommit(cNonce: String): String = MessageDigestUtil.getSHA256("commit|$cNonce")
-
     /**
      * 计算证书指纹。
      *
      * @param[cert] 证书。
      * @return SHA-256 摘要的十六进制小写字符串。
      */
-    fun getFingerprint(cert: Certificate): String =
+    fun calculateCertFingerprint(cert: Certificate): String =
         MessageDigest.getInstance("SHA-256").digest(cert.encoded)
             .joinToString("") { "%02x".format(it) }
+
+    fun calculateCommit(fingerprint: String, nonce: String): String =
+        MessageDigestUtil.getSHA256("pair-commit|${fingerprint}_${nonce}")
 
     /**
      * 生成配对码。
@@ -55,7 +56,7 @@ object PairUtil {
      * @param[cfingerprint] 客户端证书指纹。
      * @param[sfingerprint] 服务端证书指纹。
      */
-    fun generatePairCode(cfingerprint: String, sfingerprint: String, cNonce: String, sNonce: String): String {
+    fun calculatePairCode(cfingerprint: String, sfingerprint: String, cNonce: String, sNonce: String): String {
 
         /*
          * 使用域前缀 `pair` 与其他元素组合生成字符串。

@@ -51,7 +51,8 @@ dependencies {
 }
 
 javaVersionConfig {
-    jdkVersion = JavaVersion.VERSION_1_8
+    // 关联模块 `adb_proxy_common` 要求 JDK 版本至少为 9 。
+    jdkVersion = JavaVersion.VERSION_1_9
 }
 
 privatePublishConfig {

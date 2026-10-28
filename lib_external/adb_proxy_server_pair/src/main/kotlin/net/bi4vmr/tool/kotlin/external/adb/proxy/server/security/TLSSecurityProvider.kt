@@ -1,7 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.security
 
 import io.ktor.network.tls.certificates.generateCertificate
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes.installSecurity
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.ssl.SslHandler
 import java.security.KeyStore
@@ -28,7 +27,7 @@ class TLSSecurityProvider : ADBProxySecurityProvider {
             privateKeyPassword = ADBProxySecurity.KEYSTORE_PASSWORD.toCharArray(),
             fingerprint = security.fingerprint,
             configurePipeline = { replaceSslHandler(keyStore) },
-            install = { installSecurity(security) }
+            install = {  }
         )
     }
 

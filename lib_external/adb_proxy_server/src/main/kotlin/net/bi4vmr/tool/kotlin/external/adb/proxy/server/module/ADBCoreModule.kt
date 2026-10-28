@@ -1,12 +1,13 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.server.routes
+package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
 import com.pty4j.PtyProcessBuilder
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
 import io.ktor.server.request.receive
 import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
 import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.CloseReason
@@ -28,6 +29,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
 
 /**
@@ -36,98 +38,100 @@ import org.slf4j.LoggerFactory
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class ADBCoreRoutes : ADBProxyRouteProvider {
+class ADBCoreModule : ADBProxyModule {
 
     /**
      * 日志工具。
      */
-    private val logger = LoggerFactory.getLogger(ADBCoreRoutes::class.java)
+    private val logger = LoggerFactory.getLogger(ADBCoreModule::class.java)
 
 
-    override fun Routing.register(jsonTool: Json) {
-        post(API.SERVER_ID) {
-            call.respondText("", ContentType.Text.Plain)
-        }
-
-        post(API.SERVER_NAME) {
-            call.respondText("", ContentType.Text.Plain)
-        }
-
-        post(API.SERVER_VERSION) {
-            call.respondText(Constant.PROTOCOL_VERSION, ContentType.Text.Plain)
-        }
-
-        post(API.ADB_DEVICES) {
-            val result = onFetchDeviceList(jsonTool)
-            call.respondText(result, ContentType.Application.Json)
-        }
-
-        post(API.ADB_EXEC_STATUS) {
-            val params: ADBExecRequest = try {
-                call.receive()
-            } catch (e: Exception) {
-                call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
-                return@post
+    override fun Application.register(server: ADBProxyServer) {
+        routing {
+            post(API.SERVER_ID) {
+                call.respondText("", ContentType.Text.Plain)
             }
 
-            if (params.sn.isBlank()) {
-                call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
-                return@post
+            post(API.SERVER_NAME) {
+                call.respondText("", ContentType.Text.Plain)
             }
 
-            val code = onADBExecForStatus(params)
-
-            call.respondText(code.toString(), ContentType.Text.Plain)
-        }
-
-        post(API.ADB_EXEC_TEXT) {
-            val params: ADBExecRequest = try {
-                call.receive()
-            } catch (e: Exception) {
-                call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
-                return@post
+            post(API.SERVER_VERSION) {
+                call.respondText(Constant.PROTOCOL_VERSION, ContentType.Text.Plain)
             }
 
-            if (params.sn.isBlank()) {
-                call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
-                return@post
+            post(API.ADB_DEVICES) {
+                val result = onFetchDeviceList(server.jsonTool)
+                call.respondText(result, ContentType.Application.Json)
             }
 
-            val text = onADBExecForText(params)
-            if (text == null) {
-                call.respondText("Failed to run command.", status = HttpStatusCode.InternalServerError)
-            } else {
-                call.respondText(text, ContentType.Text.Plain)
-            }
-        }
+            post(API.ADB_EXEC_STATUS) {
+                val params: ADBExecRequest = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
 
-        post(API.ADB_DISPLAYS) {
-            val params: ADBExecRequest = try {
-                call.receive()
-            } catch (e: Exception) {
-                call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
-                return@post
-            }
+                if (params.sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
 
-            if (params.sn.isBlank()) {
-                call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
-                return@post
+                val code = onADBExecForStatus(params)
+
+                call.respondText(code.toString(), ContentType.Text.Plain)
             }
 
-            val list = ADBCLIUtil.getDisplays(params.sn)
-            val result = jsonTool.encodeToString(
-                ListSerializer(DisplayInfoSerializer),
-                list
-            )
-            call.respondText(result, ContentType.Application.Json)
-        }
+            post(API.ADB_EXEC_TEXT) {
+                val params: ADBExecRequest = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
 
-        webSocket(API.ADB_EVENTS) {
-            onADBEventsWSConnect(this, jsonTool)
-        }
+                if (params.sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
 
-        webSocket(API.ADB_SHELL) {
-            onADBShellWSConnect(this)
+                val text = onADBExecForText(params)
+                if (text == null) {
+                    call.respondText("Failed to run command.", status = HttpStatusCode.InternalServerError)
+                } else {
+                    call.respondText(text, ContentType.Text.Plain)
+                }
+            }
+
+            post(API.ADB_DISPLAYS) {
+                val params: ADBExecRequest = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                if (params.sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val list = ADBCLIUtil.getDisplays(params.sn)
+                val result = server.jsonTool.encodeToString(
+                    ListSerializer(DisplayInfoSerializer),
+                    list
+                )
+                call.respondText(result, ContentType.Application.Json)
+            }
+
+            webSocket(API.ADB_EVENTS) {
+                onADBEventsWSConnect(this, server.jsonTool)
+            }
+
+            webSocket(API.ADB_SHELL) {
+                onADBShellWSConnect(this)
+            }
         }
     }
 
