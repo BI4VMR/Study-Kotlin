@@ -10,7 +10,6 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.network.tls.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -495,13 +494,18 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
-    private fun buildURL(path: String): String =
-        // URLBuilder(
-        //     protocol = if (secure) URLProtocol.HTTPS else URLProtocol.HTTP,
-        // )
-        "${if (secure) "https" else "http"}://$host:$port$path"
+    fun buildURL(path: String): Url =
+        URLBuilder(
+            protocol = if (secure) URLProtocol.HTTPS else URLProtocol.HTTP,
+            host = host,
+            port = port
+        )
+            .apply {
+                path(path)
+            }
+            .build()
 
-    private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
+    suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
         if (secure) {
             client.wss(host = host, port = port, path = path, block = block)
         } else {
