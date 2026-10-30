@@ -1,20 +1,42 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.websocket.wss
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.http.Url
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.http.path
+import io.ktor.network.tls.addKeyStore
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
@@ -27,6 +49,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
@@ -60,6 +83,14 @@ class ADBProxyClient(
      * 必须与服务端是否启用加密一致；为 `false` 时使用明文 HTTP 与 WS ，且不涉及配对。
      */
     val secure: Boolean = false,
+
+    /**
+     * SSL / TLS 配置。
+     *
+     * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
+     */
+    @Volatile
+    private var sslConfig: SSLConfig? = null
 ) {
 
     /**
@@ -72,8 +103,8 @@ class ADBProxyClient(
      *
      * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
      */
-    @Volatile
-    private var sslConfig: SSLConfig? = null
+    // @Volatile
+    // private var sslConfig: SSLConfig? = null
 
     /**
      * 全局 JSON 工具。
@@ -93,7 +124,13 @@ class ADBProxyClient(
             https {
                 this.trustManager = PinningTrustManager(null)
                 // 向服务端出示客户端证书（双向 TLS）
-                // addKeyStore(identity.keyStore, ClientIdentity.PASSWORD.toCharArray(), ClientIdentity.ALIAS)
+                try {
+                    addKeyStore(sslConfig!!.getKeyStore(), sslConfig!!.keyPassword.toCharArray(), sslConfig!!.keyAlias)
+                } catch (e: Exception) {
+                    logger.warn("Failed to add keystore for client certificate. Reason:[${e.message}]")
+                    e.printStackTrace()
+                }
+
             }
         }
         install(HttpTimeout)
@@ -222,16 +259,26 @@ class ADBProxyClient(
      * @throws[IllegalStateException] 配对被拒绝、超时或服务端繁忙。
      */
     suspend fun pair(onCode: (String) -> Unit = {}) {
+        val sslInfo = sslConfig
+        requireNotNull(sslInfo) { "SSL configuration not found! have you call `setSSLConfig()` at first?" }
+
         val clientNonce = PairUtil.generateNonce()
-        val clientHash = sslConfig?.getKeyStore()?.getCertificate(sslConfig!!.keyAlias)
-        val commitRequest = PairCommitRequest()
-        // val commitResponse = client.post(buildURL(API.PAIR_COMMIT)) {
-        //     contentType(ContentType.Application.Json)
-        //     setBody(PairRequest(clientName, PairUtil.getCommit(clientNonce)))
-        // }
-        // check(commitResponse.status.isSuccess()) {
-        //     "Pairing failed. Status:[${commitResponse.status}] Reason:[${commitResponse.bodyAsText()}]"
-        // }
+        val clientFingerprint = PairUtil.calculateCertFingerprint(requireNotNull(sslInfo.getCertificate()))
+        val clientHash = PairUtil.calculateCommit(clientFingerprint, clientNonce)
+        val commitRequest = PairCommitRequest(clientHash)
+
+        val commitCallResponse = client.post(buildURL(API.PAIR_COMMIT)) {
+            contentType(ContentType.Application.Json)
+            setBody(commitRequest)
+        }
+
+        check(commitCallResponse.status.isSuccess()) {
+            "Pairing failed. Status:[${commitCallResponse.status}] Reason:[${commitCallResponse.bodyAsText()}]"
+        }
+
+        val commitResponse = commitCallResponse.body<PairCommitResponse>()
+        println("commitResponse -> $commitResponse")
+
         // val init = commitResponse.body<PairInitResponse>()
         //
         // // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。

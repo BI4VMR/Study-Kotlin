@@ -29,11 +29,11 @@ internal class PinningTrustManager(
     }
 
     override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
-        println("checkServerTrusted -> ")
-        chain?.forEach {
-            println("$it")
-        }
-        println("checkServerTrusted authType -> $authType")
+        // println("checkServerTrusted -> ")
+        // chain?.forEach {
+        //     println("$it")
+        // }
+        // println("checkServerTrusted authType -> $authType")
 
         val leaf = chain?.firstOrNull() ?: throw CertificateException("Empty certificate chain.")
         val fingerprint = PairUtil.calculateCertFingerprint(leaf)

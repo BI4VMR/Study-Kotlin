@@ -1,8 +1,12 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.service
 
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.routing.RoutingCall
+import io.ktor.util.AttributeKey
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
+import org.slf4j.LoggerFactory
 
 /**
  * ADB 代理配对服务。
@@ -14,7 +18,29 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
  */
 class ADBPairService {
 
+    /**
+     * 日志工具。
+     */
+    private val logger = LoggerFactory.getLogger(ADBPairService::class.java)
+
     private val pairSessions: List<PairSession> = mutableListOf()
+
+
+    fun onCommit(fingerprint: String, body: PairCommitRequest): PairCommitResponse {
+        println("onCommit -> fingerprint: $fingerprint, body: $body")
+        return receiveCommit(body)
+    }
+
+    fun onReveal(call: RoutingCall) {
+    }
+
+    companion object {
+
+        /**
+         * 客户端证书指纹在 [ApplicationCall.attributes] 中的键。
+         */
+        val ClientFingerprintKey = AttributeKey<String>("ClientFingerprint")
+    }
 
     // 开始配对，交换随机数Hash
     fun receiveCommit(request: PairCommitRequest): PairCommitResponse {

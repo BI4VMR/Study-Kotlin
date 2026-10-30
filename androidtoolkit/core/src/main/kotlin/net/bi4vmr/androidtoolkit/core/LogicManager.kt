@@ -57,6 +57,28 @@ object LogicManager {
      */
     val adbProxyServer: ADBProxyServer by lazy { ADBProxyServer() }
 
+    val cSSLConf : SSLConfig by lazy {
+        // TODO
+        val file = File(fileManager.getUserDataDir(), "client.jks")
+        if (!file.exists()) {
+            generateCertificate(
+                file = file,
+                algorithm = "SHA256withRSA",
+                keyAlias = "key1",
+                keyPassword = "1",
+                jksPassword = "1",
+                keySizeInBits = 2048
+            )
+        }
+        val conf = SSLConfig(
+            keyStoreFile = file,
+            keyStorePassword = "1",
+            keyAlias = "key1",
+            keyPassword = "1"
+        )
+        conf
+    }
+
     /**
      * 待用户处理的配对申请。
      */
@@ -278,7 +300,8 @@ object LogicManager {
         val client = ADBProxyClient(
             host = host,
             port = port,
-            secure = secure
+            secure = secure,
+            cSSLConf
         )
 
         try {
@@ -301,21 +324,25 @@ object LogicManager {
             // }
         } catch (e: Exception) {
             client.release()
+            e.printStackTrace()
             throw e
         }
 
         client.init()
-        // 5 秒内未返回就绪，认为连接失败。
-        val ok = withTimeoutOrNull(5.seconds) {
-            client.serviceStateFlow.first { it == ServiceState.READY }
-        } != null
 
-        if (ok) {
-            _executorsFlow.update { it + RemoteExecutor(host, port, client) }
-        } else {
-            client.release()
-            throw ConnectException("Failed to connect with remote executor [$host:$port].")
-        }
+        client.pair {  }
+
+        // 5 秒内未返回就绪，认为连接失败。
+        // val ok = withTimeoutOrNull(5.seconds) {
+        //     client.serviceStateFlow.first { it == ServiceState.READY }
+        // } != null
+        //
+        // if (ok) {
+        //     _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+        // } else {
+        //     client.release()
+        //     throw ConnectException("Failed to connect with remote executor [$host:$port].")
+        // }
     }
 
     fun startCast() {

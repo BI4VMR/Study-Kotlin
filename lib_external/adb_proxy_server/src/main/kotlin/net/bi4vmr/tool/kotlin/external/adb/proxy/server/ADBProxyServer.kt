@@ -6,6 +6,10 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.websocket.*
+import io.netty.handler.ssl.ClientAuth
+import io.netty.handler.ssl.SslContext
+import io.netty.handler.ssl.SslContextBuilder
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
@@ -18,6 +22,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBCoreModule
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBProxyModule
 import org.slf4j.LoggerFactory
 import java.util.*
+import javax.net.ssl.KeyManagerFactory
 
 /**
  * ADB 代理服务器。
@@ -99,6 +104,15 @@ class ADBProxyServer(
     val errorFlow: StateFlow<Exception?> = _errorFlow
 
 
+    private fun buildServerSSLContext(ssl: SSLConfig): SslContext {
+        val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+        keyManagerFactory.init(ssl.getKeyStore(), ssl.keyPassword.toCharArray())
+        return SslContextBuilder.forServer(keyManagerFactory)
+            .trustManager(InsecureTrustManagerFactory.INSTANCE)
+            .clientAuth(ClientAuth.OPTIONAL)
+            .build()
+    }
+
     /* ----- 服务状态 ----- */
 
     @Synchronized
@@ -129,6 +143,18 @@ class ADBProxyServer(
                     ) {
                         host = address
                         port = this@ADBProxyServer.port
+                    }
+
+                    // Ktor 仅在配置 trustStore 时才要求客户端证书，且只信任其中已有的证书，无法满足配对场景。
+                    // 此处替换为自定义的 SslHandler ：可选地索取客户端证书并全部接受，由配对模块按指纹鉴权。
+                    val sslContext = buildServerSSLContext(ssl)
+                    // 启用 HTTP/2 时 Ktor 会在 TLS 握手完成后才调用 channelPipelineConfig ，
+                    // 此时替换 SslHandler 将破坏已建立的会话，因此必须关闭 HTTP/2 。
+                    enableHttp2 = false
+                    channelPipelineConfig = {
+                        if (get("ssl") != null) {
+                            replace("ssl", "ssl", sslContext.newHandler(channel().alloc()))
+                        }
                     }
                 } else {
                     connector {

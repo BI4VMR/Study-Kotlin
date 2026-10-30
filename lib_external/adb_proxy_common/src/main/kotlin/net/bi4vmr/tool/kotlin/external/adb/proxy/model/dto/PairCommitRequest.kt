@@ -1,5 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto
 
+import kotlinx.serialization.Serializable
+
 /**
  * 请求：配对第一阶段。
  *
@@ -8,6 +10,7 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
+@Serializable
 data class PairCommitRequest(
 
     /**
