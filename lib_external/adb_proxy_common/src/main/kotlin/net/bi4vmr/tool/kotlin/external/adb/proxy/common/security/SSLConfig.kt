@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.security
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.security
 
 import net.bi4vmr.tool.java.common.base.FileUtil
 import java.io.File
@@ -27,4 +27,7 @@ data class SSLConfig(
 
     fun getCertificate(): Certificate? =
         getKeyStore().getCertificate(keyAlias)
+
+    fun requireCertificate(): Certificate =
+        requireNotNull(getCertificate()) { "Certificate not found!" }
 }

@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.util.PairUtil
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager

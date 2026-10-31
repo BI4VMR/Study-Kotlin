@@ -47,7 +47,7 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 
 /**
  * ADB 执行器与设备列表。
@@ -230,7 +230,7 @@ fun ConnectProxyDialog(
 
     // TODO TEST
     var host: String by remember { mutableStateOf("127.0.0.1") }
-    var port: Int by remember { mutableIntStateOf(Constant.PORT_SERVER_DEFAULT) }
+    var port: Int by remember { mutableIntStateOf(Constants.PORT_SERVER_DEFAULT) }
     var loading: Boolean by remember { mutableStateOf(false) }
     var secure: Boolean by remember { mutableStateOf(true) }
     var pairingCode: String? by remember { mutableStateOf(null) }
@@ -294,6 +294,12 @@ fun ConnectProxyDialog(
                         Text("连接中…")
                     } else {
                         Text("连接")
+                    }
+                }
+
+                if (loading) {
+                    OutlinedButton(onClick = onDismiss) {
+                        Text("取消配对")
                     }
                 }
             }

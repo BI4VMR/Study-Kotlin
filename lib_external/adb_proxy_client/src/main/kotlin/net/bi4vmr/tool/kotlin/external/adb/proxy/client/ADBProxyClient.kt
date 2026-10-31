@@ -1,58 +1,33 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.URLBuilder
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import io.ktor.http.path
-import io.ktor.network.tls.addKeyStore
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.network.tls.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
-import net.bi4vmr.tool.kotlin.external.adb.proxy.serializer.DisplayInfoSerializer
-import net.bi4vmr.tool.kotlin.external.adb.proxy.util.PairUtil
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.ServerSocket
@@ -66,45 +41,24 @@ import java.net.ServerSocket
 class ADBProxyClient(
 
     /**
-     * 监听地址。
-     */
-    val host: String,
-
-    /**
-     * 监听端口。
-     *
-     * 默认值为 [Constant.PORT_SERVER_DEFAULT]。
-     */
-    val port: Int = Constant.PORT_SERVER_DEFAULT,
-
-    /**
-     * 是否使用加密连接（HTTPS 与 WSS）。
-     *
-     * 必须与服务端是否启用加密一致；为 `false` 时使用明文 HTTP 与 WS ，且不涉及配对。
-     */
-    val secure: Boolean = false,
-
-    /**
-     * SSL / TLS 配置。
-     *
-     * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
+     * 目标主机。
      */
     @Volatile
-    private var sslConfig: SSLConfig? = null
+    private var host: String,
+
+    /**
+     * 目标端口。
+     *
+     * 默认值为 [Constants.PORT_SERVER_DEFAULT]。
+     */
+    @Volatile
+    private var port: Int = Constants.PORT_SERVER_DEFAULT
 ) {
 
     /**
      * 日志工具。
      */
     private val logger = LoggerFactory.getLogger(ADBProxyClient::class.java)
-
-    /**
-     * SSL / TLS 配置。
-     *
-     * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
-     */
-    // @Volatile
-    // private var sslConfig: SSLConfig? = null
 
     /**
      * 全局 JSON 工具。
@@ -117,35 +71,30 @@ class ADBProxyClient(
     }
 
     /**
+     * 是否加密连接。
+     *
+     * `false` 表示使用明文 HTTP ； `true` 表示使用 HTTPS 。该配置应当与服务端匹配。
+     */
+    @Volatile
+    private var secure: Boolean = false
+
+    /**
+     * SSL 配置。
+     *
+     * 默认为空值，此时请求不展示与验证客户端证书；若服务器已启用配对认证，则必须配置。
+     */
+    @Volatile
+    private var sslConfig: SSLConfig? = null
+
+    /**
      * Ktor 客户端。
      */
-    private val client = HttpClient(CIO) {
-        engine {
-            https {
-                this.trustManager = PinningTrustManager(null)
-                // 向服务端出示客户端证书（双向 TLS）
-                try {
-                    addKeyStore(sslConfig!!.getKeyStore(), sslConfig!!.keyPassword.toCharArray(), sslConfig!!.keyAlias)
-                } catch (e: Exception) {
-                    logger.warn("Failed to add keystore for client certificate. Reason:[${e.message}]")
-                    e.printStackTrace()
-                }
-
-            }
-        }
-        install(HttpTimeout)
-        // 日志输出
-        install(Logging) { level = LogLevel.INFO }
-        // 自动反序列化
-        install(ContentNegotiation) { json(jsonTool) }
-        // WebSocket 支持
-        install(WebSockets)
-    }
+    private var client: HttpClient = createClient()
 
     /**
      * 子任务作用域。
      */
-    private val taskScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+    private var taskScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 
     /**
@@ -173,7 +122,7 @@ class ADBProxyClient(
     val devicesFlow: StateFlow<List<RemoteDevice>> = _devicesFlow
 
 
-    /* ----- 状态管理 ----- */
+    /* ----- 客户端配置 ----- */
 
     /**
      * 初始化。
@@ -183,6 +132,8 @@ class ADBProxyClient(
      * 本方法不会阻塞调用线程，连接状态可通过 [serviceStateFlow] 获取。
      */
     fun init() {
+        client = createClient()
+        taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         connectWebSocket()
     }
 
@@ -191,7 +142,7 @@ class ADBProxyClient(
             _serviceStateFlow.value = ServiceState.PREPARING
             try {
                 // Ktor 的 WebSocket 请求只能填写路径，不能携带 `wss://` 等前缀。
-                openWebSocket(API.ADB_EVENTS) {
+                openWebSocket(APIs.ADB_EVENTS) {
                     logger.info("Connect to [$host:$port] successfully.")
                     _serviceStateFlow.value = ServiceState.READY
 
@@ -229,13 +180,35 @@ class ADBProxyClient(
         client.close()
     }
 
+    fun getHost(): String = host
+
+    fun getPort(): Int = port
+
+    /**
+     * 设置目标地址和端口。
+     *
+     * 该配置不会影响已启动的客户端，若要刷新需终止客户端并重新启动。
+     *
+     * @param[host] 目标地址。
+     * @param[port] 目标端口。
+     */
+    fun setTarget(host: String, port: Int) {
+        this.host = host
+        this.port = port
+    }
+
+    fun isSecure(): Boolean = secure
+
+    fun setSecure(secure: Boolean) {
+        this.secure = secure
+    }
 
     fun getSSLConfig(): SSLConfig? = sslConfig
 
     /**
      * 设置 SSL 配置。
      *
-     * 传入空值表示不启用加密，传入非空的值将使用该证书启用 SSL / TLS 加密。
+     * 该配置不会影响已启动的客户端，若要刷新需终止客户端并重新启动。
      *
      * @param[config] SSL 配置。
      */
@@ -243,84 +216,18 @@ class ADBProxyClient(
         sslConfig = config
     }
 
-    /* ----- 配对 ----- */
+
+    /* ----- 服务端管理 ----- */
 
     /**
-     * 向服务端申请配对。
+     * 获取服务端信息。
      *
-     * 流程中会计算 6 位配对码并通过 [onCode] 通知上层展示，服务端也会展示同样的配对码，
-     * 用户核对一致后在服务端批准；若两端不一致，说明通信可能被中间人劫持，应拒绝。
-     * 调用将被挂起直至服务端用户操作或超时。
-     *
-     * 服务端以 TLS 握手中的客户端证书识别身份，配对成功后无需令牌；
-     * 上层应持久化 [identity] 文件与 [observedFingerprint] 。
-     *
-     * @param[onCode] 配对码就绪的回调。
-     * @throws[IllegalStateException] 配对被拒绝、超时或服务端繁忙。
-     */
-    suspend fun pair(onCode: (String) -> Unit = {}) {
-        val sslInfo = sslConfig
-        requireNotNull(sslInfo) { "SSL configuration not found! have you call `setSSLConfig()` at first?" }
-
-        val clientNonce = PairUtil.generateNonce()
-        val clientFingerprint = PairUtil.calculateCertFingerprint(requireNotNull(sslInfo.getCertificate()))
-        val clientHash = PairUtil.calculateCommit(clientFingerprint, clientNonce)
-        val commitRequest = PairCommitRequest(clientHash)
-
-        val commitCallResponse = client.post(buildURL(API.PAIR_COMMIT)) {
-            contentType(ContentType.Application.Json)
-            setBody(commitRequest)
-        }
-
-        check(commitCallResponse.status.isSuccess()) {
-            "Pairing failed. Status:[${commitCallResponse.status}] Reason:[${commitCallResponse.bodyAsText()}]"
-        }
-
-        val commitResponse = commitCallResponse.body<PairCommitResponse>()
-        println("commitResponse -> $commitResponse")
-
-        // val init = commitResponse.body<PairInitResponse>()
-        //
-        // // 使用本端实际看到的证书指纹，若被中间人替换，将与服务端算出的配对码不同。
-        // val fingerprint = checkNotNull(observedFingerprint) { "Server certificate is unavailable." }
-        // onCode(PairUtil.generatePairCode(identity.fingerprint, fingerprint, clientNonce, init.serverNonce))
-        //
-        // val response = client.post(buildURL(API.PAIR_REVEAL)) {
-        //     contentType(ContentType.Application.Json)
-        //     setBody(PairRevealRequest(init.pairId, clientNonce))
-        //     // 等待服务端用户批准，超时时间与服务端一致并留出余量。
-        //     timeout { requestTimeoutMillis = 70_000 }
-        // }
-        // check(response.status.isSuccess()) {
-        //     "Pairing failed. Status:[${response.status}] Reason:[${response.bodyAsText()}]"
-        // }
-    }
-
-    /**
-     * 检查本客户端证书是否已被服务端接受。
-     *
-     * @return `true` 表示已配对， `false` 表示未配对或配对已被服务端撤销。
+     * @return 服务端信息。
      * @throws[ConnectException] 建立连接失败。
      */
-    suspend fun isPaired(): Boolean {
-        val response = client.get(buildURL(API.PAIR_STATUS))
-        return response.status != HttpStatusCode.Unauthorized && response.status.isSuccess()
-    }
-
-
-    /* ----- 远程服务端操作 ----- */
-
-    /**
-     * 获取服务端版本。
-     *
-     * 可以将服务端版本号与 [Constant.PROTOCOL_VERSION] 比较，防止出现兼容性问题，该策略非强制，上层应用可在初始化时执行。
-     *
-     * @return 版本号。
-     * @throws[ConnectException] 建立连接失败。
-     */
-    suspend fun getServerVersion(): String {
-        val url = buildURL(API.SERVER_VERSION)
-        return client.post(url).bodyAsText()
+    suspend fun getServerInfo(): String {
+        val url = buildURL(APIs.SERVER_INFO)
+        return client.post(url).body()
     }
 
     /**
@@ -330,7 +237,7 @@ class ADBProxyClient(
      * @throws[ConnectException] 建立连接失败。
      */
     suspend fun fetchDeviceList(): List<RemoteDevice> {
-        val url = buildURL(API.ADB_DEVICES)
+        val url = buildURL(APIs.ADB_DEVICES)
         return client.post(url).body()
     }
 
@@ -345,7 +252,7 @@ class ADBProxyClient(
      */
     suspend fun runForStatus(sn: String, command: String): Int {
         return try {
-            val response = client.post(buildURL(API.ADB_EXEC_STATUS)) {
+            val response = client.post(buildURL(APIs.ADB_EXEC_STATUS)) {
                 val params = ADBExecRequest(
                     sn = sn,
                     command = command
@@ -382,7 +289,7 @@ class ADBProxyClient(
         charset: String? = null
     ): String? {
         return try {
-            val response = client.post(buildURL(API.ADB_EXEC_TEXT)) {
+            val response = client.post(buildURL(APIs.ADB_EXEC_TEXT)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBExecRequest(sn, command, redirectError, charset))
             }
@@ -427,7 +334,7 @@ class ADBProxyClient(
      */
     suspend fun getDisplays(sn: String): List<DisplayInfo> {
         return try {
-            val response = client.post(buildURL(API.ADB_DISPLAYS)) {
+            val response = client.post(buildURL(APIs.ADB_DISPLAYS)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBExecRequest(sn = sn))
             }
@@ -452,7 +359,7 @@ class ADBProxyClient(
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
-                openWebSocket("${API.ADB_SHELL}?sn=${sn}") {
+                openWebSocket("${APIs.ADB_SHELL}?sn=${sn}") {
                     localServer = ServerSocket(0)
 
                     val script = "stty raw -echo; socat - TCP:127.0.0.1:${localServer.localPort}; stty sane"
@@ -528,7 +435,7 @@ class ADBProxyClient(
         )
 
         /* 发起 HTTP 请求 */
-        val response = client.post(buildURL(API.ADB_CAST_START)) {
+        val response = client.post(buildURL(APIs.ADB_CAST_START)) {
             contentType(ContentType.Application.Json)
             setBody(params)
         }
@@ -541,7 +448,7 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
-    fun buildURL(path: String): Url =
+    private fun buildURL(path: String): Url =
         URLBuilder(
             protocol = if (secure) URLProtocol.HTTPS else URLProtocol.HTTP,
             host = host,
@@ -552,11 +459,46 @@ class ADBProxyClient(
             }
             .build()
 
-    suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
+    private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
         if (secure) {
             client.wss(host = host, port = port, path = path, block = block)
         } else {
             client.webSocket(host = host, port = port, path = path, block = block)
+        }
+    }
+
+
+    private fun createClient(): HttpClient {
+        return HttpClient(CIO) {
+            engine {
+                val ssl = sslConfig
+                if (ssl == null) {
+                    return@engine
+                }
+
+                https {
+                    this.trustManager = PinningTrustManager(null)
+                    // 向服务端出示客户端证书
+                    try {
+                        addKeyStore(
+                            store = ssl.getKeyStore(),
+                            password = ssl.keyPassword.toCharArray(),
+                            alias = ssl.keyAlias
+                        )
+                    } catch (e: Exception) {
+                        logger.warn("Failed to add keystore for client certificate. Reason:[${e.message}]")
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            // 日志输出
+            install(Logging) { level = LogLevel.INFO }
+            // 自动反序列化
+            install(ContentNegotiation) { json(jsonTool) }
+            // WebSocket 支持
+            install(WebSockets)
+            // install(HttpTimeout)
         }
     }
 }

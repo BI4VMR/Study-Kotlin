@@ -1,12 +1,14 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.util
+@file:OptIn(ExperimentalUuidApi::class)
+
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.util
 
 import net.bi4vmr.tool.java.security.digest.MessageDigestUtil
-import java.security.MessageDigest
-import java.security.SecureRandom
 import java.security.cert.Certificate
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
- * 配对工具。
+ * 配对模块：通用工具。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -19,20 +21,13 @@ object PairUtil {
     const val CODE_LENGTH: Int = 6
 
     /**
-     * 随机数生成器。
-     */
-    private val random = SecureRandom()
-
-
-    /**
-     * TODO 添加简述。
+     * 生成配对随机数。
      *
-     * TODO 添加详情。
+     * 每次配对都使用不同的随机数，可以防止重放攻击。
      *
-     * @param[TODO] 参数详情。
-     * @return TODO 返回值详情。
+     * @return 随机数。
      */
-    fun generateNonce(): String = random.nextLong().toString()
+    fun generateNonce(): String = Uuid.generateV4().toHexString().uppercase()
 
     /**
      * 计算证书指纹。
@@ -41,20 +36,21 @@ object PairUtil {
      * @return SHA-256 摘要的十六进制小写字符串。
      */
     fun calculateCertFingerprint(cert: Certificate): String =
-        MessageDigest.getInstance("SHA-256").digest(cert.encoded)
-            .joinToString("") { "%02x".format(it) }
-
-    fun calculateCommit(fingerprint: String, nonce: String): String =
-        MessageDigestUtil.getSHA256("pair-commit|${fingerprint}_${nonce}")
+        MessageDigestUtil.getSHA256(cert.encoded)
 
     /**
-     * 生成配对码。
-     *
-     * 双方分别使用「所见的客户端证书指纹、所见的服务端证书指纹、两个随机数」计算，用户核对两端展示的配对码是否一致，
-     * 任意一端的证书被中间人替换，两端的配对码都将不同。
+     * 计算承诺值。
+     */
+    fun calculateCommit(fingerprint: String, nonce: String): String =
+        MessageDigestUtil.getSHA256("pair-commit|${fingerprint.lowercase()}_${nonce.lowercase()}")
+
+    /**
+     * 计算配对码。
      *
      * @param[cfingerprint] 客户端证书指纹。
      * @param[sfingerprint] 服务端证书指纹。
+     * @param[cNonce] 客户端随机数。
+     * @param[sNonce] 服务端随机数。
      */
     fun calculatePairCode(cfingerprint: String, sfingerprint: String, cNonce: String, sNonce: String): String {
 
@@ -63,7 +59,8 @@ object PairUtil {
          *
          * 域前缀用于区分不同的业务，防止攻击者从其他使用相同算法的接口获得关键因素后攻击当前业务接口。
          */
-        val text = "pair|${cfingerprint.lowercase()}_${sfingerprint.lowercase()}_${cNonce}_$sNonce"
+        val text =
+            "pair|${cfingerprint.lowercase()}_${sfingerprint.lowercase()}_${cNonce.lowercase()}_${sNonce.lowercase()}"
         val hash = MessageDigestUtil.getSHA256(text)
         val value = hash.take(4).fold(0L) { sum, i ->
             // 每轮循环将当前累加数值的位左移 1 字节，空出低 8 位；然后获得当前字节的无符号值放入低 8 位。

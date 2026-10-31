@@ -1,25 +1,8 @@
 package net.bi4vmr.androidtoolkit.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -79,21 +62,25 @@ fun App() {
     }
 
 
-    /* 配对申请确认 */
-    val pending by globalStateManager.logicManager.pendingPairingFlow.collectAsState()
+    /* 配对申请确认：多个申请按顺序逐个展示 */
+    val pendingPairings by globalStateManager.logicManager.pendingPairingsFlow.collectAsState()
+    val pending = pendingPairings.firstOrNull()
     pending?.let { p ->
         AlertDialog(
-            onDismissRequest = { p.respond(false) },
+            onDismissRequest = { p.reject() },
             title = { Text("配对申请") },
             text = {
-                Column {
-                    // Text("客户端「${p.request.clientName}」（${p.request.clientId}）请求与本机配对，批准后其可以操作本机的设备。")
-                    Text("配对码：${p.code}", style = MaterialTheme.typography.headlineMedium)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "客户端证书指纹：${p.getClientFingerprint()}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text("配对码：${p.getSASCode()}", style = MaterialTheme.typography.headlineMedium)
                     Text("请核对客户端显示的配对码，仅在两端完全一致时批准；不一致说明通信可能被劫持。")
                 }
             },
-            confirmButton = { TextButton(onClick = { p.respond(true) }) { Text("批准") } },
-            dismissButton = { TextButton(onClick = { p.respond(false) }) { Text("拒绝") } }
+            confirmButton = { TextButton(onClick = { p.approve() }) { Text("批准") } },
+            dismissButton = { TextButton(onClick = { p.reject() }) { Text("拒绝") } }
         )
     }
 

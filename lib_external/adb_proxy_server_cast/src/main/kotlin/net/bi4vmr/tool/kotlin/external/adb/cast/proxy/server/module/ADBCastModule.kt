@@ -7,12 +7,11 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
-import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.ADBCastTransfer
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.API
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.ADBCastStartRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBProxyModule
 import org.slf4j.LoggerFactory
@@ -30,7 +29,7 @@ class ADBCastModule : ADBProxyModule {
 
     override fun Application.register(server: ADBProxyServer) {
         routing {
-            post(API.ADB_CAST_START) {
+            post(APIs.ADB_CAST_START) {
                 try {
                     /* 参数校验 */
                     val params: ADBCastStartRequest = call.receive()

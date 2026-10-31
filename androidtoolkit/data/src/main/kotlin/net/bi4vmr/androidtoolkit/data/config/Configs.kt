@@ -5,7 +5,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 
 /**
  * 配置项。
@@ -46,7 +46,7 @@ object Configs {
 
         const val PROXY_INTERFACE_DEFAULT: String = "0.0.0.0"
 
-        const val PROXY_PORT_DEFAULT: Int = Constant.PORT_SERVER_DEFAULT
+        const val PROXY_PORT_DEFAULT: Int = Constants.PORT_SERVER_DEFAULT
 
         const val PROXY_ENCRYPT_DEFAULT: Boolean = true
 

@@ -1,24 +1,10 @@
 package net.bi4vmr.androidtoolkit.ui.setting
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,8 +14,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.androidtoolkit.data.config.Configs
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClient
 
 /**
  * ADB 转发器配置。
@@ -54,7 +40,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
     val proxyTrustAll: Boolean by globalStateManager.logicManager
         .proxyTrustAllFlow.collectAsStateWithLifecycle(false)
     val fingerprint: String? = "TODO"
-    val pairedClients: List<PairedClient> by globalStateManager.logicManager
+    val pairedClients: List<PairedPeer> by globalStateManager.logicManager
         .pairedClientsFlow.collectAsStateWithLifecycle(emptyList())
 
     var interfaceText: String by remember(proxyInterface) { mutableStateOf(proxyInterface) }

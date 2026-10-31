@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto
 
 import kotlinx.serialization.Serializable
 
@@ -10,13 +10,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class PairRevealRequest(
-
-    /**
-     * 会话 ID 。
-     *
-     * 第一阶段服务器返回的 ID 。
-     */
-    val sessionID: String = "",
 
     /**
      * 客户端随机数。

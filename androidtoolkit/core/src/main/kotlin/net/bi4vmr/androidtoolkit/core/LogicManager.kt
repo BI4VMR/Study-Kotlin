@@ -14,20 +14,17 @@ import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
-import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto.PairCommitRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
+import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBPairClient
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClient
-import net.bi4vmr.tool.kotlin.external.adb.proxy.server.security.PairedClientStore
 import java.io.File
 import java.net.ConnectException
-import java.net.InetAddress
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * 业务逻辑入口。
@@ -57,7 +54,7 @@ object LogicManager {
      */
     val adbProxyServer: ADBProxyServer by lazy { ADBProxyServer() }
 
-    val cSSLConf : SSLConfig by lazy {
+    val cSSLConf: SSLConfig by lazy {
         // TODO
         val file = File(fileManager.getUserDataDir(), "client.jks")
         if (!file.exists()) {
@@ -79,56 +76,65 @@ object LogicManager {
         conf
     }
 
+
+    private val _pendingPairingsFlow: MutableStateFlow<List<PairRequest>> = MutableStateFlow(emptyList())
+
     /**
-     * 待用户处理的配对申请。
+     * Flow : 待处理的配对申请，界面应按顺序提示用户批准或拒绝。
+     *
+     * 多个客户端可以同时申请配对，界面一次展示一个，处理完毕后自动展示下一个。
      */
-    class PendingPairing(
-        val request: PairCommitRequest,
-        val code: String,
-        internal val result: CompletableDeferred<Boolean>
-    ) {
-        fun respond(approve: Boolean) {
-            result.complete(approve)
+    val pendingPairingsFlow: StateFlow<List<PairRequest>> = _pendingPairingsFlow
+
+    /**
+     * 展示配对申请。
+     *
+     * 该回调由服务端在客户端发起确认请求后触发，配对结束（用户操作、客户端取消、客户端断开或超时）
+     * 后自动移除。
+     */
+    private fun onPairRequest(approval: PairRequest) {
+        _pendingPairingsFlow.update { it + approval }
+
+        taskScope.launch {
+            // 等待用户操作、客户端取消或会话超时，避免界面残留已经失效的申请。
+            // approval.await()
+            // _pendingPairingsFlow.update { list -> list.filterNot { it === pending } }
         }
     }
 
-    private val _pendingPairingFlow: MutableStateFlow<PendingPairing?> = MutableStateFlow(null)
+    private val _pairedClientsFlow: MutableStateFlow<List<PairedPeer>> = MutableStateFlow(emptyList())
 
     /**
-     * Flow : 待处理的配对申请，界面应提示用户批准或拒绝。
+     * Flow : 已配对的客户端 设置页面。
      */
-    val pendingPairingFlow: StateFlow<PendingPairing?> = _pendingPairingFlow
-
-    private val _pairedClientsFlow: MutableStateFlow<List<PairedClient>> = MutableStateFlow(emptyList())
-
-    /**
-     * Flow : 已配对的客户端。
-     */
-    val pairedClientsFlow: StateFlow<List<PairedClient>> = _pairedClientsFlow
+    val pairedClientsFlow: StateFlow<List<PairedPeer>> = _pairedClientsFlow
 
     /**
      * 已配对客户端存储，变更时同步写入配置文件。
      */
-    private val pairedClientStore = object : PairedClientStore {
-        override fun list(): List<PairedClient> = _pairedClientsFlow.value
+    private val pairedClientStore = object : PairedPeerStore {
 
-        override fun save(client: PairedClient) {
+        override fun onList(): List<PairedPeer> {
+            println("onList")
+            return emptyList()
+        }
+
+        override fun onSave(peer: PairedPeer) {
             // _pairedClientsFlow.update { old -> old.filterNot { it.id == client.id } + client }
-            persistPairedClients()
+            println("onSave -> $peer")
         }
 
-        override fun remove(clientId: String) {
-            // _pairedClientsFlow.update { old -> old.filterNot { it.id == clientId } }
-            persistPairedClients()
+        override fun onDelete(fingerprint: String) {
+            TODO("Not yet implemented")
         }
     }
 
-    private fun persistPairedClients() {
-        val entries = _pairedClientsFlow.value
-            .map { "it.id|${it.pairedAt}|it.tokenHash|${it.name}" }
-            .toSet()
-        taskScope.launch { configManager.setPairedClients(entries) }
-    }
+    // private fun persistPairedClients() {
+    //     val entries = _pairedClientsFlow.value
+    //         .map { "it.id|${it.pairedAt}|it.tokenHash|${it.name}" }
+    //         .toSet()
+    //     taskScope.launch { configManager.setPairedClients(entries) }
+    // }
 
 
     /**
@@ -286,63 +292,59 @@ object LogicManager {
      */
     suspend fun addRemoteExecutor(
         host: String,
-        port: Int = Constant.PORT_SERVER_DEFAULT,
+        port: Int = Constants.PORT_SERVER_DEFAULT,
         secure: Boolean = true,
         onPairingCode: (String) -> Unit = {}
     ) {
         /* 读取该服务端已保存的配对信息：host:port|fingerprint|token */
-        val serverKey = "$host:$port"
-        val saved = configManager.getPairedServers()
-            .map { it.split("|", limit = 3) }
-            .firstOrNull { it.size == 3 && it[0] == serverKey }
+        // val serverKey = "$host:$port"
+        // val saved = configManager.getPairedServers()
+        //     .map { it.split("|", limit = 3) }
+        //     .firstOrNull { it.size == 3 && it[0] == serverKey }
 
-        val localName = runCatching { InetAddress.getLocalHost().hostName }.getOrNull() ?: "AndroidToolkit"
-        val client = ADBProxyClient(
-            host = host,
-            port = port,
-            secure = secure,
-            cSSLConf
-        )
+        // ADBProxyClient(host,port)
+        //     .apply {
+        //         setSecure(true)
+        //         setSSLConfig(cSSLConf)
+        //         init()
+        //         delay(1.seconds)
+        //     }
+        //     .getServerInfo()
+        //     .let {
+        //         println(it)
+        //     }
+        // return
+        val pairClient = ADBPairClient(host, port, cSSLConf)
 
         try {
-            val serverVersion = client.getServerVersion()
-            if (serverVersion != Constant.PROTOCOL_VERSION) {
-                throw IllegalStateException("Server version is [$serverVersion], mismatch with [${Constant.PROTOCOL_VERSION}].")
+            // TODO 版本验证
+            // val serverVersion = pairClient.getServerVersion()
+            // if (serverVersion != Constant.PROTOCOL_VERSION) {
+            //     throw IllegalStateException("Server version is [$serverVersion], mismatch with [${Constant.PROTOCOL_VERSION}].")
+            // }
+
+            if (secure) {
+                // TODO 服务端提供配对状态查询后，先通过 `isPaired()` 判断，避免重复配对。
+                // 加密连接需要配对：申请配对并等待服务端用户核对配对码后批准。
+                pairClient.pair(onPairingCode)
             }
 
-            // 加密连接需要配对：未配对或配对已被服务端撤销时，申请配对并等待服务端用户批准。
-            // if (secure) {
-            //     if (!client.isPaired()) {
-            //         client.pair(onPairingCode)
-            //     }
+            // TODO 配对成功后使用 `ADBProxyClient` 建立连接，并注册到执行器列表。
+            // 5 秒内未返回就绪，认为连接失败。
+            // val ok = withTimeoutOrNull(5.seconds) {
+            //     client.serviceStateFlow.first { it == ServiceState.READY }
+            // } != null
             //
-            //     val fingerprint = client.observedFingerprint.orEmpty()
-            //     val token = client.currentToken.orEmpty()
-            //     val entries = configManager.getPairedServers()
-            //         .filterNot { it.startsWith("$serverKey|") } + "$serverKey|$fingerprint|$token"
-            //     configManager.setPairedServers(entries.toSet())
+            // if (ok) {
+            //     _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+            // } else {
+            //     client.release()
+            //     throw ConnectException("Failed to connect with remote executor [$host:$port].")
             // }
-        } catch (e: Exception) {
-            client.release()
-            e.printStackTrace()
-            throw e
+        } finally {
+            // 配对客户端仅供配对使用，配对结束（成功、失败或取消）后立即释放。
+            pairClient.release()
         }
-
-        client.init()
-
-        client.pair {  }
-
-        // 5 秒内未返回就绪，认为连接失败。
-        // val ok = withTimeoutOrNull(5.seconds) {
-        //     client.serviceStateFlow.first { it == ServiceState.READY }
-        // } != null
-        //
-        // if (ok) {
-        //     _executorsFlow.update { it + RemoteExecutor(host, port, client) }
-        // } else {
-        //     client.release()
-        //     throw ConnectException("Failed to connect with remote executor [$host:$port].")
-        // }
     }
 
     fun startCast() {
@@ -381,7 +383,7 @@ object LogicManager {
                 keyAlias = "Key1",
                 keyPassword = "1"
             )
-            adbProxyServer.setSSLConfig(conf)
+            adbProxyServer.sslConfig = conf
 
 
             val address = configManager.proxyInterfaceFlow.first()
@@ -397,26 +399,13 @@ object LogicManager {
                 }
             }
 
-            adbProxyServer.setInterface(address, port)
+            adbProxyServer.address = address
+            adbProxyServer.port = port
+            adbProxyServer.onPairRequest = ::onPairRequest
+            adbProxyServer.pairedPeerStore = pairedClientStore
             adbProxyServer.start()
         }
     }
-
-    // 挂起等待界面处理配对申请，界面无响应时由服务端超时机制取消。
-    // private suspend fun askPairingApproval(request: PairRequest, code: String): Boolean {
-    //     val pending = PendingPairing(request, code, CompletableDeferred())
-    //     _pendingPairingFlow.value = pending
-    //     return try {
-    //         pending.result.await()
-    //     } finally {
-    //         _pendingPairingFlow.compareAndSet(pending, null)
-    //     }
-    // }
-
-    /**
-     * 撤销客户端的配对，其令牌立即失效。
-     */
-    fun revokePairedClient(clientId: String) = pairedClientStore.remove(clientId)
 
     fun stopProxyServer() = adbProxyServer.stop()
 

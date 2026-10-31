@@ -43,7 +43,7 @@ internal class RemoteCastStateManager : CastStateManager() {
         )
 
         ADBCastReceiver.start(
-            client.host,
+            client.getHost(),
             transferPort,
             listener,
             videoCodec,

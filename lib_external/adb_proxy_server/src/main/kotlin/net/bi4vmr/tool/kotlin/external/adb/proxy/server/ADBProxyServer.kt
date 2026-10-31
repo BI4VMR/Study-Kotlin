@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
-import net.bi4vmr.tool.kotlin.external.adb.proxy.security.SSLConfig
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBCoreModule
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBProxyModule
@@ -38,39 +40,21 @@ class ADBProxyServer(
      * 默认值为 `0.0.0.0` ，在 Ktor 中该值等效于 `*` 通配符，将会监听所有 IPv4 与 IPv6 地址。
      */
     @Volatile
-    private var address: String = "0.0.0.0",
+    var address: String = "0.0.0.0",
 
     /**
      * 监听端口。
      *
-     * 默认值为 [Constant.PORT_SERVER_DEFAULT]。
+     * 默认值为 [Constants.PORT_SERVER_DEFAULT]。
      */
     @Volatile
-    private var port: Int = Constant.PORT_SERVER_DEFAULT,
+    var port: Int = Constants.PORT_SERVER_DEFAULT,
 ) {
 
     /**
      * 日志工具。
      */
     private val logger = LoggerFactory.getLogger(ADBProxyServer::class.java)
-
-    /**
-     * Ktor 服务器。
-     */
-    private var server: EmbeddedServer<*, *>? = null
-
-    /**
-     * SSL / TLS 配置。
-     *
-     * 默认为空值，此时不启用加密；配置存在时将使用指定的证书启动服务器。
-     */
-    @Volatile
-    private var sslConfig: SSLConfig? = null
-
-    /**
-     * 已加载的模块列表。
-     */
-    private val modules: MutableList<ADBProxyModule> = mutableListOf()
 
     /**
      * 全局 JSON 工具。
@@ -81,6 +65,67 @@ class ADBProxyServer(
         // 编码时对于未指明的字段填入默认值
         encodeDefaults = true
     }
+
+    /**
+     * 服务端 ID 。
+     *
+     * 便于客户端区分每个服务端实例，可由上层应用在首次启动时持久化并设置。
+     */
+    @Volatile
+    var id: String = ""
+
+    /**
+     * 显示名称。
+     *
+     * 便于客户端区分每个服务端实例。
+     */
+    @Volatile
+    var name: String = ADBProxyServer::class.java.simpleName
+
+    /**
+     * SSL 配置。
+     *
+     * 默认为空值，此时不启用加密；值不为空则启用 TLS 加密。
+     *
+     * 修改该配置不会影响已启动的服务端，若要刷新需终止服务端并重新启动。
+     */
+    @Volatile
+    var sslConfig: SSLConfig? = null
+
+    /**
+     * 配对模块：已知对等体信息存储。
+     *
+     * 加载配对模块 `adb_proxy_server_pair` 时，调用者应当通过文件或数据库管理已知对等体信息。
+     */
+    @Volatile
+    var pairedPeerStore: PairedPeerStore? = null
+
+    /**
+     * 配对模块：配对请求回调方法。
+     *
+     * 加载配对模块 `adb_proxy_server_pair` 时，每当客户端发起配对请求将会触发该回调，调用者应当向用户展示配对码并等待用户确认。
+     *
+     * 具有 GUI 的应用程序需要注意切换到主线程再更新界面。
+     */
+    @Volatile
+    var onPairRequest: ((PairRequest) -> Unit)? = null
+
+    /**
+     * 运行时配置。
+     *
+     * 服务启动时复制上述配置变量，以免运行过程中配置变更导致错误。
+     */
+    private var runningConfig: RunningConfig? = null
+
+    /**
+     * Ktor 服务器。
+     */
+    private var server: EmbeddedServer<*, *>? = null
+
+    /**
+     * 已加载的模块列表。
+     */
+    private val modules: MutableList<ADBProxyModule> = mutableListOf()
 
 
     /**
@@ -104,16 +149,7 @@ class ADBProxyServer(
     val errorFlow: StateFlow<Exception?> = _errorFlow
 
 
-    private fun buildServerSSLContext(ssl: SSLConfig): SslContext {
-        val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-        keyManagerFactory.init(ssl.getKeyStore(), ssl.keyPassword.toCharArray())
-        return SslContextBuilder.forServer(keyManagerFactory)
-            .trustManager(InsecureTrustManagerFactory.INSTANCE)
-            .clientAuth(ClientAuth.OPTIONAL)
-            .build()
-    }
-
-    /* ----- 服务状态 ----- */
+    /* ----- 服务配置 ----- */
 
     @Synchronized
     fun start() {
@@ -127,28 +163,42 @@ class ADBProxyServer(
         _errorFlow.value = null
         _stateFlow.value = ServerState.STARTING
 
-        if (ADBController.getServiceState() == ServiceState.IDLE) {
-            ADBController.init()
-        }
-
         try {
+            // 如果 ADB 服务未启动，则先初始化 ADB 服务。
+            if (ADBController.getServiceState() == ServiceState.IDLE) {
+                ADBController.init()
+            }
+
+            // 复制关键配置
+            val conf = RunningConfig(
+                id,
+                name,
+                address,
+                port,
+                sslConfig,
+                pairedPeerStore,
+                onPairRequest
+            )
+            runningConfig = conf
+
             server = embeddedServer(Netty, configure = {
-                val ssl = sslConfig
+                val ssl = conf.sslConfig
                 if (ssl != null) {
+                    /* 启用 TLS */
                     sslConnector(
                         keyStore = ssl.getKeyStore(),
                         keyStorePassword = { ssl.keyStorePassword.toCharArray() },
                         keyAlias = ssl.keyAlias,
                         privateKeyPassword = { ssl.keyPassword.toCharArray() }
                     ) {
-                        host = address
-                        port = this@ADBProxyServer.port
+                        host = conf.address
+                        port = conf.port
                     }
 
-                    // Ktor 仅在配置 trustStore 时才要求客户端证书，且只信任其中已有的证书，无法满足配对场景。
+                    // TODO Ktor 仅在配置 trustStore 时才要求客户端证书，且只信任其中已有的证书，无法满足配对场景。
                     // 此处替换为自定义的 SslHandler ：可选地索取客户端证书并全部接受，由配对模块按指纹鉴权。
                     val sslContext = buildServerSSLContext(ssl)
-                    // 启用 HTTP/2 时 Ktor 会在 TLS 握手完成后才调用 channelPipelineConfig ，
+                    // TODO 启用 HTTP/2 时 Ktor 会在 TLS 握手完成后才调用 channelPipelineConfig ，
                     // 此时替换 SslHandler 将破坏已建立的会话，因此必须关闭 HTTP/2 。
                     enableHttp2 = false
                     channelPipelineConfig = {
@@ -157,9 +207,10 @@ class ADBProxyServer(
                         }
                     }
                 } else {
+                    /* 禁用 TLS */
                     connector {
-                        host = address
-                        port = this@ADBProxyServer.port
+                        host = conf.address
+                        port = conf.port
                     }
                 }
             }) {
@@ -170,14 +221,25 @@ class ADBProxyServer(
                 configure()
             }.start(wait = false)
         } catch (e: Exception) {
-            // TODO
-            logger.error("Failed to start server on [{}:{}].", address, port, e)
-            println("e.message: ${e.message}")
-            println("e.type: ${e}")
+            logger.error(
+                "Failed to start server on [{}:{}]! Reason:[{}]",
+                runningConfig?.address,
+                runningConfig?.port,
+                e.message
+            )
 
             _errorFlow.value = e
             _stateFlow.value = ServerState.ERROR
         }
+    }
+
+    private fun buildServerSSLContext(ssl: SSLConfig): SslContext {
+        val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+        keyManagerFactory.init(ssl.getKeyStore(), ssl.keyPassword.toCharArray())
+        return SslContextBuilder.forServer(keyManagerFactory)
+            .trustManager(InsecureTrustManagerFactory.INSTANCE)
+            .clientAuth(ClientAuth.OPTIONAL)
+            .build()
     }
 
     @Synchronized
@@ -189,44 +251,24 @@ class ADBProxyServer(
 
         _stateFlow.value = ServerState.STOPPING
 
-        server?.stop(500, 2000)
-        server = null
-
         // 使子模块释放资源
         modules.forEach { runCatching { it.unregister() } }
         modules.clear()
+
+        // TODO ?
+        server?.stop(500, 2000)
+        server = null
 
         _errorFlow.value = null
         _stateFlow.value = ServerState.INIT
     }
 
     /**
-     * 设置监听地址和端口。
+     * 获取运行时配置。
      *
-     * 该配置不会影响已启动的服务端，若要刷新需终止服务端并重新启动。
-     *
-     * @param[address] 监听地址。
-     * @param[port] 监听端口。
+     * @return 运行时配置。
      */
-    fun setInterface(address: String, port: Int) {
-        this.address = address
-        this.port = port
-    }
-
-    fun getSSLConfig(): SSLConfig? = sslConfig
-
-    /**
-     * 设置 SSL 配置。
-     *
-     * 传入空值表示不启用加密，传入非空的值将使用该证书启用 SSL / TLS 加密。
-     *
-     * 该配置不会影响已启动的服务端，若要刷新需终止服务端并重新启动。
-     *
-     * @param[config] SSL 配置。
-     */
-    fun setSSLConfig(config: SSLConfig?) {
-        sslConfig = config
-    }
+    fun getRunningConfig(): RunningConfig? = runningConfig
 
 
     // 配置服务器
@@ -259,8 +301,10 @@ class ADBProxyServer(
             }
     }
 
+    // 是否可以启动服务端
     private fun canStart(): Boolean =
         (stateFlow.value == ServerState.INIT) || (stateFlow.value == ServerState.ERROR)
 
+    // 是否可以终止服务端
     private fun canStop(): Boolean = (stateFlow.value == ServerState.RUNNING)
 }

@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.serializer
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor

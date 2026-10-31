@@ -32,6 +32,7 @@ dependencies {
 
 
     /* 外部组件 */
+    api(libKotlin.ktx.coroutines.core)
     api(libKotlin.ktx.serial.json)
 
 

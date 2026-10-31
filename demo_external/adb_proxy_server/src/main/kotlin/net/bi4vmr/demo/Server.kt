@@ -1,6 +1,6 @@
 package net.bi4vmr.demo
 
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.Constant
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 
 /**
@@ -15,6 +15,6 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
  * - 第一参数为监听端口，默认值为 5038 。
  */
 fun main(args: Array<String>) {
-    val port = args.firstOrNull()?.toIntOrNull() ?: Constant.PORT_SERVER_DEFAULT
+    val port = args.firstOrNull()?.toIntOrNull() ?: Constants.PORT_SERVER_DEFAULT
     ADBProxyServer(port = port).start()
 }

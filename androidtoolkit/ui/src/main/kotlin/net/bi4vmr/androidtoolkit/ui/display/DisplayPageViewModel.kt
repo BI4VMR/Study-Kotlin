@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 
 /**
  * ViewModel : 显示页面。

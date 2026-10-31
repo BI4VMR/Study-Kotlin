@@ -1,13 +1,16 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto
+
+import kotlinx.serialization.Serializable
 
 /**
  * 通用响应消息。
  *
- * 只有泛型参数 `T` 的构造方法将会默认生成一个成功的响应消息。
+ * 仅指定 `data` 参数时，将会构造一个状态为成功的消息。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
+@Serializable
 data class BaseResponse<T> @JvmOverloads constructor(
 
     /**

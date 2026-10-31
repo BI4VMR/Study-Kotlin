@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.model
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model
 
 import kotlinx.serialization.Serializable
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState

@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.model.dto
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto
 
 import kotlinx.serialization.Serializable
 
@@ -12,13 +12,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class PairCommitResponse(
-
-    /**
-     * 会话 ID 。
-     *
-     * 客户端发送二阶段请求时需要携带该信息。
-     */
-    val sessionID: String = "",
 
     /**
      * 服务端证书与随机数的消息摘要。
