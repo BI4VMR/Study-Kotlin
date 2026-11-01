@@ -39,6 +39,8 @@ dependencies {
     api(libKotlin.ktor.client.content.negotiation)
     api(libKotlin.ktor.serialization.kotlinx.json)
     implementation(libKotlin.ktor.network.tls.certificates)
+    implementation("org.jline:jline-terminal:3.26.3")
+    implementation("org.jline:jline-terminal-jni:3.26.3")
 
 
     /* 测试组件 */

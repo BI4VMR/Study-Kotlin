@@ -18,16 +18,33 @@ class PairRequest(
     private val session: PairSession
 ) {
 
+    /**
+     * 获取客户端名称。
+     */
+    fun getClientName(): String = session.clientName
+
+    /**
+     * 获取客户端证书指纹。
+     */
     fun getClientFingerprint(): String = session.clientFingerprint
 
+    /**
+     * 获取鉴权短码。
+     */
     fun getSASCode(): String =
         // 该对象仅在第二阶段配对码生成后才通过回调公开给上层，此时配对码不应当为空。
         requireNotNull(session.sasCode)
 
+    /**
+     * 批准配对请求。
+     */
     fun approve() {
         session.setResult(PairResult.APPROVED)
     }
 
+    /**
+     * 拒绝配对请求。
+     */
     fun reject() {
         session.setResult(PairResult.REJECTED)
     }

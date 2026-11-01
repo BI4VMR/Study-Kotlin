@@ -1,6 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
 import com.pty4j.PtyProcessBuilder
+import com.pty4j.WinSize
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -203,6 +204,8 @@ class ADBCoreModule : ADBProxyModule {
         // 使用 `pty4j` 启动 ADB Shell 进程，确保终端控制信息能够被正确处理。
         val process = PtyProcessBuilder(arrayOf(execName, "-s", sn, "shell"))
             .setEnvironment(env)
+            .setInitialColumns(80)
+            .setInitialRows(24)
             .start()
 
 
@@ -211,7 +214,7 @@ class ADBCoreModule : ADBProxyModule {
             try {
                 val buffer = ByteArray(4096)
                 while (true) {
-                    val data = process.inputStream.read(buffer)
+                    val data = withContext(Dispatchers.IO) { process.inputStream.read(buffer) }
                     if (data < 0) {
                         break
                     }
@@ -233,9 +236,19 @@ class ADBCoreModule : ADBProxyModule {
             for (frame in session.incoming) {
                 if (frame is Frame.Binary) {
                     val data = frame.readBytes()
-                    process.outputStream.apply {
-                        write(data)
-                        flush()
+                    withContext(Dispatchers.IO) {
+                        process.outputStream.apply {
+                            write(data)
+                            flush()
+                        }
+                    }
+                } else if (frame is Frame.Text) {
+                    // 终端尺寸同步，格式：`resize <列数> <行数>`
+                    val parts = frame.readText().trim().split(" ")
+                    val cols = parts.getOrNull(1)?.toIntOrNull()
+                    val rows = parts.getOrNull(2)?.toIntOrNull()
+                    if (parts.firstOrNull() == "resize" && cols != null && rows != null && cols > 0 && rows > 0) {
+                        runCatching { process.winSize = WinSize(cols, rows) }
                     }
                 }
             }

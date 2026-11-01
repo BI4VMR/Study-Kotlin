@@ -96,14 +96,14 @@ object APIs {
      *
      * 双方交换会话随机数与证书指纹的消息摘要。
      *
-     * 请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest] ，响应体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse] 。
+     * 请求体为 [PairCommitRequest] ，响应体为 [PairCommitResponse] 。
      */
     const val PAIR_COMMIT: String = "/pair/commit"
 
     /**
      * 配对（第二阶段）。
      *
-     * 请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest] ，响应体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealResponse] 。
+     * 请求体为 [PairRevealRequest] ，响应体为 [PairRevealResponse] 。
      */
     const val PAIR_REVEAL: String = "/pair/reveal"
 

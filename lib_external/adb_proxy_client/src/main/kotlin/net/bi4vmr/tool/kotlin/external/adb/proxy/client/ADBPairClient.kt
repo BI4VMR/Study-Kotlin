@@ -164,7 +164,7 @@ class ADBPairClient(
              */
             val revealCallResponse = client.post(buildURL(APIs.PAIR_REVEAL)) {
                 contentType(ContentType.Application.Json)
-                setBody(PairRevealRequest(clientNonce))
+                setBody(PairRevealRequest("TODO", "TODO", clientNonce))
             }
 
             check(revealCallResponse.status.isSuccess()) {

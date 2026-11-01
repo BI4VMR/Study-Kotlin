@@ -12,7 +12,17 @@ import kotlinx.serialization.Serializable
 data class PairRevealRequest(
 
     /**
+     * ID 。
+     */
+    val id: String,
+
+    /**
+     * 名称。
+     */
+    val name: String,
+
+    /**
      * 客户端随机数。
      */
-    val clientNonce: String = ""
+    val clientNonce: String
 )

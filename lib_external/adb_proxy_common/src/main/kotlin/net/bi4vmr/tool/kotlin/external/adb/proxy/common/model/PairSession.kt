@@ -33,6 +33,16 @@ class PairSession(
     val createdTime: Long = System.nanoTime()
 
     /**
+     * 客户端 ID 。
+     */
+    var clientID: String = ""
+
+    /**
+     * 客户端名称。
+     */
+    var clientName: String = ""
+
+    /**
      * 配对码。
      */
     var sasCode: String? = null
@@ -52,7 +62,7 @@ class PairSession(
 
 
     /**
-     * 挂起当前协程并等待配对结果。
+     * 挂起调用协程并等待配对结果。
      *
      * @return 配对结果。
      */

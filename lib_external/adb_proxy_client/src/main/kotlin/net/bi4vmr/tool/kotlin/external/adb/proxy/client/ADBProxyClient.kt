@@ -29,6 +29,9 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
+import java.io.DataInputStream
+import java.io.EOFException
+import java.io.File
 import java.net.ConnectException
 import java.net.ServerSocket
 
@@ -355,6 +358,22 @@ class ADBProxyClient(
     }
 
 
+    /**
+     * 将 Classpath 写入 Java 参数文件（`@argfile`）。
+     *
+     * Windows 的 Classpath 以 `;` 分隔，而 Windows Terminal（`wt`）会把 `;` 当作子命令分隔符，
+     * 直接通过命令行传递会被拆分成大量标签页；使用参数文件可避免该问题，同时规避命令行长度限制。
+     */
+    private fun createBridgeArgFile(): File {
+        val classpath = System.getProperty("java.class.path")
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+        return File.createTempFile("adb-shell-bridge-", ".args").apply {
+            deleteOnExit()
+            writeText("-cp \"$classpath\"\n")
+        }
+    }
+
     fun openShell(sn: String) {
         taskScope.launch {
             var localServer: ServerSocket? = null
@@ -362,33 +381,52 @@ class ADBProxyClient(
                 openWebSocket("${APIs.ADB_SHELL}?sn=${sn}") {
                     localServer = ServerSocket(0)
 
-                    val script = "stty raw -echo; socat - TCP:127.0.0.1:${localServer.localPort}; stty sane"
-                    val code = ProcessBuilder("konsole", "-e", "sh", "-c", script)
+                    val javaBin = ProcessHandle.current().info().command()
+                        .orElse(File(System.getProperty("java.home"), "bin/java").path)
+                    val argFile = createBridgeArgFile()
+                    val bridgeCommand = listOf(
+                        javaBin,
+                        "@${argFile.absolutePath}",
+                        ShellBridge::class.java.name,
+                        localServer.localPort.toString()
+                    )
+                    // ProcessBuilder(listOf("konsole", "-e") + bridgeCommand)
+                    //     .inheritIO()
+                    //     .start()
+                    ProcessBuilder(listOf("wt") + bridgeCommand)
                         .inheritIO()
                         .start()
-                    System.err.println("\n会话已结束（终端退出码 $code）")
 
-                    val localSocket = localServer.accept()
-
-                    val upstream = launch {
-                        val buf = ByteArray(4096)
-                        val input = localSocket.getInputStream()
-                        while (true) {
-                            val n = withContext(Dispatchers.IO) { input.read(buf) }
-                            if (n < 0) break
-                            send(Frame.Binary(true, buf.copyOf(n)))
+                    localServer.accept().use { localSocket ->
+                        val upstream = launch {
+                            val input = DataInputStream(localSocket.getInputStream())
+                            try {
+                                while (true) {
+                                    val frame = withContext(Dispatchers.IO) {
+                                        val type = input.readByte().toInt()
+                                        val data = ByteArray(input.readInt())
+                                        input.readFully(data)
+                                        when (type) {
+                                            ShellBridge.FRAME_RESIZE -> Frame.Text("resize ${String(data)}")
+                                            else -> Frame.Binary(true, data)
+                                        }
+                                    }
+                                    send(frame)
+                                }
+                            } catch (_: EOFException) {
+                            }
+                            close()
                         }
-                        close()
-                    }
 
-                    val output = localSocket.getOutputStream()
-                    for (frame in incoming) {
-                        if (frame is Frame.Binary) {
-                            output.write(frame.readBytes())
-                            output.flush()
+                        val output = localSocket.getOutputStream()
+                        for (frame in incoming) {
+                            if (frame is Frame.Binary) {
+                                output.write(frame.readBytes())
+                                output.flush()
+                            }
                         }
+                        upstream.cancel()
                     }
-                    upstream.cancel()
                 }
             } catch (e: Exception) {
                 logger.warn("Failed to open shell: ${e.message}")

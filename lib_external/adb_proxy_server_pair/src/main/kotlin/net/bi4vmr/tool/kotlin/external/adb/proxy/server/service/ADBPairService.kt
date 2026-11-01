@@ -132,9 +132,13 @@ class ADBPairService(
             throw IllegalStateException("Client hash does not match for client [$cFingerprint].")
         }
 
+        /* 计算配对码 */
         val sFingerprint = PairUtil.calculateCertFingerprint(sslConfig.requireCertificate())
         val code = PairUtil.calculatePairCode(cFingerprint, sFingerprint, body.clientNonce, session.serverNonce)
         session.sasCode = code
+
+        session.clientID = body.id
+        session.clientName = body.name
 
         return PairRevealResponse(session.serverNonce)
     }
@@ -171,13 +175,13 @@ class ADBPairService(
 
         session.expireJob?.cancel()
         pairSessions.remove(cFingerprint, session)
-        logger.info("Pairing decision for client [{}]: [{}].", cFingerprint, result)
+        logger.info("Pairing result for client [{}]: [{}].", cFingerprint, result)
 
         /* 配对通过后存储凭据 */
         if (result == PairResult.APPROVED) {
             val peer = PairedPeer(
-                id = "TODO",
-                name = "TODO",
+                id = session.clientID,
+                name = session.clientName,
                 fingerprint = cFingerprint,
                 pairedTimestamp = System.currentTimeMillis(),
                 type = PeerType.CLIENT
