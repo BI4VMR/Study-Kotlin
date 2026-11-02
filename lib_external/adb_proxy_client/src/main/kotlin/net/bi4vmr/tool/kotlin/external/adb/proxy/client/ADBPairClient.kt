@@ -1,20 +1,30 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.network.tls.*
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.http.Url
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.http.path
+import io.ktor.network.tls.addKeyStore
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
@@ -91,6 +101,7 @@ class ADBPairClient(
                 }
             }
         }
+
         install(HttpTimeout)
         // 日志输出
         install(Logging) { level = LogLevel.INFO }
@@ -136,106 +147,66 @@ class ADBPairClient(
         val clientCommit = PairUtil.calculateCommit(clientFingerprint, clientNonce)
         val commitRequest = PairCommitRequest(clientCommit)
 
-        // 服务端是否仍持有本端的配对会话，结束或异常时需要主动通知服务端释放。
-        var sessionPending = false
-
-        try {
-            /*
-             * 第一阶段
-             *
-             * 双方交换随机数和证书的消息摘要，防止中间人篡改数据攻击。
-             */
-            val commitCallResponse = client.post(buildURL(APIs.PAIR_COMMIT)) {
-                contentType(ContentType.Application.Json)
-                setBody(commitRequest)
-            }
-
-            check(commitCallResponse.status.isSuccess()) {
-                "Pairing failed. Status:[${commitCallResponse.status}] Reason:[${commitCallResponse.bodyAsText()}]"
-            }
-
-            val commitResponse = commitCallResponse.body<PairCommitResponse>()
-            sessionPending = true
-
-            /*
-             * 第二阶段
-             *
-             * 双方交换随机数和证书，检查它们是否与第一阶段的消息摘要相符。
-             */
-            val revealCallResponse = client.post(buildURL(APIs.PAIR_REVEAL)) {
-                contentType(ContentType.Application.Json)
-                setBody(PairRevealRequest("TODO", "TODO", clientNonce))
-            }
-
-            check(revealCallResponse.status.isSuccess()) {
-                "Pairing failed. Status:[${revealCallResponse.status}] Reason:[${revealCallResponse.bodyAsText()}]"
-            }
-
-            val revealResponse = revealCallResponse.body<PairRevealResponse>()
-
-            val serverCertificate = pairTrustManager.requireServerCertificate()
-            val serverFingerprint = PairUtil.calculateCertFingerprint(serverCertificate)
-
-            // 检查服务端承诺值，确认服务端随机数在客户端提交随机数之前已经确定。
-            val expected = PairUtil.calculateCommit(serverFingerprint, revealResponse.serverNonce)
-            println("client -> sfp:[$serverFingerprint] sN:[$revealResponse]")
-            if (expected != commitResponse.serverHash) {
-                throw IllegalStateException("Server hash does not match.")
-            }
-
-            val code = PairUtil.calculatePairCode(
-                clientFingerprint,
-                serverFingerprint,
-                clientNonce,
-                revealResponse.serverNonce
-            )
-
-            // 先展示配对码，再等待服务端用户核对并批准。
-            onCode(code)
-
-            val confirmCallResponse = client.post(buildURL(APIs.PAIR_CONFIRM)) {
-                // 服务端最多挂起 `PAIR_TIMEOUT_MS`，客户端略长，以便优先收到服务端返回的状态码。
-                timeout { requestTimeoutMillis = Constants.PAIR_TIMEOUT_MS + 10_000L }
-            }
-
-            when (confirmCallResponse.status) {
-                HttpStatusCode.OK -> {
-                    sessionPending = false
-                    logger.info("Pairing with [$host:$port] has been approved.")
-                }
-
-                HttpStatusCode.Forbidden -> {
-                    sessionPending = false
-                    throw IllegalStateException("Pairing was rejected by the server.")
-                }
-
-                HttpStatusCode.RequestTimeout -> {
-                    sessionPending = false
-                    throw IllegalStateException("Pairing timed out.")
-                }
-
-                HttpStatusCode.Conflict -> {
-                    sessionPending = false
-                    throw IllegalStateException("Pairing session is invalid or has been cancelled.")
-                }
-
-                else -> {
-                    sessionPending = false
-                    throw IllegalStateException(
-                        "Pairing failed. Status:[${confirmCallResponse.status}] " +
-                                "Reason:[${confirmCallResponse.bodyAsText()}]"
-                    )
-                }
-            }
-        } finally {
-            // 用户取消、配对码不一致、协程被取消或中途异常时，告知服务端结束会话并关闭界面中的申请。
-            // if (sessionPending) {
-            //     withContext(NonCancellable) {
-            //         runCatching { client.post(buildURL(APIs.PAIR_CANCEL)) }
-            //             .onFailure { logger.warn("Failed to cancel pairing session. Reason:[${it.message}]") }
-            //     }
-            // }
+        /*
+         * 第一阶段
+         *
+         * 双方交换随机数和证书的消息摘要，防止中间人篡改数据攻击。
+         */
+        val commitCallResponse = client.post(buildURL(APIs.PAIR_COMMIT)) {
+            contentType(ContentType.Application.Json)
+            setBody(commitRequest)
         }
+
+        check(commitCallResponse.status.isSuccess()) {
+            "Pairing failed. Status:[${commitCallResponse.status}] Reason:[${commitCallResponse.bodyAsText()}]"
+        }
+
+        val commitResponse = commitCallResponse.body<PairCommitResponse>()
+
+        /*
+         * 第二阶段
+         *
+         * 双方交换随机数和证书，检查它们是否与第一阶段的消息摘要相符。
+         */
+        val revealCallResponse = client.post(buildURL(APIs.PAIR_REVEAL)) {
+            contentType(ContentType.Application.Json)
+            setBody(PairRevealRequest("TODO", "TODO", clientNonce))
+        }
+
+        check(revealCallResponse.status.isSuccess()) {
+            "Pairing failed. Status:[${revealCallResponse.status}] Reason:[${revealCallResponse.bodyAsText()}]"
+        }
+
+        val revealResponse = revealCallResponse.body<PairRevealResponse>()
+
+        val serverCertificate = pairTrustManager.requireServerCertificate()
+        val serverFingerprint = PairUtil.calculateCertFingerprint(serverCertificate)
+
+        // 检查服务端承诺值，确认服务端随机数在客户端提交随机数之前已经确定。
+        val expected = PairUtil.calculateCommit(serverFingerprint, revealResponse.serverNonce)
+        println("client -> sfp:[$serverFingerprint] sN:[$revealResponse]")
+        if (expected != commitResponse.serverHash) {
+            throw IllegalStateException("Server hash does not match.")
+        }
+
+        val code = PairUtil.calculatePairCode(
+            clientFingerprint,
+            serverFingerprint,
+            clientNonce,
+            revealResponse.serverNonce
+        )
+
+        // 先展示配对码，再等待服务端用户核对并批准。
+        onCode(code)
+
+        val askCallResponse = client.post(buildURL(APIs.PAIR_ASK)) {
+            // 服务端最多挂起 `PAIR_TIMEOUT_MS`，客户端略长，以便优先收到服务端返回的状态码。
+            timeout { requestTimeoutMillis = Constants.PAIR_TIMEOUT_MS + 10_000L }
+        }
+
+        val askResponse = askCallResponse.call.response.bodyAsText()
+        val pairResult = PairResult.fromCode(askResponse)
+        println("pair end. pairResult -> $pairResult")
     }
 
     private fun buildURL(path: String): Url =

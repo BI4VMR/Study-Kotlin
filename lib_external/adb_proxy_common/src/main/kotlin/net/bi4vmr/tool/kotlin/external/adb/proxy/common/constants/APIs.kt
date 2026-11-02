@@ -1,8 +1,10 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants
 
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs.PAIR_COMMIT
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs.PAIR_REVEAL
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealResponse
 
 /**
  * URL 定义。
@@ -96,42 +98,30 @@ object APIs {
      *
      * 双方交换会话随机数与证书指纹的消息摘要。
      *
-     * 请求体为 [PairCommitRequest] ，响应体为 [PairCommitResponse] 。
+     * 请求方式为 HTTP POST ，请求体为 [PairCommitRequest] ，响应体为 [PairCommitResponse] 。
      */
     const val PAIR_COMMIT: String = "/pair/commit"
 
     /**
      * 配对（第二阶段）。
      *
-     * 请求体为 [PairRevealRequest] ，响应体为 [PairRevealResponse] 。
+     * 请求方式为 HTTP POST ，请求体为 [PairRevealRequest] ，响应体为 [PairRevealResponse] 。
      */
     const val PAIR_REVEAL: String = "/pair/reveal"
 
     /**
-     * 配对（第三阶段）第三步：确认配对码，等待服务端用户批准或拒绝。
+     * 配对（第三阶段）
      *
-     * 需要 TLS 客户端证书，且必须与 [PAIR_COMMIT] 、[PAIR_REVEAL] 使用同一证书。
+     * 双方显示配对码供用户核对，客户端等待服务端批准或拒绝。
      *
-     * 请求方式为 HTTP POST ，无请求体。服务端将请求挂起，直至用户操作、客户端取消或会话超时，
-     * 返回结果如下：
-     * - `200` ：用户已批准；
-     * - `403` ：用户拒绝；
-     * - `408` ：等待超时；
-     * - `409` ：会话不存在、已过期或已被取消。
+     * 请求方式为 HTTP POST ，无请求参数，服务端将会持续等待用户选择结果再返回响应体，内容为结果代号，可转换为 [PairResult] 。
      */
-    const val PAIR_CONFIRM: String = "/pair/confirm"
+    const val PAIR_ASK: String = "/pair/ask"
 
     /**
      * 客户端取消配对。
      *
-     * 请求方式为 HTTP POST 。
+     * 请求方式为 HTTP POST ，无请求参数、无返回值。
      */
     const val PAIR_CANCEL: String = "/pair/cancel"
-
-    /**
-     * 配对状态。
-     *
-     * 需要已配对的客户端证书，返回 200 表示当前客户端已配对，否则返回 401 。
-     */
-    const val PAIR_STATUS: String = "/pair/status"
 }

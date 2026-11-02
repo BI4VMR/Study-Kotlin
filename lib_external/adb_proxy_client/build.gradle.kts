@@ -23,6 +23,7 @@ dependencies {
     api(project(":lib_external:adb_common"))
     api(project(":lib_external:adb_cast_common"))
     api(project(":lib_external:adb_proxy_common"))
+    api(project(":lib_gui:interaction"))
 
     // 依赖传递
     // api(privateLibKotlin.external.adb.common)

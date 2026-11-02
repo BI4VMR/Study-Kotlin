@@ -1,16 +1,22 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.netty.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.ApplicationCallPipeline
+import io.ktor.server.application.call
+import io.ktor.server.netty.NettyApplicationCall
+import io.ktor.server.request.path
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.RoutingCall
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
 import io.netty.handler.ssl.SslHandler
 import kotlinx.coroutines.CancellationException
 import net.bi4vmr.tool.java.security.digest.MessageDigestUtil
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
@@ -31,7 +37,7 @@ class ADBPairModule : ADBProxyModule {
             APIs.SERVER_INFO,
             APIs.PAIR_COMMIT,
             APIs.PAIR_REVEAL,
-            APIs.PAIR_CONFIRM,
+            APIs.PAIR_ASK,
             APIs.PAIR_CANCEL
         )
     }
@@ -49,7 +55,7 @@ class ADBPairModule : ADBProxyModule {
         val ssl = runningConfig?.sslConfig
         requireNotNull(ssl) { "SSL config not found! have you set `sslConfig` at first?" }
 
-        service = ADBPairService(ssl, runningConfig.pairedPeerStore, runningConfig.onPairRequest)
+        service = ADBPairService(ssl, runningConfig.pairedPeerStore, runningConfig.pairRequestListener)
 
         // 注册拦截器，受控接口被访问时，检查客户端证书是否已与服务端配对。
         intercept(ApplicationCallPipeline.Plugins) {
@@ -69,7 +75,9 @@ class ADBPairModule : ADBProxyModule {
             val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
             // TODO
             println("onInterceptCall -> [$fingerprint]")
-            if (false) {
+            val knowns = server.getRunningConfig()?.pairedPeerStore!!
+            val known = knowns.onList().any { it.fingerprint == fingerprint }
+            if (!known) {
                 call.respondText("Client certificate is not paired!", status = HttpStatusCode.Unauthorized)
                 finish()
             }
@@ -124,7 +132,7 @@ class ADBPairModule : ADBProxyModule {
                 }
             }
 
-            post(APIs.PAIR_CONFIRM) {
+            post(APIs.PAIR_ASK) {
                 val clientCert = call.getClientCertificate()
                 if (clientCert == null) {
                     call.respondText("Client certificate is required!", status = HttpStatusCode.BadRequest)
@@ -134,7 +142,7 @@ class ADBPairModule : ADBProxyModule {
                 val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
                 val result = try {
                     // 挂起，直至服务端用户确认/拒绝、客户端取消或会话超时。
-                    service.onConfirm(fingerprint)
+                    service.onAsk(fingerprint)
                 } catch (e: CancellationException) {
                     // 客户端断开或服务端停止时，保持取消语义，交由 Ktor 处理。
                     throw e
@@ -148,8 +156,8 @@ class ADBPairModule : ADBProxyModule {
                 }
 
                 println("onConfirm -> [$fingerprint] decision: [$result]")
-                // TODO
 
+                call.respondText("${result.code}")
             }
 
             post(APIs.PAIR_CANCEL) {
@@ -162,7 +170,7 @@ class ADBPairModule : ADBProxyModule {
                 val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
                 service.onCancel(fingerprint)
 
-                call.respondText(BaseResponse.MESSAGE_SUCCESS, ContentType.Text.Plain)
+                call.respond(HttpStatusCode.OK)
             }
         }
     }

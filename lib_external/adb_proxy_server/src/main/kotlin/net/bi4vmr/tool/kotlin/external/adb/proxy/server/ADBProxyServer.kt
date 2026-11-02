@@ -1,11 +1,16 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.websocket.*
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.Application
+import io.ktor.server.application.ServerReady
+import io.ktor.server.application.install
+import io.ktor.server.engine.EmbeddedServer
+import io.ktor.server.engine.connector
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.engine.sslConnector
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.websocket.WebSockets
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
@@ -15,15 +20,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestListener
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBCoreModule
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.module.ADBProxyModule
 import org.slf4j.LoggerFactory
-import java.util.*
+import java.util.ServiceLoader
 import javax.net.ssl.KeyManagerFactory
 
 /**
@@ -101,14 +106,14 @@ class ADBProxyServer(
     var pairedPeerStore: PairedPeerStore? = null
 
     /**
-     * 配对模块：配对请求回调方法。
+     * 配对模块：配对请求监听器。
      *
      * 加载配对模块 `adb_proxy_server_pair` 时，每当客户端发起配对请求将会触发该回调，调用者应当向用户展示配对码并等待用户确认。
      *
      * 具有 GUI 的应用程序需要注意切换到主线程再更新界面。
      */
     @Volatile
-    var onPairRequest: ((PairRequest) -> Unit)? = null
+    var pairRequestListener: PairRequestListener? = null
 
     /**
      * 运行时配置。
@@ -177,7 +182,7 @@ class ADBProxyServer(
                 port,
                 sslConfig,
                 pairedPeerStore,
-                onPairRequest
+                pairRequestListener
             )
             runningConfig = conf
 

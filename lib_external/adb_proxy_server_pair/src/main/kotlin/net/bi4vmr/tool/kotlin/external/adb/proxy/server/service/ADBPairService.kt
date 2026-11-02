@@ -1,6 +1,13 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.service
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestListener
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
@@ -25,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap
  * 配对分为三个阶段：
  * 1. 客户端提交承诺值（[onCommit]）；
  * 2. 客户端公开随机数，服务端计算配对码并保存（[onReveal]）；
- * 3. 客户端发起确认请求时通知界面并等待用户批准（[onConfirm]），期间任意一端均可取消（[onCancel]）。
+ * 3. 客户端发起确认请求时通知界面并等待用户批准（[onAsk]），期间任意一端均可取消（[onCancel]）。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -43,9 +50,9 @@ class ADBPairService(
     val pairedPeerStore: PairedPeerStore?,
 
     /**
-     * 配对请求回调方法。
+     * 配对请求监听器。
      */
-    val onPairRequest: ((PairRequest) -> Unit)?
+    val pairRequestListener: PairRequestListener?
 ) {
 
     /**
@@ -154,28 +161,31 @@ class ADBPairService(
      * @return 配对结果，界面或客户端据此展示最终状态。
      * @throws[IllegalStateException] 会话不存在、已过期或尚未进入第二阶段。
      */
-    suspend fun onConfirm(cFingerprint: String): PairResult {
+    suspend fun onAsk(cFingerprint: String): PairResult {
         val session = pairSessions[cFingerprint]
             ?: throw IllegalStateException("No pairing session found for client [$cFingerprint].")
 
+        val pairRequest = PairRequest(session)
+
         // 通知上层显示配对码
-        runCatching { onPairRequest?.invoke(PairRequest(session)) }
+        runCatching { pairRequestListener?.onRequest(pairRequest) }
             .onFailure { logger.warn("Failed to notify pairing approval listener.", it) }
 
         // 等待用户确认
-        val result = try {
-            session.await()
+        var result = PairResult.ABORTED
+        try {
+            result = session.await()
         } catch (e: CancellationException) {
-            // 客户端断开连接或服务端停止：结束会话并关闭界面中的申请，避免残留在界面上。
-            // onCancel(cFingerprint)
-            // throw e
-            println("session.await() on cancel")
-            PairResult.ABORTED
-        }
+            // 服务端终止
+            throw e
+        } finally {
+            session.expireJob?.cancel()
+            pairSessions.remove(cFingerprint, session)
+            logger.info("Pairing result for client [{}] at [{}].", cFingerprint, session.createdTime)
 
-        session.expireJob?.cancel()
-        pairSessions.remove(cFingerprint, session)
-        logger.info("Pairing result for client [{}]: [{}].", cFingerprint, result)
+            runCatching { pairRequestListener?.onResult(pairRequest, result) }
+                .onFailure { logger.warn("Failed to notify pairing approval listener.", it) }
+        }
 
         /* 配对通过后存储凭据 */
         if (result == PairResult.APPROVED) {
@@ -186,6 +196,7 @@ class ADBPairService(
                 pairedTimestamp = System.currentTimeMillis(),
                 type = PeerType.CLIENT
             )
+
             pairedPeerStore?.onSave(peer)
         }
 
@@ -198,7 +209,7 @@ class ADBPairService(
     fun onCancel(cFingerprint: String) {
         logger.info("Pairing session for client [{}] has been cancelled.", cFingerprint)
 
-        // 移除该客户端的配对记录，若记录存在同时将其标记为取消。
+        // 移除该客户端的配对记录，若记录存在则同时将其标记为取消。
         pairSessions.remove(cFingerprint)?.cancel()
     }
 }

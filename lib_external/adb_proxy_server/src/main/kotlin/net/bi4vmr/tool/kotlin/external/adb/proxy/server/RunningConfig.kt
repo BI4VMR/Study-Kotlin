@@ -1,8 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
 import kotlinx.serialization.Serializable
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestListener
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 
 /**
@@ -44,10 +44,10 @@ data class RunningConfig(
     /**
      * 配对模块：已知对等体信息存储。
      */
-    val pairedPeerStore: PairedPeerStore? = null,
+    val pairedPeerStore: PairedPeerStore?,
 
     /**
-     * 配对模块：配对请求回调方法。
+     * 配对模块：配对请求监听器。
      */
-    val onPairRequest: ((PairRequest) -> Unit)? = null
+    val pairRequestListener: PairRequestListener?
 )

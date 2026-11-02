@@ -18,8 +18,10 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBPairClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestListener
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
@@ -88,18 +90,19 @@ object LogicManager {
     val pendingPairingsFlow: StateFlow<List<PairRequest>> = _pendingPairingsFlow
 
     /**
-     * 展示配对申请。
+     * 配对请求监听器。
      *
-     * 该回调由服务端在客户端发起确认请求后触发，配对结束（用户操作、客户端取消、客户端断开或超时）
-     * 后自动移除。
+     * 客户端发起确认请求后加入待处理列表，配对结束（用户操作、客户端取消、会话超时或服务端终止）
+     * 后自动移除，避免界面残留已经失效的申请。
      */
-    private fun onPairRequest(approval: PairRequest) {
-        _pendingPairingsFlow.update { it + approval }
+    private val pairRequestListener = object : PairRequestListener {
 
-        taskScope.launch {
-            // 等待用户操作、客户端取消或会话超时，避免界面残留已经失效的申请。
-            // approval.await()
-            // _pendingPairingsFlow.update { list -> list.filterNot { it === pending } }
+        override fun onRequest(request: PairRequest) {
+            _pendingPairingsFlow.update { it + request }
+        }
+
+        override fun onResult(request: PairRequest, result: PairResult) {
+            _pendingPairingsFlow.update { list -> list.filterNot { it === request } }
         }
     }
 
@@ -331,6 +334,15 @@ object LogicManager {
             }
 
             // TODO 配对成功后使用 `ADBProxyClient` 建立连接，并注册到执行器列表。
+
+            val client = ADBProxyClient(host,port)
+                .apply {
+                    setSecure(true)
+                    setSSLConfig(cSSLConf)
+                    init()
+                }
+            _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+
             // 5 秒内未返回就绪，认为连接失败。
             // val ok = withTimeoutOrNull(5.seconds) {
             //     client.serviceStateFlow.first { it == ServiceState.READY }
@@ -402,7 +414,7 @@ object LogicManager {
 
             adbProxyServer.address = address
             adbProxyServer.port = port
-            adbProxyServer.onPairRequest = ::onPairRequest
+            adbProxyServer.pairRequestListener = pairRequestListener
             adbProxyServer.pairedPeerStore = pairedClientStore
             adbProxyServer.start()
         }
