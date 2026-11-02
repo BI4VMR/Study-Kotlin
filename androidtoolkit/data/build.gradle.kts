@@ -1,5 +1,6 @@
 plugins {
     alias(libKotlin.plugins.core)
+    alias(libKotlin.plugins.sqldelight)
 }
 
 dependencies {
@@ -9,6 +10,16 @@ dependencies {
 
 
     /* 外部组件 */
-    api(libKotlin.ktx.coroutines.core)
-    api(libKotlin.datastore.preferences)
+    implementation(libKotlin.ktx.coroutines.core)
+    implementation(libKotlin.datastore.preferences)
+    implementation(libKotlin.sqldelight.driver.sqlite)
+    implementation(libKotlin.sqldelight.coroutines)
+}
+
+sqldelight {
+    databases {
+        create("MainDatabase") {
+            packageName.set("net.bi4vmr.androidtoolkit.data.sql")
+        }
+    }
 }

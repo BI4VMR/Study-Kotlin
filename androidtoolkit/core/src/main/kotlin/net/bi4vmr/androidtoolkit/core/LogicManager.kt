@@ -11,6 +11,10 @@ import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.data.sql.MainDB
+import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
+import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteExecutorDAO
+import net.bi4vmr.androidtoolkit.data.sql.model.RemoteExecutorRecord
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
@@ -22,6 +26,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestLis
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PeerType
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
@@ -106,39 +111,60 @@ object LogicManager {
         }
     }
 
-    private val _pairedClientsFlow: MutableStateFlow<List<PairedPeer>> = MutableStateFlow(emptyList())
-
     /**
-     * Flow : 已配对的客户端 设置页面。
+     * 已配对对端数据库。
      */
-    val pairedClientsFlow: StateFlow<List<PairedPeer>> = _pairedClientsFlow
+    private val pairedPeerDAO: PairedPeerDAO by lazy {
+        initDB()
+        MainDB.pairedPeerDAO
+    }
+
+    private val remoteExecutorDAO: RemoteExecutorDAO by lazy {
+        initDB()
+        MainDB.remoteExecutorDAO
+    }
+
+    @Volatile
+    private var dbInitialized: Boolean = false
 
     /**
-     * 已配对客户端存储，变更时同步写入配置文件。
+     * 初始化数据库。UI 可能先于 init 协程访问，此处确保目录存在且只初始化一次。
+     */
+    @Synchronized
+    private fun initDB() {
+        if (dbInitialized) return
+        val dbDir = fileManager.getDBDir().apply { mkdirs() }
+        MainDB.init(dbDir.absolutePath)
+        dbInitialized = true
+    }
+
+    /**
+     * Flow : 服务端已批准的客户端，供设置页面展示。
+     */
+    val pairedClientsFlow: Flow<List<PairedPeer>> by lazy {
+        pairedPeerDAO.observe(PeerType.CLIENT)
+    }
+
+    /**
+     * 已配对客户端存储，由配对模块在批准后写入、在鉴权时读取。
      */
     private val pairedClientStore = object : PairedPeerStore {
 
-        override fun onList(): List<PairedPeer> {
-            println("onList")
-            return emptyList()
-        }
+        override fun onList(): List<PairedPeer> = pairedPeerDAO.list(PeerType.CLIENT)
 
-        override fun onSave(peer: PairedPeer) {
-            // _pairedClientsFlow.update { old -> old.filterNot { it.id == client.id } + client }
-            println("onSave -> $peer")
-        }
+        override fun onSave(peer: PairedPeer) = pairedPeerDAO.save(peer)
 
-        override fun onDelete(fingerprint: String) {
-            TODO("Not yet implemented")
-        }
+        override fun onDelete(fingerprint: String) = pairedPeerDAO.delete(fingerprint)
     }
 
-    // private fun persistPairedClients() {
-    //     val entries = _pairedClientsFlow.value
-    //         .map { "it.id|${it.pairedAt}|it.tokenHash|${it.name}" }
-    //         .toSet()
-    //     taskScope.launch { configManager.setPairedClients(entries) }
-    // }
+    /**
+     * 删除已配对的客户端，该客户端需要重新配对才能访问转发器。
+     */
+    fun revokePairedClient(fingerprint: String) {
+        taskScope.launch {
+            pairedClientStore.onDelete(fingerprint)
+        }
+    }
 
 
     /**
@@ -248,6 +274,9 @@ object LogicManager {
             val serverFile = fileManager.getInternalScrcpyServerFile()
             ScrcpyServerHelper.setServerFile(serverFile)
 
+            /* 恢复上次保存的远程执行器 */
+            restoreRemoteExecutors()
+
             /* 启动 MCP 服务，环境变量 ANDROIDTOOLKIT_MCP_PORT=0 可禁用 */
             val mcpPort = System.getenv("ANDROIDTOOLKIT_MCP_PORT")?.toIntOrNull() ?: McpService.PORT_DEFAULT
             if (mcpPort > 0) {
@@ -335,13 +364,17 @@ object LogicManager {
 
             // TODO 配对成功后使用 `ADBProxyClient` 建立连接，并注册到执行器列表。
 
-            val client = ADBProxyClient(host,port)
-                .apply {
-                    setSecure(true)
-                    setSSLConfig(cSSLConf)
-                    init()
-                }
-            _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+            connectRemoteExecutor(host, port)
+
+            // 连接建立后持久化，下次启动时自动加载。
+            remoteExecutorDAO.save(
+                RemoteExecutorRecord(
+                    host = host,
+                    port = port,
+                    secure = secure,
+                    addedTimestamp = System.currentTimeMillis()
+                )
+            )
 
             // 5 秒内未返回就绪，认为连接失败。
             // val ok = withTimeoutOrNull(5.seconds) {
@@ -357,6 +390,48 @@ object LogicManager {
         } finally {
             // 配对客户端仅供配对使用，配对结束（成功、失败或取消）后立即释放。
             pairClient.release()
+        }
+    }
+
+    /**
+     * 建立远程执行器连接并注册到执行器列表，同一地址已存在时忽略。
+     */
+    private fun connectRemoteExecutor(host: String, port: Int) {
+        val exists = _executorsFlow.value.any { it is RemoteExecutor && it.host == host && it.port == port }
+        if (exists) return
+
+        val client = ADBProxyClient(host, port)
+            .apply {
+                setSecure(true)
+                setSSLConfig(cSSLConf)
+                init()
+            }
+        _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+    }
+
+    /**
+     * 加载数据库中保存的远程执行器。
+     *
+     * 这些服务端此前已完成配对，因此直接建立连接；单个连接失败不影响其他记录。
+     */
+    private fun restoreRemoteExecutors() {
+        remoteExecutorDAO.list().forEach { record ->
+            runCatching { connectRemoteExecutor(record.host, record.port) }
+                .onFailure { println("LogicManager: failed to restore remote executor [${record.host}:${record.port}]: $it") }
+        }
+    }
+
+    /**
+     * 移除远程执行器，并删除数据库记录。
+     */
+    fun removeRemoteExecutor(executor: RemoteExecutor) {
+        _executorsFlow.update { list -> list.filterNot { it === executor } }
+        if (_selectedExecutorFlow.value === executor) {
+            _selectedExecutorFlow.value = LocalExecutor
+        }
+        executor.release()
+        taskScope.launch {
+            remoteExecutorDAO.delete(executor.host, executor.port)
         }
     }
 
@@ -401,16 +476,6 @@ object LogicManager {
 
             val address = configManager.proxyInterfaceFlow.first()
             val port = configManager.proxyPortFlow.first()
-
-            if (_pairedClientsFlow.value.isEmpty()) {
-                _pairedClientsFlow.value = configManager.getPairedClients().mapNotNull { entry ->
-                    val parts = entry.split("|", limit = 4)
-                    val pairedAt = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
-                    if (parts.size < 4) return@mapNotNull null
-                    // PairedClient(id = parts[0], name = parts[3], tokenHash = parts[2], pairedAt = pairedAt)
-                    null
-                }
-            }
 
             adbProxyServer.address = address
             adbProxyServer.port = port

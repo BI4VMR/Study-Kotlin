@@ -2,6 +2,7 @@ package net.bi4vmr.androidtoolkit.ui.setting
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +17,9 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * ADB 转发器配置。
@@ -47,6 +51,8 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
     var portText: String by remember(proxyPort) { mutableStateOf(proxyPort.toString()) }
     var portInvalid: Boolean by remember { mutableStateOf(false) }
     var errorInfo: String by remember { mutableStateOf("") }
+    var pendingRevoke: PairedPeer? by remember { mutableStateOf(null) }
+    val timeFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
 
     SettingSection("ADB 转发器") {
         SettingColumn(label = "服务控制") {
@@ -108,14 +114,47 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
             Column {
                 pairedClients.forEach { client ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Text("${client.name}（${client.id}）", modifier = Modifier.weight(1F))
-                        TextButton(onClick = {
-                            // globalStateManager.logicManager.revokePairedClient(client.id)
-                        }) {
-                            Text("撤销")
+                        Column(modifier = Modifier.weight(1F)) {
+                            Text("${client.name}（${client.id}）", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "指纹：${client.fingerprint}",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                "配对时间：${timeFormat.format(Date(client.pairedTimestamp))}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        TextButton(onClick = { pendingRevoke = client }) {
+                            Icon(Icons.Default.Delete, null)
+                            Spacer(Modifier.width(Dimens.Layout.Space))
+                            Text("删除")
                         }
                     }
                 }
+            }
+
+            pendingRevoke?.let { client ->
+                AlertDialog(
+                    onDismissRequest = { pendingRevoke = null },
+                    title = { Text("删除配对记录") },
+                    text = { Text("确定删除客户端「${client.name}」的配对记录吗？删除后该客户端需要重新配对才能访问转发器。") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            globalStateManager.logicManager.revokePairedClient(client.fingerprint)
+                            pendingRevoke = null
+                        }) {
+                            Text("删除", color = Color.Red)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pendingRevoke = null }) {
+                            Text("取消")
+                        }
+                    }
+                )
             }
         }
 
