@@ -6,6 +6,9 @@ import net.bi4vmr.tool.java.common.base.io.FileIOUtil
 import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import java.io.File
 import java.io.IOException
 
@@ -228,6 +231,31 @@ object ADBCLIUtil {
         } catch (_: Exception) {
             return false
         }
+    }
+
+    /**
+     * 打开交互式 Shell 。
+     *
+     * @param[sn] 设备序列号。
+     * @param[terminal] 终端程序，可以传入 [Terminals] 内置枚举，也可以传入 [Terminal] 接口自定义实现。默认值为空，此时使用默认终端。
+     * @param[newWindow] 是否在新窗口中打开。默认值为是。部分终端程序不支持标签页，即使该参数设为否也会在新窗口中打开。
+     * @param[keep] 初始命令执行完毕是否保持窗口。默认值为是。
+     * @return 终端程序进程。
+     * @throws[IllegalStateException] 没有可用的终端程序。
+     */
+    @JvmStatic
+    fun openShell(
+        sn: String,
+        terminal: Terminal? = null,
+        newWindow: Boolean = true,
+        keep: Boolean = true
+    ): Process {
+        return TerminalUtil.launch(
+            command = "${getExecutableName()} -s '$sn' shell",
+            terminal = terminal,
+            newWindow = newWindow,
+            keep = keep
+        )
     }
 
     /**
@@ -529,9 +557,9 @@ object ADBCLIUtil {
 
         // 添加当前序列号并返回原命令内容
         return if (execOut) {
-            String.format("${getExecutableName()} -s %s exec-out %s", sn, trimmed)
+            String.format("${getExecutableName()} -s '%s' exec-out %s", sn, trimmed)
         } else {
-            String.format("${getExecutableName()} -s %s shell %s", sn, trimmed)
+            String.format("${getExecutableName()} -s '%s' shell %s", sn, trimmed)
         }
     }
 

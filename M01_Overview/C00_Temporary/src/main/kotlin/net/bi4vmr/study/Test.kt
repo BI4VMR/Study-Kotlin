@@ -1,10 +1,6 @@
 package net.bi4vmr.study
 
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -13,6 +9,13 @@ fun main() {
     Uuid.generateV4().toHexString().uppercase().let {
         println(it)
     }
+
+    TerminalUtil.launch(
+        command = "echo \\\"Hello World\\!\\\"",
+        newWindow = false,
+        keep = true
+    )
+
     // embeddedServer(CIO, port = 8080) {
     //     routing {
     //         get("/") {

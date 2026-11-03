@@ -16,8 +16,16 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    /* 工程组件 */
+    // 本地调试
+    api(project(":lib_gui:interaction"))
+
+    // 依赖传递
+    // api(privateLibKotlin.gui.interaction)
+
+
     /* 私有组件 */
-    api(privateLibJava.common.base)
+    implementation(privateLibJava.common.base)
 
 
     /* 测试组件 */

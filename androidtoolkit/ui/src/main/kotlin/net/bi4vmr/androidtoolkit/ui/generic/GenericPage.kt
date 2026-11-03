@@ -25,6 +25,7 @@ import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 
 @Composable
@@ -68,11 +69,14 @@ private fun DevicePanel(
         InfoRow("Android版本", "-")
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (device is RemoteDevice) {
-                OutlinedButton(onClick = {
+            OutlinedButton(onClick = {
+                if (device is RemoteDevice) {
                     globalStateManager.logicManager.selectedExecutorFlow.value.openShell(device.getSN())
-                }, enabled = enabled) { Text("打开 Shell") }
-            }
+                } else if (device is LocalDevice) {
+                    device.openShell()
+                }
+            }, enabled = enabled) { Text("打开 Shell") }
+
 
             // Button(onClick = { /* TODO 重启 */ }, enabled = enabled) { Text("重启") }
             // Button(onClick = { /* TODO 截图 */ }, enabled = enabled) { Text("截图") }
