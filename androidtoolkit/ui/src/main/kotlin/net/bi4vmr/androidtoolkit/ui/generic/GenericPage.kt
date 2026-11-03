@@ -1,18 +1,7 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -73,7 +62,7 @@ private fun DevicePanel(
                 if (device is RemoteDevice) {
                     globalStateManager.logicManager.selectedExecutorFlow.value.openShell(device.getSN())
                 } else if (device is LocalDevice) {
-                    device.openShell()
+                    device.openShell(newWindow = false)
                 }
             }, enabled = enabled) { Text("打开 Shell") }
 

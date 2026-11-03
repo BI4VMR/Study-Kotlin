@@ -1,6 +1,7 @@
 package net.bi4vmr.study
 
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -11,7 +12,8 @@ fun main() {
     }
 
     TerminalUtil.launch(
-        command = "echo \\\"Hello World\\!\\\"",
+        terminal = Terminals.CMD,
+        command = "ps",
         newWindow = false,
         keep = true
     )

@@ -1,7 +1,11 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package net.bi4vmr.tool.kotlin.gui.interaction.terminal
 
 import net.bi4vmr.tool.java.common.base.system.OSType
 import net.bi4vmr.tool.java.common.base.system.SystemUtil
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * 知名终端程序。
@@ -111,7 +115,7 @@ enum class Terminals : Terminal {
                 .append(executableName)
                 .append(" ")
                 .apply {
-                    // 本软件没有标签功能，忽略该参数。
+                    // 本软件没有标签功能，忽略 `newWindow` 参数。
 
                     /*
                      * 如果未指定初始命令，则使用空命令 `:` 。
@@ -152,6 +156,7 @@ enum class Terminals : Terminal {
 
         override fun onLaunch(command: String?, newWindow: Boolean, keep: Boolean): String {
             val cmd = StringBuilder()
+            // TODO 暂未实现
             return cmd.toString()
         }
     },
@@ -166,7 +171,83 @@ enum class Terminals : Terminal {
         override val preferOS: OSType = OSType.WINDOWS
 
         override fun onLaunch(command: String?, newWindow: Boolean, keep: Boolean): String {
-            TODO("Not yet implemented")
+            val cmd = StringBuilder()
+                .append(executableName)
+                .apply {
+                    // `-w <窗口名称>` 表示在指定窗口打开，使用随机 ID 确保每次执行都创建新窗口。 `-w 0` 表示复用最近使用的窗口。
+                    if (newWindow) append(" -w ${Uuid.generateV4()}") else append(" -w 0")
+
+                    if (command != null) {
+                        // Windows Terminal 无法直接执行命令，此处使用 `cmd` 桥接执行目标命令。
+                        if (keep) append(" cmd /k $command") else append(" cmd /c $command")
+                    }
+                }
+
+            return cmd.toString()
+        }
+    },
+
+    /**
+     * Windows PowerShell.
+     */
+    POWER_SHELL {
+
+        override val executableName: String = "powershell"
+
+        override val preferOS: OSType = OSType.WINDOWS
+
+        override fun onLaunch(command: String?, newWindow: Boolean, keep: Boolean): String {
+            val cmd = StringBuilder()
+                /*
+                 * 在 Windows 10 及以上版本，若安装了 Windows Terminal 再执行 `powershell` 命令，会启动 Windows Terminal ，指明
+                 * `conhost` 则会启动传统控制台窗口。
+                 */
+                .append("conhost")
+                .append(" ")
+                .append(executableName)
+                .apply {
+                    // 本软件没有标签功能，忽略 `newWindow` 参数。
+
+                    if (keep) append(" -NoExit")
+
+                    if (command != null) {
+                        append(" -Command $command")
+                    }
+                }
+
+            return cmd.toString()
+        }
+    },
+
+    /**
+     * Windows 命令提示符。
+     */
+    CMD {
+
+        override val executableName: String = "cmd"
+
+        override val preferOS: OSType = OSType.WINDOWS
+
+        override fun onLaunch(command: String?, newWindow: Boolean, keep: Boolean): String {
+            val cmd = StringBuilder()
+                /*
+                 * 在 Windows 10 及以上版本，若安装了 Windows Terminal 再执行 `cmd` 命令，会启动 Windows Terminal ，指明 `conhost`
+                 * 则会启动传统控制台窗口。
+                 */
+                .append("conhost")
+                .append(" ")
+                .append(executableName)
+                .apply {
+                    // 本软件没有标签功能，忽略 `newWindow` 参数。
+
+                    if (command != null) {
+                        append(" ")
+                        // `/c` 表示命令执行完毕后终端自动关闭； `/k` 表示窗口保持打开。
+                        if (keep) append("/k $command") else append("/c $command")
+                    }
+                }
+
+            return cmd.toString()
         }
     };
 }

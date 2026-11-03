@@ -187,8 +187,6 @@ object ADBCLIUtil {
             }
 
             val process = CLIUtil.run(cmd, false)
-            // 进程启动失败应当抛出异常，正常情况下不会执行至此处。
-            requireNotNull(process) { "Unreachable code." }
             // 丢弃错误输出，防止阻塞其他线程。
             BaseIOUtil.readAndDrop(process.errorStream)
             return BaseIOUtil.readAsBytes(
@@ -223,8 +221,6 @@ object ADBCLIUtil {
             }
 
             val process = CLIUtil.run(cmd, false)
-            // 进程启动失败应当抛出异常，正常情况下不会执行至此处。
-            requireNotNull(process) { "Unreachable code." }
             // 丢弃错误输出，防止阻塞其他线程。
             BaseIOUtil.readAndDrop(process.errorStream)
             return FileIOUtil.saveToFile(process.inputStream, file, IOUtil.BUFFER_SIZE_8MB)
@@ -251,8 +247,8 @@ object ADBCLIUtil {
         keep: Boolean = true
     ): Process {
         return TerminalUtil.launch(
-            command = "${getExecutableName()} -s '$sn' shell",
             terminal = terminal,
+            command = "${getExecutableName()} -s $sn shell",
             newWindow = newWindow,
             keep = keep
         )
@@ -557,9 +553,9 @@ object ADBCLIUtil {
 
         // 添加当前序列号并返回原命令内容
         return if (execOut) {
-            String.format("${getExecutableName()} -s '%s' exec-out %s", sn, trimmed)
+            String.format("${getExecutableName()} -s %s exec-out %s", sn, trimmed)
         } else {
-            String.format("${getExecutableName()} -s '%s' shell %s", sn, trimmed)
+            String.format("${getExecutableName()} -s %s shell %s", sn, trimmed)
         }
     }
 

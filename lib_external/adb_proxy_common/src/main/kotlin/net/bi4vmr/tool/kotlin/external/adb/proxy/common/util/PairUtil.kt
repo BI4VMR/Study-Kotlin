@@ -33,10 +33,11 @@ object PairUtil {
      * 计算证书指纹。
      *
      * @param[cert] 证书。
-     * @return SHA-256 摘要的十六进制小写字符串。
+     * @return SHA-256 消息摘要。
      */
     fun calculateCertFingerprint(cert: Certificate): String =
-        MessageDigestUtil.getSHA256(cert.encoded)
+        // 自签名证书信息没有实际意义，此处仅使用公钥部分作为身份标识即可。
+        MessageDigestUtil.getSHA256(cert.publicKey.encoded)
 
     /**
      * 计算承诺值。
