@@ -33,11 +33,6 @@ class PairSession(
     val createdTime: Long = System.nanoTime()
 
     /**
-     * 客户端 ID 。
-     */
-    var clientID: String = ""
-
-    /**
      * 客户端名称。
      */
     var clientName: String = ""

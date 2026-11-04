@@ -6,22 +6,27 @@ import androidx.compose.ui.unit.sp
 object Dimens {
 
     object Layout {
-        // 布局边距
-        val Padding = 12.dp
 
-        val DialogPadding = 28.dp
+        // 通用布局边距
+        val Padding = 12.dp
 
         // 图标与文字之间的间距
         val Space = 8.dp
 
         // 卡片圆角
         val CardCorner = 12.dp
+
+        // 弹窗内容边距
+        val DialogPadding = 14.dp
+
+        // 弹窗圆角
+        val DialogCorner = 8.dp
     }
 
     object Text {
-        val Title = 18.sp
 
-        val DialogTitle = 20.sp
+        // 通用标题
+        val Title = 18.sp
 
         val Normal = 16.sp
 
@@ -31,6 +36,9 @@ object Dimens {
 
         // 行高系列，桌面平台需要显式指定比字体大2号的行高才能实现垂直居中，原因不明。
         val Normal_LH = 18.sp
+
+        // 窗口标题
+        val DialogTitle = 18.sp
     }
 
     object Icon {

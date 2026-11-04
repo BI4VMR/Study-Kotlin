@@ -3,6 +3,7 @@ package net.bi4vmr.androidtoolkit.app
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import net.bi4vmr.androidtoolkit.ui.App
+import net.bi4vmr.androidtoolkit.ui.theme.DefaultTheme
 
 /**
  * 应用程序入口。
@@ -16,6 +17,8 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "Android Toolkit"
     ) {
-        App()
+        DefaultTheme {
+            App()
+        }
     }
 }

@@ -15,10 +15,10 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.netty.handler.ssl.SslHandler
 import kotlinx.coroutines.CancellationException
-import net.bi4vmr.tool.java.security.digest.MessageDigestUtil
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.util.PairUtil
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.service.ADBPairService
 import org.slf4j.LoggerFactory
@@ -38,7 +38,8 @@ class ADBPairModule : ADBProxyModule {
             APIs.PAIR_COMMIT,
             APIs.PAIR_REVEAL,
             APIs.PAIR_ASK,
-            APIs.PAIR_CANCEL
+            APIs.PAIR_CANCEL,
+            APIs.PAIR_INFO
         )
     }
 
@@ -72,7 +73,7 @@ class ADBPairModule : ADBProxyModule {
             }
 
             /* 检查证书是否已存在配对记录 */
-            val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
+            val fingerprint = PairUtil.calculateCertFingerprint(clientCert)
             // TODO
             println("onInterceptCall -> [$fingerprint]")
             val knowns = server.getRunningConfig()?.pairedPeerStore!!
@@ -91,7 +92,7 @@ class ADBPairModule : ADBProxyModule {
                     return@post
                 }
 
-                val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
+                val fingerprint = PairUtil.calculateCertFingerprint(clientCert)
                 val body: PairCommitRequest = try {
                     call.receive()
                 } catch (_: Exception) {
@@ -115,7 +116,7 @@ class ADBPairModule : ADBProxyModule {
                     return@post
                 }
 
-                val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
+                val fingerprint = PairUtil.calculateCertFingerprint(clientCert)
                 val body: PairRevealRequest = try {
                     call.receive()
                 } catch (_: Exception) {
@@ -139,7 +140,7 @@ class ADBPairModule : ADBProxyModule {
                     return@post
                 }
 
-                val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
+                val fingerprint = PairUtil.calculateCertFingerprint(clientCert)
                 val result = try {
                     // 挂起，直至服务端用户确认/拒绝、客户端取消或会话超时。
                     service.onAsk(fingerprint)
@@ -167,10 +168,26 @@ class ADBPairModule : ADBProxyModule {
                     return@post
                 }
 
-                val fingerprint = MessageDigestUtil.getSHA256(clientCert.encoded)
+                val fingerprint = PairUtil.calculateCertFingerprint(clientCert)
                 service.onCancel(fingerprint)
 
                 call.respond(HttpStatusCode.OK)
+            }
+
+            post(APIs.PAIR_INFO) {
+                val clientCert = call.getClientCertificate()
+                if (clientCert == null) {
+                    call.respondText("Client certificate is required!", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val fingerprint = PairUtil.calculateCertFingerprint(clientCert)
+                val paired = service.onFetchInfo(fingerprint)
+                if (paired) {
+                    call.respond(HttpStatusCode.OK)
+                } else {
+                    call.respond(HttpStatusCode.Unauthorized)
+                }
             }
         }
     }
@@ -192,6 +209,7 @@ class ADBPairModule : ADBProxyModule {
      * intercept(ApplicationCallPipeline.Plugins) {
      *     val clientCert = call.getClientCertificate()
      * }
+     * ```
      *
      * @return 客户端证书，如果客户端未配置证书则返回空值。
      */
@@ -218,6 +236,7 @@ class ADBPairModule : ADBProxyModule {
      *         val clientCert = call.getClientCertificate()
      *     }
      * }
+     * ```
      *
      * @return 客户端证书，如果客户端未配置证书则返回空值。
      */

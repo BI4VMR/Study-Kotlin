@@ -23,6 +23,7 @@ fun SettingPage(globalStateManager: GlobalStateManager) {
             .padding(Dimens.Layout.Padding)
             .verticalScroll(rememberScrollState())
     ) {
+        CommonConfig(globalStateManager)
         ADBLocalConfig(globalStateManager)
         ADBProxyConfig(globalStateManager)
     }

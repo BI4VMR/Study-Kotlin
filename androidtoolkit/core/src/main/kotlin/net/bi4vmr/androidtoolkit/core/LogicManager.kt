@@ -2,20 +2,31 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import io.ktor.network.tls.certificates.generateCertificate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.core.mcp.McpService
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteExecutorDAO
 import net.bi4vmr.androidtoolkit.data.sql.model.RemoteExecutorRecord
-import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -26,11 +37,13 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestLis
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PeerType
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.ConnectException
 
@@ -41,6 +54,11 @@ import java.net.ConnectException
  * @since 1.0.0
  */
 object LogicManager {
+
+    /**
+     * 日志工具。
+     */
+    private val logger = LoggerFactory.getLogger(LogicManager::class.java)
 
     /**
      * 任务作用域。
@@ -228,6 +246,8 @@ object LogicManager {
 
     /* ----- 配置项 ----- */
 
+    val nodeNameFlow: Flow<String> = configManager.nodeNameFlow
+
     val adbExecFileModeFlow: Flow<ADBExecFileMode> = configManager.adbExecFileModeFlow
 
     val proxyStartOnInitFlow: Flow<Boolean> = configManager.proxyStartOnInitFlow
@@ -329,68 +349,44 @@ object LogicManager {
         secure: Boolean = true,
         onPairingCode: (String) -> Unit = {}
     ) {
-        /* 读取该服务端已保存的配对信息：host:port|fingerprint|token */
-        // val serverKey = "$host:$port"
-        // val saved = configManager.getPairedServers()
-        //     .map { it.split("|", limit = 3) }
-        //     .firstOrNull { it.size == 3 && it[0] == serverKey }
+        if (secure) {
+            /* 检测配对状态 */
+            val pairClient = ADBPairClient(host, port, cSSLConf)
+            val pairState = pairClient.fetchPairInfo()
 
-        // ADBProxyClient(host,port)
-        //     .apply {
-        //         setSecure(true)
-        //         setSSLConfig(cSSLConf)
-        //         init()
-        //         delay(1.seconds)
-        //     }
-        //     .getServerInfo()
-        //     .let {
-        //         println(it)
-        //     }
-        // return
-        val pairClient = ADBPairClient(host, port, cSSLConf)
-
-        try {
-            // TODO 版本验证
-            // val serverVersion = pairClient.getServerVersion()
-            // if (serverVersion != Constant.PROTOCOL_VERSION) {
-            //     throw IllegalStateException("Server version is [$serverVersion], mismatch with [${Constant.PROTOCOL_VERSION}].")
-            // }
-
-            if (secure) {
-                // TODO 服务端提供配对状态查询后，先通过 `isPaired()` 判断，避免重复配对。
-                // 加密连接需要配对：申请配对并等待服务端用户核对配对码后批准。
+            /* 未配对，先执行配对流程。 */
+            if (pairState == PairState.NOT_PAIRED) {
+                pairClient.nodeName = configManager.getNodeName()
                 pairClient.pair(onPairingCode)
             }
 
-            // TODO 配对成功后使用 `ADBProxyClient` 建立连接，并注册到执行器列表。
-
-            connectRemoteExecutor(host, port)
-
-            // 连接建立后持久化，下次启动时自动加载。
-            remoteExecutorDAO.save(
-                RemoteExecutorRecord(
-                    host = host,
-                    port = port,
-                    secure = secure,
-                    addedTimestamp = System.currentTimeMillis()
-                )
-            )
-
-            // 5 秒内未返回就绪，认为连接失败。
-            // val ok = withTimeoutOrNull(5.seconds) {
-            //     client.serviceStateFlow.first { it == ServiceState.READY }
-            // } != null
-            //
-            // if (ok) {
-            //     _executorsFlow.update { it + RemoteExecutor(host, port, client) }
-            // } else {
-            //     client.release()
-            //     throw ConnectException("Failed to connect with remote executor [$host:$port].")
-            // }
-        } finally {
-            // 配对客户端仅供配对使用，配对结束（成功、失败或取消）后立即释放。
             pairClient.release()
         }
+
+        val client = ADBProxyClient(host, port)
+            .apply {
+                setSecure(secure)
+                setSSLConfig(cSSLConf)
+                init()
+            }
+
+        // 版本验证
+        val serverInfo = client.getServerInfo()
+        if (serverInfo.version != Constants.PROTOCOL_VERSION) {
+            throw IllegalStateException("Server version is [${serverInfo.version}], mismatch with [${Constants.PROTOCOL_VERSION}]!")
+        }
+
+        connectRemoteExecutor(host, port)
+
+        // 连接建立后持久化，下次启动时自动加载。
+        remoteExecutorDAO.save(
+            RemoteExecutorRecord(
+                host = host,
+                port = port,
+                secure = secure,
+                addedTimestamp = System.currentTimeMillis()
+            )
+        )
     }
 
     /**
@@ -489,6 +485,12 @@ object LogicManager {
 
 
     /* ----- 配置项 ----- */
+
+    fun setNodeName(name: String) {
+        taskScope.launch {
+            configManager.setNodeName(name)
+        }
+    }
 
     fun setADBExecMode(mode: ADBExecFileMode) {
         taskScope.launch {

@@ -13,6 +13,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
@@ -25,6 +26,7 @@ import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairState
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
@@ -111,6 +113,14 @@ class ADBPairClient(
         install(WebSockets)
     }
 
+    /**
+     * 节点名称。
+     *
+     * 配对过程中该名称将传递给服务端，以便其识别客户端身份。
+     */
+    @Volatile
+    var nodeName: String = "NO NAME"
+
 
     /* ----- 服务状态 ----- */
 
@@ -170,7 +180,7 @@ class ADBPairClient(
          */
         val revealCallResponse = client.post(buildURL(APIs.PAIR_REVEAL)) {
             contentType(ContentType.Application.Json)
-            setBody(PairRevealRequest("TODO", "TODO", clientNonce))
+            setBody(PairRevealRequest(nodeName, clientNonce))
         }
 
         check(revealCallResponse.status.isSuccess()) {
@@ -207,6 +217,20 @@ class ADBPairClient(
         val askResponse = askCallResponse.call.response.bodyAsText()
         val pairResult = PairResult.fromCode(askResponse)
         println("pair end. pairResult -> $pairResult")
+    }
+
+    /**
+     * 客户端配对信息查询。
+     *
+     * @return 配对状态。
+     */
+    suspend fun fetchPairInfo(): PairState {
+        val call = client.post(buildURL(APIs.PAIR_INFO))
+        return when (call.status) {
+            HttpStatusCode.OK -> PairState.PAIRED
+            HttpStatusCode.Unauthorized -> PairState.NOT_PAIRED
+            else -> PairState.NOT_NEEDED
+        }
     }
 
     private fun buildURL(path: String): Url =

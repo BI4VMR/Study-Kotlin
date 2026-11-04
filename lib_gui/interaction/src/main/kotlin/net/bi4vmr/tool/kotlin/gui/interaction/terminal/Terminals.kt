@@ -155,9 +155,8 @@ enum class Terminals : Terminal {
         override val preferOS: OSType = OSType.MACOS
 
         override fun onLaunch(command: String?, newWindow: Boolean, keep: Boolean): String {
-            val cmd = StringBuilder()
             // TODO 暂未实现
-            return cmd.toString()
+            throw NotImplementedError("MacOS Terminal is not implemented yet.")
         }
     },
 

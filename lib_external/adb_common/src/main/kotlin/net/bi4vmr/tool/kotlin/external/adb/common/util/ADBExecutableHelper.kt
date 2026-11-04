@@ -1,9 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
-import net.bi4vmr.tool.java.common.base.TextUtil
+import net.bi4vmr.tool.java.common.base.general.TextUtil
 import net.bi4vmr.tool.java.common.base.system.OSType
 import net.bi4vmr.tool.java.common.base.system.SystemUtil
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.setExecutableFile
 import java.io.File
 
 /**

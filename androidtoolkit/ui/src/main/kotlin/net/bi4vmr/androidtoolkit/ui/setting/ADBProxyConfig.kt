@@ -115,7 +115,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                 pairedClients.forEach { client ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1F)) {
-                            Text("${client.name}（${client.id}）", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("${client.name} ->", maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
                                 "指纹：${client.fingerprint}",
                                 style = MaterialTheme.typography.bodySmall,

@@ -1,10 +1,9 @@
 package net.bi4vmr.tool.kotlin.gui.interaction.terminal
 
-import net.bi4vmr.tool.java.common.base.CLIUtil
-import net.bi4vmr.tool.java.common.base.system.OSType
+import net.bi4vmr.tool.java.common.base.file.FileUtil
+import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.java.common.base.system.SystemUtil
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.io.IOException
 
 /**
@@ -64,10 +63,9 @@ object TerminalUtil {
         logger.debug("Launch terminal. CMD:[{}]", cmd)
         val cmdArray = CLIUtil.parseCommand(cmd)
 
-        // TODO 应当移植 fileutil
-        val nullFile = File(if (SystemUtil.getOSType() == OSType.WINDOWS) "NUL" else "/dev/null")
+        val nullFile = FileUtil.getNullFile()
         return ProcessBuilder(*cmdArray)
-            // 部分终端（例如： `conhost` ）窗口被关闭时会因管道残留数据而阻塞，导致窗口未响应，此处统一将进程输出流重定向至空设备。
+            // 部分终端（例如： `conhost` ）窗口被关闭时会因管道残留数据而阻塞，导致窗口无响应，此处统一将进程输出流重定向至空设备。
             .redirectOutput(nullFile)
             .redirectError(nullFile)
             .start()

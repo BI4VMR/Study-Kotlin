@@ -47,7 +47,7 @@ class ADBPairService(
     /**
      * 已知对等体信息存储。
      */
-    val pairedPeerStore: PairedPeerStore?,
+    val pairedPeerStore: PairedPeerStore,
 
     /**
      * 配对请求监听器。
@@ -144,8 +144,7 @@ class ADBPairService(
         val code = PairUtil.calculatePairCode(cFingerprint, sFingerprint, body.clientNonce, session.serverNonce)
         session.sasCode = code
 
-        session.clientID = body.id
-        session.clientName = body.name
+        session.clientName = body.clientName
 
         return PairRevealResponse(session.serverNonce)
     }
@@ -190,14 +189,13 @@ class ADBPairService(
         /* 配对通过后存储凭据 */
         if (result == PairResult.APPROVED) {
             val peer = PairedPeer(
-                id = session.clientID,
-                name = session.clientName,
                 fingerprint = cFingerprint,
+                name = session.clientName,
                 pairedTimestamp = System.currentTimeMillis(),
                 type = PeerType.CLIENT
             )
 
-            pairedPeerStore?.onSave(peer)
+            pairedPeerStore.onSave(peer)
         }
 
         return result
@@ -211,5 +209,16 @@ class ADBPairService(
 
         // 移除该客户端的配对记录，若记录存在则同时将其标记为取消。
         pairSessions.remove(cFingerprint)?.cancel()
+    }
+
+    /**
+     * 客户端配对信息查询。
+     */
+    fun onFetchInfo(cFingerprint: String): Boolean {
+        logger.info("OnFetchInfo. CFP:[$cFingerprint]")
+        return pairedPeerStore
+            .onList()
+            .filter { it.type == PeerType.CLIENT }
+            .any { it.fingerprint == cFingerprint }
     }
 }

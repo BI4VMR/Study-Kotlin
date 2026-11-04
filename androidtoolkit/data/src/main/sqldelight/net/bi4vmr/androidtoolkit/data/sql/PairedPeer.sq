@@ -1,7 +1,6 @@
 -- 已配对的对端（服务端批准的客户端，或客户端信任的服务端）。
 CREATE TABLE paired_peer (
     fingerprint TEXT NOT NULL PRIMARY KEY,
-    id TEXT NOT NULL,
     name TEXT NOT NULL,
     paired_timestamp INTEGER NOT NULL,
     type TEXT NOT NULL
@@ -26,8 +25,8 @@ FROM paired_peer
 WHERE fingerprint = ?;
 
 upsert:
-INSERT OR REPLACE INTO paired_peer(fingerprint, id, name, paired_timestamp, type)
-VALUES (?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO paired_peer(fingerprint, name, paired_timestamp, type)
+VALUES (?, ?, ?, ?);
 
 deleteByFingerprint:
 DELETE FROM paired_peer

@@ -11,19 +11,16 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PeerType
 data class PairedPeer(
 
     /**
-     * ID 。
-     */
-    val id: String,
-
-    /**
-     * 名称。
-     */
-    val name: String,
-
-    /**
      * 证书指纹。
+     *
+     * 唯一性标识，不同证书指纹应当不同。
      */
     val fingerprint: String,
+
+    /**
+     * 显示名称。
+     */
+    val name: String,
 
     /**
      * 配对时间戳。

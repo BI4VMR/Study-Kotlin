@@ -17,11 +17,11 @@ tasks.withType<Test> {
 
 dependencies {
     /* 私有组件 */
-    api(privateLibJava.common.base)
+    implementation(privateLibJava.common.base)
 
 
     /* 外部组件 */
-    api(libJava.slf4j.api)
+    implementation(libJava.slf4j.api)
 
 
     /* 测试组件 */

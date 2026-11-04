@@ -124,4 +124,15 @@ object APIs {
      * 请求方式为 HTTP POST ，无请求参数、无返回值。
      */
     const val PAIR_CANCEL: String = "/pair/cancel"
+
+    /**
+     * 客户端配对信息查询。
+     *
+     * 请求方式为 HTTP POST ，无请求参数、无返回值。
+     *
+     * - `404` 表示服务端未开启认证，客户端可以直接访问业务接口。
+     * - `401` 表示服务端已开启认证且当前客户端未配对，客户端应当发起配对请求。
+     * - `200` 表示服务端已开启认证且当前客户端已配对。
+     */
+    const val PAIR_INFO: String = "/pair/info"
 }

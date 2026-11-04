@@ -10,26 +10,49 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import org.slf4j.LoggerFactory
 import java.io.File
+import java.net.InetAddress
 import java.util.UUID
 
+
 /**
- * 系统配置管理器。
+ * 配置管理。
  *
- * 基于 DataStore Preferences 持久化系统配置。同一个文件只能创建一个实例。
+ * 基于 AndroidX DataStore 存储键值对配置项。
  *
- * @param file 配置文件，扩展名必须为 "preferences_pb"。
+ * @param[file] 配置文件。扩展名应为 `preferences_pb` 。
+ * @param[taskScope] 任务作用域。
  */
 class ConfigManager(
+
+    /**
+     * 配置文件。
+     */
     file: File,
-    scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * 任务作用域。
+     */
+    taskScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
 
-    private val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(scope = scope) {
-        file.parentFile?.mkdirs()
+    /**
+     * 日志工具。
+     */
+    private val logger = LoggerFactory.getLogger(ConfigManager::class.java)
+
+    private val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(scope = taskScope) {
         file
     }
+
+
+    val nodeNameFlow: Flow<String> =
+        dataStore.data.map {
+            it[Configs.Key.COMMON_NODE_NAME] ?: ""
+        }
 
     val adbExecFileModeFlow: Flow<ADBExecFileMode> =
         dataStore.data.map {
@@ -68,6 +91,29 @@ class ConfigManager(
             it[Configs.Key.PROXY_TRUST_ALL] ?: Configs.Value.PROXY_TRUST_ALL_DEFAULT
         }
 
+
+    init {
+        taskScope.launch {
+            // 如果节点名称为空，则使用主机名。
+            if (getNodeName().isEmpty()) {
+                try {
+                    val hostname = InetAddress.getLocalHost().hostName
+                    setNodeName(hostname)
+                } catch (e: Exception) {
+                    logger.warn("Get hostname failed! Reason:[${e.message}]")
+                    setNodeName(Configs.Value.COMMON_NODE_NAME)
+                }
+            }
+        }
+    }
+
+
+    suspend fun getNodeName(): String =
+        nodeNameFlow.first()
+
+    suspend fun setNodeName(name: String) {
+        dataStore.edit { it[Configs.Key.COMMON_NODE_NAME] = name }
+    }
 
     suspend fun getADBExecFileMode(): ADBExecFileMode =
         adbExecFileModeFlow.first()

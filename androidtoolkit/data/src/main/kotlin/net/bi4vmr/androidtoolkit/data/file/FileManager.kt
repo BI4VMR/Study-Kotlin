@@ -1,6 +1,6 @@
 package net.bi4vmr.androidtoolkit.data.file
 
-import net.bi4vmr.tool.java.common.base.FileUtil
+import net.bi4vmr.tool.java.common.base.file.FileUtil
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path

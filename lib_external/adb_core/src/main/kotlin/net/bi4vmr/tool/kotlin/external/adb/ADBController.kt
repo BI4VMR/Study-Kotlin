@@ -3,8 +3,7 @@ package net.bi4vmr.tool.kotlin.external.adb
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener
 import com.android.ddmlib.IDevice
-import net.bi4vmr.tool.java.common.base.CLIUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBController.init
+import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState

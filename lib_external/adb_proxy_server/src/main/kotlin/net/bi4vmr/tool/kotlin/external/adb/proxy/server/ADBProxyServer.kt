@@ -174,6 +174,9 @@ class ADBProxyServer(
                 ADBController.init()
             }
 
+            val pairedPeerStore = this.pairedPeerStore
+            requireNotNull(pairedPeerStore) { "Paired peer store is required!" }
+
             // 复制关键配置
             val conf = RunningConfig(
                 id,

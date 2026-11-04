@@ -44,7 +44,7 @@ data class RunningConfig(
     /**
      * 配对模块：已知对等体信息存储。
      */
-    val pairedPeerStore: PairedPeerStore?,
+    val pairedPeerStore: PairedPeerStore,
 
     /**
      * 配对模块：配对请求监听器。

@@ -1,6 +1,5 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common.security
 
-import net.bi4vmr.tool.java.common.base.FileUtil
 import java.io.File
 import java.security.KeyStore
 import java.security.cert.Certificate
@@ -13,7 +12,7 @@ import java.security.cert.Certificate
  */
 data class SSLConfig(
 
-    val keyStoreFile: File = FileUtil.FILE_INVALID,
+    val keyStoreFile: File,
 
     val keyStorePassword: String = "",
 

@@ -16,6 +16,9 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 object Configs {
 
     object Key {
+
+        val COMMON_NODE_NAME = stringPreferencesKey("common_node_name")
+
         val ADB_EXEC_MODE = intPreferencesKey("adb_exec_mode")
 
         val ADB_EXEC_PATH_USER = stringPreferencesKey("adb_exec_path_user")
@@ -40,6 +43,9 @@ object Configs {
     }
 
     object Value {
+
+        const val COMMON_NODE_NAME: String = "AndroidToolkit"
+
         val ADB_EXEC_MODE_DEFAULT: Int = ADBExecFileMode.INTERNAL.code
 
         const val PROXY_START_ON_INIT_DEFAULT: Boolean = true
