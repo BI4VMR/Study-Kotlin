@@ -5,6 +5,19 @@
     <string name="button_confirm">确认</string>
     <string name="button_cancel">取消</string>
     <string name="button_save">保存</string>
+    <string name="button_connect">连接</string>
+
+    <string name="label_host">地址：</string>
+    <string name="label_port">端口：</string>
+
+    <string name="error_host_blank">地址不能为空！</string>
+    <string name="error_port_not_a_number">端口必须为数字！</string>
+    <string name="error_port_out_of_range">端口应当在 [0, 65535] 之间！</string>
+
+
+    <!-- 通用 -->
+    <string name="generic_adddevicedialog_title">添加远程设备</string>
+
 
     <!-- 设置 -->
     <string name="setting_common">通用</string>

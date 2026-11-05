@@ -1,22 +1,18 @@
 package net.bi4vmr.androidtoolkit.ui.component
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
-import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.*
+import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 窗口：添加远程 ADB 设备。
@@ -29,39 +25,113 @@ fun DeviceConnectDialog(
     Dialog(
         onDismissRequest = { onDismiss() },
     ) {
-        var host: String by remember { mutableStateOf("") }
-        var errorInfo: String? by remember { mutableStateOf(null) }
+        var hostInput: String by remember { mutableStateOf("") }
+        var hostInvalid: Boolean by remember { mutableStateOf(false) }
+        var portInput: String by remember { mutableStateOf(ADBController.PORT_DEVICE.toString()) }
+        var portInvalid: Boolean by remember { mutableStateOf(false) }
+
+        var errorRes: StringResource? by remember { mutableStateOf(null) }
+        var errorText: String by remember { mutableStateOf("") }
+
+        /*
+         * 设置错误信息。
+         *
+         * Compose 资源无法在按钮回调中同步获取，因此需要通过该方法设置资源 ID ，获取时优先采用资源文本，若为空值再取字符文本。
+         */
+        fun setErrorHint(res: StringResource? = null, text: String = "") {
+            errorRes = res
+            errorText = text
+        }
 
         Surface(
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.padding(16.dp)
+            shape = RoundedCornerShape(Dimens.Layout.DialogCorner)
         ) {
-            Column {
-                Text("连接 Android 设备")
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space),
+                modifier = Modifier.padding(Dimens.Layout.DialogPadding)
+            ) {
+                Text("添加远程设备")
 
-                Text("主机名或 IP 地址：")
-                OutlinedTextField(
-                    value = host,
-                    onValueChange = { host = it }
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("地址：")
+                    OutlinedTextField(
+                        value = hostInput,
+                        onValueChange = { hostInput = it },
+                        isError = hostInvalid,
+                        modifier = Modifier.weight(0.75F)
+                    )
 
-                if (errorInfo != null) {
-                    Text(errorInfo ?: "-")
+                    Text("端口：")
+                    OutlinedTextField(
+                        value = portInput,
+                        onValueChange = { portInput = it },
+                        isError = portInvalid,
+                        modifier = Modifier.weight(0.25F)
+                    )
                 }
 
-                Button(
-                    onClick = {
-                        runCatching { ADBController.connectRemoteDevice(host) }
-                            .onSuccess {
-                                // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
-                                onDismiss()
-                            }
-                            .onFailure {
-                                errorInfo = "连接失败：${it.message}"
-                            }
-                    }
+                // 错误提示
+                val errorHint = errorRes?.let { stringResource(it) } ?: errorText
+                if (errorHint.isNotBlank()) {
+                    Text(
+                        text = errorHint,
+                        textAlign = TextAlign.End,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("连接")
+                    Button(
+                        onClick = {
+                            if (hostInput.isBlank()) {
+                                hostInvalid = true
+                                setErrorHint(res = Res.string.error_host_blank)
+                                return@Button
+                            }
+
+                            /* 如果端口号为空，将其设为默认值。 */
+                            if (portInput.isBlank()) {
+                                portInput = ADBController.PORT_DEVICE.toString()
+                            }
+
+                            /* 检查端口号是否符合规则 */
+                            val portNum = portInput.toIntOrNull()
+                            if (portNum == null) {
+                                portInvalid = true
+                                setErrorHint(res = Res.string.error_port_not_a_number)
+                                return@Button
+                            } else if (portNum !in 1..65535) {
+                                portInvalid = true
+                                setErrorHint(res = Res.string.error_port_out_of_range)
+                                return@Button
+                            }
+
+                            /* 未因错误提前返回，则重置错误状态。 */
+                            errorRes = null
+                            errorText = ""
+                            hostInvalid = false
+                            portInvalid = false
+
+                            runCatching {
+                                ADBController.connectRemoteDevice(hostInput, portNum)
+                            }
+                                .onSuccess {
+                                    // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
+                                    onDismiss()
+
+                                    globalStateManager.toastManager.show("已连接")
+                                }
+                                .onFailure {
+                                    setErrorHint(text = "${it.message}")
+                                }
+                        }
+                    ) {
+                        Text("连接")
+                    }
                 }
             }
         }

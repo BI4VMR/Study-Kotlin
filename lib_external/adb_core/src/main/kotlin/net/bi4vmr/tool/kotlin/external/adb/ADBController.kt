@@ -4,10 +4,12 @@ import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener
 import com.android.ddmlib.IDevice
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.ADBController.init
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -24,6 +26,17 @@ import java.util.concurrent.TimeUnit
  * @since 1.0.0
  */
 object ADBController {
+
+    /**
+     * 端口：PC 端 ADB Server 进程默认端口。
+     */
+    const val PORT_SERVER: Int = 5037
+
+    /**
+     * 端口：设备端 ADBD 进程默认端口。
+     */
+    const val PORT_DEVICE: Int = 5555
+
 
     /**
      * 日志工具。
@@ -393,26 +406,8 @@ object ADBController {
         val cmd = "adb connect $ip:$port"
         val output = CLIUtil.runForText(cmd, true, StandardCharsets.UTF_8.name())
             ?: throw IllegalStateException("CLI execute failed! CMD:[$cmd]")
-        val text = output.trim().lowercase()
-
-        /*
-         * 该命令即使连接失败状态码也为成功，因此需要通过输出文本进行判断。
-         *
-         * 以下返回内容是连接成功的情况：
-         *
-         * `connected to <IP>:<端口>`：新连接的设备。
-         *
-         * `already connected to <IP>:<端口>`：设备已连接。
-         */
-        val failedKeywords = listOf(
-            "failed",
-            "refused",
-            "timeout",
-            "timed out",
-            "error"
-        )
-        if (failedKeywords.any { text.contains(it) }) {
-            throw IllegalStateException(text)
+        if (!ADBOutputParser.isDeviceConnected(output)) {
+            throw IllegalStateException(output.trim())
         }
     }
 

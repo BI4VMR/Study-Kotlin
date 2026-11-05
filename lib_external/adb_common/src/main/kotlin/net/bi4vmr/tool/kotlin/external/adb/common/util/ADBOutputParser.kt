@@ -12,6 +12,11 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
  */
 object ADBOutputParser {
 
+    /**
+     * 正则表达式：成功连接远程设备的命令输出语句。
+     */
+    private val deviceConnectedRegex = """^(?:already )?connected to .+?:\d+$""".toRegex()
+
     // 正则表达式：屏幕 ID （Android 11 及更高版本）。
     private val displayIDRegex_V11U = """Display id (\d+):""".toRegex()
 
@@ -24,6 +29,24 @@ object ADBOutputParser {
     // 正则表达式：屏幕分辨率。
     private val sizeRegex = """real (\d+) x (\d+)""".toRegex()
 
+
+    /**
+     * 判断是否成功连接远程设备。
+     *
+     * `adb connect` 命令不会返回错误状态，因此需要通过输出文本进行判断。
+     *
+     * 仅有以下两种输出表示连接成功：
+     *
+     * `connected to <IP>:<端口>`：新连接的设备。
+     *
+     * `already connected to <IP>:<端口>`：设备已连接。
+     *
+     * @param[input] 命令输出内容。
+     * @return `true` 表示连接成功，`false` 表示连接失败。
+     */
+    fun isDeviceConnected(input: String): Boolean {
+        return deviceConnectedRegex.containsMatchIn(input.trim().lowercase())
+    }
 
     /**
      * 提取屏幕信息（Android 11 及更高版本）。
