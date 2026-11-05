@@ -27,7 +27,6 @@ import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteExecutorDAO
 import net.bi4vmr.androidtoolkit.data.sql.model.RemoteExecutorRecord
-import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
@@ -288,7 +287,7 @@ object LogicManager {
                 }
             }
 
-            ADBController.init()
+            LocalExecutor.init()
 
             /* 设置 Scrcpy 服务端文件路径 */
             val serverFile = fileManager.getInternalScrcpyServerFile()
@@ -352,15 +351,17 @@ object LogicManager {
         if (secure) {
             /* 检测配对状态 */
             val pairClient = ADBPairClient(host, port, cSSLConf)
-            val pairState = pairClient.fetchPairInfo()
+            try {
+                val pairState = pairClient.fetchPairInfo()
 
-            /* 未配对，先执行配对流程。 */
-            if (pairState == PairState.NOT_PAIRED) {
-                pairClient.nodeName = configManager.getNodeName()
-                pairClient.pair(onPairingCode)
+                /* 未配对，先执行配对流程。 */
+                if (pairState == PairState.NOT_PAIRED) {
+                    pairClient.nodeName = configManager.getNodeName()
+                    pairClient.pair(onPairingCode)
+                }
+            } finally {
+                pairClient.release()
             }
-
-            pairClient.release()
         }
 
         val client = ADBProxyClient(host, port)
@@ -400,9 +401,9 @@ object LogicManager {
             .apply {
                 setSecure(true)
                 setSSLConfig(cSSLConf)
-                init()
             }
-        _executorsFlow.update { it + RemoteExecutor(host, port, client) }
+        val executor = RemoteExecutor(host, port, client).apply { init() }
+        _executorsFlow.update { it + executor }
     }
 
     /**

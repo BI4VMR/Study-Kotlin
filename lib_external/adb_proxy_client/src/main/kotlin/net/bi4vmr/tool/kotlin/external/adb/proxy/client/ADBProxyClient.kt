@@ -127,7 +127,7 @@ class ADBProxyClient(
      *
      * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
-    private val _serviceStateFlow: MutableStateFlow<ServiceState> = MutableStateFlow(ServiceState.IDLE)
+    private val _serviceStateFlow: MutableStateFlow<ServiceState> = MutableStateFlow(ServiceState.INIT)
 
     /**
      * Flow : 远程连接状态。
@@ -135,6 +135,16 @@ class ADBProxyClient(
      * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
     val serviceStateFlow: StateFlow<ServiceState> = _serviceStateFlow
+
+    /**
+     * Flow : 服务端错误。
+     */
+    private val _serviceErrorFlow: MutableStateFlow<Exception?> = MutableStateFlow(null)
+
+    /**
+     * Flow : 服务端错误。
+     */
+    val errorFlow: StateFlow<Exception?> = _serviceErrorFlow
 
     /**
      * Flow : 远程设备列表。
@@ -156,53 +166,47 @@ class ADBProxyClient(
      *
      * 本方法不会阻塞调用线程，连接状态可通过 [serviceStateFlow] 获取。
      */
+    @Synchronized
     fun init() {
+        if (!canStart()) {
+            logger.warn("This service is already running, ignored.")
+            return
+        }
+
+        /* 重置状态 */
+        _serviceErrorFlow.value = null
+        _serviceStateFlow.value = ServiceState.PREPARING
+
+        // 释放上次连接遗留的资源
+        taskScope.cancel()
+        client.close()
         client = createClient()
         taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
         connectWebSocket()
     }
 
-    private fun connectWebSocket() {
-        taskScope.launch {
-            _serviceStateFlow.value = ServiceState.PREPARING
-            try {
-                // Ktor 的 WebSocket 请求只能填写路径，不能携带 `wss://` 等前缀。
-                openWebSocket(APIs.ADB_EVENTS) {
-                    logger.info("Connect to [$host:$port] successfully.")
-                    _serviceStateFlow.value = ServiceState.READY
+    fun getServiceState(): ServiceState = serviceStateFlow.value
 
-                    // 循环处理接收到的事件帧
-                    for (frame in incoming) {
-                        // 目前控制通道仅用于发送设备列表，无需判断具体的消息类型。
-                        if (frame is Frame.Text) {
-                            _devicesFlow.value = jsonTool.decodeFromString(
-                                ListSerializer(RemoteDevice.serializer()),
-                                frame.readText()
-                            )
-                        }
-                    }
-                }
-            } catch (_: CancellationException) {
-                logger.info("Connect with [$host:$port] job has been cancelled.")
-            } catch (e: Exception) {
-                logger.warn("Failed to connect server [$host:$port]. Reason:[${e.message}]")
-            } finally {
-                // 遇到异常或事件循环结束表示连接已断开
-                _serviceStateFlow.value = ServiceState.IDLE
-            }
-        }
-    }
-
-    fun isServiceReady(): Boolean = (_serviceStateFlow.value == ServiceState.READY)
+    fun isServiceReady(): Boolean = (serviceStateFlow.value == ServiceState.READY)
 
     /**
      * 释放资源。
      *
-     * 本方法调用后客户端实例不再可用，若需重新连接，请创建新的实例。
+     * 调用后可再次调用 [init] 重新连接。
      */
-    fun release() {
+    @Synchronized
+    fun stop() {
+        if (!canStop()) {
+            logger.warn("This server is not running, ignored.")
+            return
+        }
+
         taskScope.cancel()
         client.close()
+
+        _serviceErrorFlow.value = null
+        _serviceStateFlow.value = ServiceState.INIT
     }
 
     fun getHost(): String = host
@@ -572,4 +576,43 @@ class ADBProxyClient(
             // install(HttpTimeout)
         }
     }
+
+    private fun connectWebSocket() {
+        // 进入该方法前，客户端状态已在 PREPARING 。
+        taskScope.launch {
+            try {
+                // Ktor 的 WebSocket 请求只能填写路径，不能携带 `wss://` 等前缀。
+                openWebSocket(APIs.ADB_EVENTS) {
+                    logger.info("Connect to [$host:$port] successfully.")
+                    _serviceStateFlow.value = ServiceState.READY
+
+                    // 循环处理接收到的事件帧
+                    for (frame in incoming) {
+                        // 目前控制通道仅用于发送设备列表，无需判断具体的消息类型。
+                        if (frame is Frame.Text) {
+                            _devicesFlow.value = jsonTool.decodeFromString(
+                                ListSerializer(RemoteDevice.serializer()),
+                                frame.readText()
+                            )
+                        }
+                    }
+                }
+            } catch (_: CancellationException) {
+                logger.info("Connect with [$host:$port] job has been cancelled.")
+                // 取消异常无需上报
+            } catch (e: Exception) {
+                logger.warn("Failed to connect server [$host:$port]. Reason:[${e.message}]")
+                _serviceErrorFlow.value = e
+            } finally {
+                // 遇到异常或事件循环结束表示连接已断开
+                _serviceStateFlow.value = ServiceState.INIT
+            }
+        }
+    }
+
+    // 是否可以启动服务端
+    private fun canStart(): Boolean = (getServiceState() == ServiceState.INIT)
+
+    // 是否可以终止服务端
+    private fun canStop(): Boolean = (getServiceState() != ServiceState.INIT)
 }

@@ -1,12 +1,6 @@
 package net.bi4vmr.androidtoolkit.core.model
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -25,31 +19,29 @@ class RemoteExecutor(
     val client: ADBProxyClient
 ) : ADBExecutor {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    private val devicesFlow: StateFlow<List<ADBDevice>> = client.devicesFlow
-        .stateIn(scope, SharingStarted.Eagerly, emptyList())
-
     override fun getType(): ExecutorType = ExecutorType.REMOTE
+
+    override fun init() {
+        client.init()
+    }
+
+    override fun release() {
+        client.stop()
+    }
 
     override fun getDisplayName(): String = "$host:$port"
 
-    override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = devicesFlow
+    override fun getStateFlow(): StateFlow<ServiceState> = client.serviceStateFlow
+
+    override fun getExceptionFlow(): StateFlow<Exception?> = client.errorFlow
+
+    override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = client.devicesFlow
 
     override suspend fun getDisplays(sn: String): List<DisplayInfo> = client.getDisplays(sn)
 
     override suspend fun runForText(sn: String, command: String): String? = client.runForText(sn, command)
 
-    override fun getStateFlow(): StateFlow<ServiceState> {
-        return client.serviceStateFlow
-    }
-
     override fun openShell(sn: String) {
         client.openShell(sn)
-    }
-
-    override fun release() {
-        scope.cancel()
-        client.release()
     }
 }

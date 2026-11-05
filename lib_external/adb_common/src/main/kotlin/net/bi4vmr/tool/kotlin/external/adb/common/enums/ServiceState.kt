@@ -1,7 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.enums
 
 /**
- * 服务状态。
+ * ADB 服务状态。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -9,9 +9,11 @@ package net.bi4vmr.tool.kotlin.external.adb.common.enums
 enum class ServiceState {
 
     /**
-     * 未就绪。
+     * 未启动。
+     *
+     * 未初始化或已停止。
      */
-    IDLE,
+    INIT,
 
     /**
      * 正在准备。
@@ -21,5 +23,10 @@ enum class ServiceState {
     /**
      * 服务已就绪。
      */
-    READY;
+    READY,
+
+    /**
+     * 出现错误。
+     */
+    ERROR;
 }

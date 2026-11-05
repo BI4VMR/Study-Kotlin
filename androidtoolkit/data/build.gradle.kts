@@ -7,7 +7,7 @@ dependencies {
     /* 私有组件 */
     api(project(":lib_external:adb_proxy_common"))
     // api(privateLibKotlin.external.adb.proxy.common)
-
+    implementation(privateLibJava.common.base)
 
     /* 外部组件 */
     implementation(libKotlin.ktx.coroutines.core)

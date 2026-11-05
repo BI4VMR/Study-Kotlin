@@ -18,10 +18,13 @@ interface ADBExecutor {
 
     fun getType(): ExecutorType
 
+    /**
+     * 初始化，可重复调用。用于首次连接，或初始化失败、连接断开后重试。
+     */
     fun init() {}
 
     /**
-     * 释放资源。
+     * 释放资源，可重复调用。释放后可再次调用 [init] 重新连接。
      */
     fun release() {}
 
@@ -31,6 +34,11 @@ interface ADBExecutor {
      * Flow : 执行器状态。
      */
     fun getStateFlow(): StateFlow<ServiceState>
+
+    /**
+     * Flow : 初始化错误信息。
+     */
+    fun getExceptionFlow(): StateFlow<Exception?>
 
     /**
      * Flow : 设备列表。

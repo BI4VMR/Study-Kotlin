@@ -18,4 +18,13 @@ interface ADBServiceListener {
     fun onStateChange(state: ServiceState) {
         // 默认不作任何操作
     }
+
+    /**
+     * 事件：服务初始化失败。
+     *
+     * @param[error] 异常信息。
+     */
+    fun onInitFail(error: Exception?) {
+        // 默认不作任何操作
+    }
 }

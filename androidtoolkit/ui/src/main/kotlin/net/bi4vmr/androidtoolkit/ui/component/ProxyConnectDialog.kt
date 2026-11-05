@@ -28,7 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
@@ -52,10 +54,17 @@ fun ProxyConnectDialog(
     var secure: Boolean by remember { mutableStateOf(true) }
     var pairingCode: String? by remember { mutableStateOf(null) }
     var errorInfo: String? by remember { mutableStateOf(null) }
+    var connectJob: Job? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
 
+    // 取消进行中的连接（协程取消会触发向服务端发送配对取消请求），并关闭窗口。
+    fun cancelConnect() {
+        connectJob?.cancel()
+        onDismiss()
+    }
+
     Dialog(
-        onDismissRequest = { onDismiss() },
+        onDismissRequest = { cancelConnect() },
     ) {
         Surface(
             shape = RoundedCornerShape(Dimens.Layout.DialogCorner)
@@ -96,23 +105,16 @@ fun ProxyConnectDialog(
                     Text("启用 TLS")
                 }
 
-                pairingCode?.let {
-                    Text("配对码：$it", style = MaterialTheme.typography.headlineMedium)
-                    Text("请与对方设备上显示的配对码核对，一致时在对方设备上批准配对。")
-                }
-
                 if (errorInfo != null) {
                     Text(errorInfo ?: "-", color = MaterialTheme.colorScheme.error)
                 }
 
                 Row(
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Layout.Space, Alignment.End),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (loading) {
-                        OutlinedButton(onClick = onDismiss) {
-                            Text("取消配对")
-                        }
+                    OutlinedButton(onClick = { cancelConnect() }) {
+                        Text("取消")
                     }
 
                     Button(
@@ -120,9 +122,9 @@ fun ProxyConnectDialog(
                         onClick = {
                             loading = true
                             errorInfo = null
-                            scope.launch {
+                            connectJob = scope.launch {
                                 try {
-                                    logicManager.addRemoteExecutor(host, secure = secure) { pairingCode = it }
+                                    logicManager.addRemoteExecutor(host, port, secure) { pairingCode = it }
                                     onDismiss()
                                 } catch (e: CancellationException) {
                                     throw e
@@ -131,6 +133,7 @@ fun ProxyConnectDialog(
                                 } finally {
                                     loading = false
                                     pairingCode = null
+                                    connectJob = null
                                 }
                             }
                         }
@@ -142,6 +145,57 @@ fun ProxyConnectDialog(
                         } else {
                             Text("连接")
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    pairingCode?.let {
+        PairingCodeDialog(
+            code = it,
+            onCancel = { connectJob?.cancel() }
+        )
+    }
+}
+
+/**
+ * 窗口：展示配对码，等待对方设备批准。
+ */
+@Composable
+private fun PairingCodeDialog(
+    code: String,
+    onCancel: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(Dimens.Layout.DialogCorner)
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(Dimens.Layout.DialogPadding)
+            ) {
+                Text(
+                    text = "配对",
+                    fontSize = Dimens.Text.DialogTitle
+                )
+                Text(code, style = MaterialTheme.typography.headlineMedium)
+                Text("请与对方设备上显示的配对码核对，一致时在对方设备上批准配对。")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("等待对方批准…")
+                }
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(onClick = onCancel) {
+                        Text("取消配对")
                     }
                 }
             }

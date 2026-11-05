@@ -12,9 +12,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.tool.java.common.base.net.NetUtil
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.net.InetAddress
 import java.util.UUID
 
 
@@ -96,13 +96,7 @@ class ConfigManager(
         taskScope.launch {
             // 如果节点名称为空，则使用主机名。
             if (getNodeName().isEmpty()) {
-                try {
-                    val hostname = InetAddress.getLocalHost().hostName
-                    setNodeName(hostname)
-                } catch (e: Exception) {
-                    logger.warn("Get hostname failed! Reason:[${e.message}]")
-                    setNodeName(Configs.Value.COMMON_NODE_NAME)
-                }
+                setNodeName(NetUtil.getHostName())
             }
         }
     }

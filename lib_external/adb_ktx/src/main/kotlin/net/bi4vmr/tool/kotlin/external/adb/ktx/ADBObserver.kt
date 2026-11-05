@@ -17,12 +17,22 @@ class ADBObserver {
     /**
      * ADB 服务状态。
      */
-    private val _serviceStateFlow = MutableStateFlow(ServiceState.IDLE)
+    private val _serviceStateFlow: MutableStateFlow<ServiceState> = MutableStateFlow(ServiceState.INIT)
 
     /**
      * ADB 服务状态。
      */
     val serviceStateFlow: StateFlow<ServiceState> = _serviceStateFlow
+
+    /**
+     * ADB 服务错误。
+     */
+    private val _initErrorFlow: MutableStateFlow<Exception?> = MutableStateFlow(null)
+
+    /**
+     * ADB 服务错误。
+     */
+    val initErrorStateFlow: StateFlow<Exception?> = _initErrorFlow
 
     /**
      * ADB 设备列表。
@@ -54,7 +64,8 @@ class ADBObserver {
      */
     fun terminate() {
         _devicesFlow.value = emptyList()
-        _serviceStateFlow.value = ServiceState.IDLE
+        _initErrorFlow.value = null
+        _serviceStateFlow.value = ServiceState.INIT
         ADBController.removeEventListener(eventListener)
         ADBController.removeServiceListener(serviceListener)
     }
@@ -67,6 +78,10 @@ class ADBObserver {
 
         override fun onStateChange(state: ServiceState) {
             _serviceStateFlow.value = state
+        }
+
+        override fun onInitFail(error: Exception?) {
+            _initErrorFlow.value = error
         }
     }
 

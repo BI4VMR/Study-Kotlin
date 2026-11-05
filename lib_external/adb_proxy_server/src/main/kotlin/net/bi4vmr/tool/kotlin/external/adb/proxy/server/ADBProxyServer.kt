@@ -154,7 +154,7 @@ class ADBProxyServer(
     val errorFlow: StateFlow<Exception?> = _errorFlow
 
 
-    /* ----- 服务配置 ----- */
+    /* ----- 服务端配置 ----- */
 
     @Synchronized
     fun start() {
@@ -170,7 +170,7 @@ class ADBProxyServer(
 
         try {
             // 如果 ADB 服务未启动，则先初始化 ADB 服务。
-            if (ADBController.getServiceState() == ServiceState.IDLE) {
+            if (ADBController.getServiceState() == ServiceState.INIT) {
                 ADBController.init()
             }
 
@@ -271,6 +271,8 @@ class ADBProxyServer(
         _stateFlow.value = ServerState.INIT
     }
 
+    fun getState(): ServerState = stateFlow.value
+
     /**
      * 获取运行时配置。
      *
@@ -311,8 +313,8 @@ class ADBProxyServer(
 
     // 是否可以启动服务端
     private fun canStart(): Boolean =
-        (stateFlow.value == ServerState.INIT) || (stateFlow.value == ServerState.ERROR)
+        (getState() == ServerState.INIT) || (getState() == ServerState.ERROR)
 
     // 是否可以终止服务端
-    private fun canStop(): Boolean = (stateFlow.value == ServerState.RUNNING)
+    private fun canStop(): Boolean = (getState() == ServerState.RUNNING)
 }

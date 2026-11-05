@@ -1,0 +1,13 @@
+<resources>
+    <!-- 全局 -->
+    <string name="app_name">Android Toolkit</string>
+
+    <string name="button_confirm">确认</string>
+    <string name="button_cancel">取消</string>
+    <string name="button_save">保存</string>
+
+    <!-- 设置 -->
+    <string name="setting_common">General</string>
+    <string name="setting_common_node_name">Node Name</string>
+    <string name="setting_common_node_name_info">设备标识，使用 ADB 转发器等功能时将会在对端设备展示。</string>
+</resources>

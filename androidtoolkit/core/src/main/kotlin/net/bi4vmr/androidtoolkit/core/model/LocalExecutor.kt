@@ -3,12 +3,12 @@ package net.bi4vmr.androidtoolkit.core.model
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import net.bi4vmr.androidtoolkit.core.common.ExecutorType
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.bi4vmr.androidtoolkit.core.common.ExecutorType
+import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
@@ -26,31 +26,31 @@ object LocalExecutor : ADBExecutor {
 
     private val taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val devicesFlow: StateFlow<List<ADBDevice>> = adbObserver.devicesFlow
-        .stateIn(taskScope, SharingStarted.Eagerly, emptyList())
-
-
-    init {
-        // 单例对象，被访问时自动初始化。
-        init()
-    }
-
 
     override fun getType(): ExecutorType = ExecutorType.LOCAL
 
+    /**
+     * 连接本地 ADB 服务，可重复调用。已就绪或正在准备时忽略。
+     */
     override fun init() {
         adbObserver.init()
+        taskScope.launch {
+            ADBController.init()
+        }
     }
 
     override fun release() {
         adbObserver.terminate()
+        ADBController.terminate()
     }
 
     override fun getDisplayName(): String = "本机"
 
     override fun getStateFlow(): StateFlow<ServiceState> = adbObserver.serviceStateFlow
 
-    override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = devicesFlow
+    override fun getExceptionFlow(): StateFlow<Exception?> = adbObserver.initErrorStateFlow
+
+    override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = adbObserver.devicesFlow
 
     override suspend fun getDisplays(sn: String): List<DisplayInfo> = withContext(Dispatchers.IO) {
         ADBCLIUtil.getDisplays(sn)
@@ -60,7 +60,7 @@ object LocalExecutor : ADBExecutor {
         ADBCLIUtil.runForText(sn, command)
     }
 
-    override fun openShell(sn:String) {
-        // NOP
+    override fun openShell(sn: String) {
+        ADBCLIUtil.openShell(sn)
     }
 }

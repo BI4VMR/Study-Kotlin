@@ -18,11 +18,13 @@ object ADBExecutableHelper {
     /**
      * ADB 可执行文件。
      */
+    @Volatile
     private var executableFile: File? = detectExecutable()
 
     /**
      * 是否自动侦测 ADB 可执行文件位置。
      */
+    @Volatile
     private var autoDetectExecutable: Boolean = true
 
 

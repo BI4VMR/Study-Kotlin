@@ -33,7 +33,7 @@ enum class ServerState {
     STOPPING,
 
     /**
-     * 启动错误。
+     * 出现错误。
      *
      * 错误信息可从 [ADBProxyServer.stateFlow] 获取。
      */

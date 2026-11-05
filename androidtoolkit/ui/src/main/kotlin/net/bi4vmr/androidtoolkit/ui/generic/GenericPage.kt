@@ -1,7 +1,18 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -14,8 +25,6 @@ import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 
 @Composable
 fun GenericPage(globalStateManager: GlobalStateManager) {
@@ -43,6 +52,8 @@ private fun DevicePanel(
     globalStateManager: GlobalStateManager,
     device: ADBDevice?, modifier: Modifier = Modifier
 ) {
+    val logicManager: LogicManager = globalStateManager.logicManager
+
     if (device == null) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text("请在左侧选择一台设备", style = MaterialTheme.typography.bodyLarge)
@@ -59,11 +70,7 @@ private fun DevicePanel(
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = {
-                if (device is RemoteDevice) {
-                    globalStateManager.logicManager.selectedExecutorFlow.value.openShell(device.getSN())
-                } else if (device is LocalDevice) {
-                    device.openShell(newWindow = false)
-                }
+                logicManager.selectedExecutorFlow.value.openShell(device.getSN())
             }, enabled = enabled) { Text("打开 Shell") }
 
 

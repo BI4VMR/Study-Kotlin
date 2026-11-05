@@ -88,6 +88,7 @@ fun App() {
             title = { Text("配对申请") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("设备名称：${p.getClientName()}", style = MaterialTheme.typography.bodySmall)
                     Text(
                         text = "客户端证书指纹：${p.getClientFingerprint()}",
                         style = MaterialTheme.typography.bodySmall

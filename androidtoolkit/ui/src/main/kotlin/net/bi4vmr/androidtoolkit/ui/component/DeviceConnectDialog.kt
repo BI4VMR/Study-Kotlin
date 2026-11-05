@@ -51,13 +51,14 @@ fun DeviceConnectDialog(
 
                 Button(
                     onClick = {
-                        val result = ADBController.connectRemoteDevice(host)
-                        if (result) {
-                            // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
-                            onDismiss()
-                        } else {
-                            errorInfo = "连接失败，请检查主机名或 IP 地址是否正确"
-                        }
+                        runCatching { ADBController.connectRemoteDevice(host) }
+                            .onSuccess {
+                                // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
+                                onDismiss()
+                            }
+                            .onFailure {
+                                errorInfo = "连接失败：${it.message}"
+                            }
                     }
                 ) {
                     Text("连接")

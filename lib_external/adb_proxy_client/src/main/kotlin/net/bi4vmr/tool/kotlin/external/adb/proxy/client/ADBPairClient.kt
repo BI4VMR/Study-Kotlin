@@ -22,6 +22,8 @@ import io.ktor.http.isSuccess
 import io.ktor.http.path
 import io.ktor.network.tls.addKeyStore
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
@@ -173,6 +175,33 @@ class ADBPairClient(
 
         val commitResponse = commitCallResponse.body<PairCommitResponse>()
 
+        // 会话已在服务端建立，此后被取消或出错时需通知服务端释放会话。
+        try {
+            pairAfterCommit(clientFingerprint, clientNonce, commitResponse, onCode)
+        } catch (e: Throwable) {
+            withContext(NonCancellable) {
+                runCatching { cancel() }
+                    .onFailure { logger.warn("Failed to notify server to cancel pairing. Reason:[${it.message}]") }
+            }
+            throw e
+        }
+    }
+
+    /**
+     * 通知服务端终止当前配对会话。
+     */
+    suspend fun cancel() {
+        client.post(buildURL(APIs.PAIR_CANCEL)) {
+            timeout { requestTimeoutMillis = 5_000L }
+        }
+    }
+
+    private suspend fun pairAfterCommit(
+        clientFingerprint: String,
+        clientNonce: String,
+        commitResponse: PairCommitResponse,
+        onCode: (String) -> Unit
+    ) {
         /*
          * 第二阶段
          *
@@ -217,6 +246,10 @@ class ADBPairClient(
         val askResponse = askCallResponse.call.response.bodyAsText()
         val pairResult = PairResult.fromCode(askResponse)
         println("pair end. pairResult -> $pairResult")
+
+        check(pairResult == PairResult.APPROVED) {
+            "Pairing failed. Status:[${askCallResponse.status}] Result:[${pairResult ?: askResponse}]"
+        }
     }
 
     /**

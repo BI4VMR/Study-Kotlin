@@ -12,6 +12,7 @@ import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -70,10 +71,10 @@ object ADBController {
      * ADB 服务初始化状态。
      */
     @Volatile
-    private var serviceState: ServiceState = ServiceState.IDLE
+    private var serviceState: ServiceState = ServiceState.INIT
 
     /**
-     * 是否正在断开 DDMLib 连接。
+     * 是否正在终止。
      *
      * 终止过程中不应当重复初始化。
      */
@@ -95,50 +96,71 @@ object ADBController {
      */
     @JvmStatic
     fun init(): Boolean {
-        val adbFile: File
         /* 前置检查 */
         synchronized(lock) {
-            if (serviceState != ServiceState.IDLE || terminating) {
-                logger.warn("Do NOT call init method repeatedly!")
+            if (serviceState == ServiceState.PREPARING ||
+                serviceState == ServiceState.READY ||
+                terminating
+            ) {
+                logger.warn("Can not init in [$serviceState]!")
                 return false
             }
 
-            serviceState = ServiceState.PREPARING
             listenerNotifier = initListenerNotifier()
-
-            val file = ADBExecutableHelper.getExecutableFile()
-            if (file == null || file.isDirectory || !file.canExecute()) {
-                logger.error("ADB file is not exist or executable! Path:[{}]", file)
-                serviceState = ServiceState.IDLE
-                notifyServiceState(ServiceState.IDLE)
-                return false
-            }
-            adbFile = file
+            notifyServiceInitFailed(null)
+            serviceState = ServiceState.PREPARING
+            notifyServiceState(ServiceState.PREPARING)
         }
 
-        val success = try {
+        val adbFile: File? = ADBExecutableHelper.getExecutableFile()
+        if (adbFile == null || adbFile.isDirectory || !adbFile.canExecute()) {
+            val info = "ADB file is not exist or executable! Path:[$adbFile]"
+            logger.error(info)
+            synchronized(lock) {
+                notifyServiceInitFailed(IllegalStateException(info))
+                serviceState = ServiceState.ERROR
+                notifyServiceState(ServiceState.ERROR)
+                listenerNotifier.shutdown()
+            }
+            return false
+        }
+
+        var error: Exception? = null
+        var ready = false
+        try {
             // 初始化 DDMLib ，参数表示是否支持连接到应用的 JVM 进行 Debug ，目前不使用相关功能。
             AndroidDebugBridge.init(false)
             // 启动 ADB 的 PC 端进程
             AndroidDebugBridge.createBridge(adbFile.absolutePath, false)
             // 等待当前进程与 ADB 服务进程建立连接
             waitForDDMLibReady()
+            ready = true
+        } catch (_: InterruptedException) {
+            logger.info("DDMLib init has been interrupted!")
+            // 用户取消初始化线程不需要上报异常，写回中断状态即可。
+            Thread.currentThread().interrupt()
         } catch (e: Exception) {
             logger.error("DDMLib init failed!", e)
-            false
+            error = e
+        }
+
+        if (!ready) {
+            runCatching {
+                AndroidDebugBridge.disconnectBridge()
+                AndroidDebugBridge.terminate()
+            }
+
+            synchronized(lock) {
+                error?.let { notifyServiceInitFailed(it) }
+                serviceState = ServiceState.ERROR
+                notifyServiceState(ServiceState.ERROR)
+                listenerNotifier.shutdown()
+            }
+
+            return false
         }
 
         synchronized(lock) {
-            if (!success) {
-                runCatching {
-                    AndroidDebugBridge.disconnectBridge()
-                    AndroidDebugBridge.terminate()
-                }
-                serviceState = ServiceState.IDLE
-                notifyServiceState(ServiceState.IDLE)
-                return false
-            }
-
             AndroidDebugBridge.addDeviceChangeListener(ddmLibListener)
             getDevicesInner()
 
@@ -153,28 +175,20 @@ object ADBController {
     /**
      * 等待 DDMLib 连接 ADB 服务进程。
      *
-     * @return `true` 表示已就绪； `false` 表示超时或被中断。
+     * @throws[InterruptedException] 等待过程中线程被中断。
      */
-    private fun waitForDDMLibReady(): Boolean {
+    private fun waitForDDMLibReady() {
         val deadline = System.currentTimeMillis() + 10_000L
         var waitMillis = 10L
         while (!isDDMLibReady()) {
             if (System.currentTimeMillis() > deadline) {
                 logger.error("Wait for ADB daemon ready timeout!")
-                return false
+                throw IllegalStateException("Wait for ADB daemon ready timeout!")
             }
 
-            try {
-                Thread.sleep(waitMillis)
-                waitMillis = minOf(waitMillis + 10L, 200L)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                logger.warn("Init call has been interrupted!")
-                return false
-            }
+            Thread.sleep(waitMillis)
+            waitMillis = minOf(waitMillis + 10L, 200L)
         }
-
-        return true
     }
 
     // 初始化外部事件通知线程池
@@ -243,12 +257,12 @@ object ADBController {
             }
 
             terminating = true
-            serviceState = ServiceState.IDLE
+            serviceState = ServiceState.INIT
 
             AndroidDebugBridge.removeDeviceChangeListener(ddmLibListener)
             deviceList.clear()
             notifyDeviceListChange(emptyList())
-            notifyServiceState(ServiceState.IDLE)
+            notifyServiceState(ServiceState.INIT)
             notifier = listenerNotifier
         }
 
@@ -321,6 +335,25 @@ object ADBController {
         }
     }
 
+    /**
+     * 通知 ADB 服务初始化错误。
+     */
+    private fun notifyServiceInitFailed(error: Exception?) {
+        val listeners = synchronized(lock) {
+            serviceListeners.toList()
+        }
+
+        listenerNotifier.execute {
+            listeners.forEach { listener ->
+                runCatching {
+                    listener.onInitFail(error)
+                }.onFailure {
+                    logger.warn("Notify service init failed [{}] occurred error!", error, it)
+                }
+            }
+        }
+    }
+
 
     /*
      * ----- 设备管理 -----
@@ -344,14 +377,43 @@ object ADBController {
      * 连接远程设备。
      *
      * @param[ip] 设备 IP 地址。
-     * @return `true` 表示连接成功； `false` 表示连接失败。
+     * @throws[IllegalArgumentException] 端口号超出范围。
+     * @throws[IllegalStateException] 连接失败。错误信息可通过异常消息读取。
      */
     @JvmStatic
-    fun connectRemoteDevice(ip: String): Boolean {
+    @JvmOverloads
+    fun connectRemoteDevice(ip: String, port: Int = 5555) {
+        logger.debug("ConnectRemoteDevice. IP:[{}] Port:[{}]", ip, port)
+        if (port !in 1..65535) {
+            logger.warn("ConnectRemoteDevice - Port must be in [1, 65535], ignore.")
+            throw IllegalArgumentException("Port must be in [1, 65535], ignore.")
+        }
+
         // DDM 库只能发送 ADB Shell 命令，此处直接调用 CLI 连接设备，因此不需要判断 DDM 库的状态。
-        val cmd = String.format("adb connect %s:5555", ip)
-        val status = CLIUtil.runForStatus(cmd)
-        return CLIUtil.isSuccess(status)
+        val cmd = "adb connect $ip:$port"
+        val output = CLIUtil.runForText(cmd, true, StandardCharsets.UTF_8.name())
+            ?: throw IllegalStateException("CLI execute failed! CMD:[$cmd]")
+        val text = output.trim().lowercase()
+
+        /*
+         * 该命令即使连接失败状态码也为成功，因此需要通过输出文本进行判断。
+         *
+         * 以下返回内容是连接成功的情况：
+         *
+         * `connected to <IP>:<端口>`：新连接的设备。
+         *
+         * `already connected to <IP>:<端口>`：设备已连接。
+         */
+        val failedKeywords = listOf(
+            "failed",
+            "refused",
+            "timeout",
+            "timed out",
+            "error"
+        )
+        if (failedKeywords.any { text.contains(it) }) {
+            throw IllegalStateException(text)
+        }
     }
 
     /**
@@ -361,10 +423,17 @@ object ADBController {
      * @return `true` 表示断开成功； `false` 表示断开失败。
      */
     @JvmStatic
-    fun disconnectRemoteDevice(ip: String): Boolean {
-        val cmd = String.format("adb disconnect %s:5555", ip)
-        val status = CLIUtil.runForStatus(cmd)
-        return CLIUtil.isSuccess(status)
+    @JvmOverloads
+    fun disconnectRemoteDevice(ip: String, port: Int = 5555) {
+        logger.debug("DisconnectRemoteDevice. IP:[{}] Port:[{}]", ip, port)
+        if (port !in 1..65535) {
+            logger.warn("DisconnectRemoteDevice - Port must be in [1, 65535], ignore.")
+            return
+        }
+
+        val cmd = "adb disconnect $ip:$port"
+        val output = CLIUtil.runForText(cmd)
+        logger.info("DisconnectRemoteDevice - CLIOutput:[{}]", output)
     }
 
     /**
