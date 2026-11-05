@@ -30,8 +30,30 @@ compose.desktop {
 
             // MacOS 的 DMG 包需要签名才能运行，因此暂不支持 DMG 包，仅保留可执行目录压缩包方式。
             targetFormats(TargetFormat.Exe, TargetFormat.Deb)
+
+            // 应用程序图标（`icons/icon_alt.png` 为备用方案）
+            linux {
+                iconFile.set(project.file("icons/icon.png"))
+            }
+            windows {
+                iconFile.set(project.file("icons/icon.ico"))
+            }
         }
     }
+}
+
+// 编译前先构建终端桥接程序，并将其放入 Compose 资源目录 `resources/common` 中。
+val copyShellTransferJar by tasks.registering(Copy::class) {
+    from(project(":lib_external:shellbridge").tasks.named("executableJar"))
+    into(rootProject.layout.projectDirectory.dir("androidtoolkit/resources/common"))
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(copyShellTransferJar)
+}
+
+tasks.matching { it.name == "prepareAppResources" }.configureEach {
+    dependsOn(copyShellTransferJar)
 }
 
 dependencies {

@@ -32,6 +32,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBPairClient
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
+import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ShellTransferHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestListener
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
@@ -292,6 +293,9 @@ object LogicManager {
             /* 设置 Scrcpy 服务端文件路径 */
             val serverFile = fileManager.getInternalScrcpyServerFile()
             ScrcpyServerHelper.setServerFile(serverFile)
+
+            /* 设置终端桥接程序文件路径 */
+            ShellTransferHelper.setTransferFile(fileManager.getInternalShellTransferFile())
 
             /* 恢复上次保存的远程执行器 */
             restoreRemoteExecutors()

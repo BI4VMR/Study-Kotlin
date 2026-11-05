@@ -58,6 +58,11 @@ import java.net.ConnectException
 import java.net.ServerSocket
 
 /**
+ * 终端桥接程序上行帧类型：窗口尺寸变化（与 `util:shell_transfer` 中的定义保持一致）。
+ */
+private const val SHELL_FRAME_RESIZE: Int = 1
+
+/**
  * ADB 代理客户端。
  *
  * @author bi4vmr@outlook.com
@@ -396,22 +401,19 @@ class ADBProxyClient(
 
 
     /**
-     * 将 Classpath 写入 Java 参数文件（`@argfile`）。
+     * 打开远程设备的交互式 Shell 。
      *
-     * Windows 的 Classpath 以 `;` 分隔，而 Windows Terminal（`wt`）会把 `;` 当作子命令分隔符，
-     * 直接通过命令行传递会被拆分成大量标签页；使用参数文件可避免该问题，同时规避命令行长度限制。
+     * 需要先通过 [ShellTransferHelper.setTransferFile] 设置终端桥接程序路径。
+     *
+     * @param[sn] 设备序列号。
      */
-    private fun createBridgeArgFile(): File {
-        val classpath = System.getProperty("java.class.path")
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-        return File.createTempFile("adb-shell-bridge-", ".args").apply {
-            deleteOnExit()
-            writeText("-cp \"$classpath\"\n")
-        }
-    }
-
     fun openShell(sn: String) {
+        val bridgeJar = ShellTransferHelper.getTransferFile()
+        if (bridgeJar == null || !bridgeJar.canRead()) {
+            logger.warn("Failed to open shell: shell transfer file is invalid. Path:[${bridgeJar?.absolutePath}]")
+            return
+        }
+
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
@@ -420,11 +422,10 @@ class ADBProxyClient(
 
                     val javaBin = ProcessHandle.current().info().command()
                         .orElse(File(System.getProperty("java.home"), "bin/java").path)
-                    val argFile = createBridgeArgFile()
                     val bridgeCommand = listOf(
                         javaBin,
-                        "@${argFile.absolutePath}",
-                        ShellBridge::class.java.name,
+                        "-jar",
+                        bridgeJar.absolutePath,
                         localServer.localPort.toString()
                     )
                     // ProcessBuilder(listOf("konsole", "-e") + bridgeCommand)
@@ -444,7 +445,7 @@ class ADBProxyClient(
                                         val data = ByteArray(input.readInt())
                                         input.readFully(data)
                                         when (type) {
-                                            ShellBridge.FRAME_RESIZE -> Frame.Text("resize ${String(data)}")
+                                            SHELL_FRAME_RESIZE -> Frame.Text("resize ${String(data)}")
                                             else -> Frame.Binary(true, data)
                                         }
                                     }

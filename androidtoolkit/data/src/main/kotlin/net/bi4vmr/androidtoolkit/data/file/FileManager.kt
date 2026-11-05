@@ -68,6 +68,10 @@ object FileManager {
         return File(getResourcesDir(), "scrcpy-server-v5.0.1")
     }
 
+    fun getInternalShellTransferFile(): File {
+        return File(getResourcesDir(), "shell_transfer.jar")
+    }
+
     fun getUserDataDir(): File {
         val home = System.getProperty("user.home")
         return File("$home${File.separator}$DIR_DATA")

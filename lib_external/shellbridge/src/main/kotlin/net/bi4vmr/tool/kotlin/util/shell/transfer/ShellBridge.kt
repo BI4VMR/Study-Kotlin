@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.client
+package net.bi4vmr.tool.kotlin.util.shell.transfer
 
 import org.jline.terminal.Attributes
 import org.jline.terminal.Terminal
