@@ -2,6 +2,7 @@ package net.bi4vmr.tool.kotlin.external.adb.model
 
 import com.android.ddmlib.IDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
@@ -13,7 +14,7 @@ import java.io.IOException
 /**
  * ADB 本地设备。
  *
- * [getSN] 、 [getState] 、 [isOnline] 方法为内存读写，不必在子线程调用；其他方法耗时可能较长，建议在非 UI 线程调用。
+ * [getSN] 、 [getState] 、 [getType] 、 [isOnline] 方法为内存读写，不必在子线程调用；其他方法耗时可能较长，建议在非 UI 线程调用。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -53,6 +54,29 @@ data class LocalDevice(
             IDevice.DeviceState.ONLINE -> DeviceState.ONLINE
             IDevice.DeviceState.RECOVERY -> DeviceState.RECOVERY
             IDevice.DeviceState.BOOTLOADER -> DeviceState.BOOTLOADER
+        }
+    }
+
+    /**
+     * 获取设备类型。
+     *
+     * @return 枚举。
+     */
+    fun getType(): DeviceType {
+        if (ddmDevice.isEmulator) {
+            return DeviceType.EMULATOR
+        }
+
+        val sn = getSN()
+        return if (
+        // `adb connect` 命令主动连接的设备
+            sn.contains(':') ||
+            // Android 11 开始新增扫码配对方式连接的设备
+            sn.contains("._adb-tls-connect.")
+        ) {
+            DeviceType.NETWORK
+        } else {
+            DeviceType.USB
         }
     }
 

@@ -7,12 +7,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.ui.*
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 窗口：添加远程 ADB 设备。
@@ -22,14 +27,19 @@ fun DeviceConnectDialog(
     globalStateManager: GlobalStateManager,
     onDismiss: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+
     Dialog(
-        onDismissRequest = { onDismiss() },
+        onDismissRequest = {
+            onDismiss()
+        }
     ) {
         var hostInput: String by remember { mutableStateOf("") }
         var hostInvalid: Boolean by remember { mutableStateOf(false) }
         var portInput: String by remember { mutableStateOf(ADBController.PORT_DEVICE.toString()) }
         var portInvalid: Boolean by remember { mutableStateOf(false) }
 
+        var loading: Boolean by remember { mutableStateOf(false) }
         var errorRes: StringResource? by remember { mutableStateOf(null) }
         var errorText: String by remember { mutableStateOf("") }
 
@@ -57,14 +67,18 @@ fun DeviceConnectDialog(
                     OutlinedTextField(
                         value = hostInput,
                         onValueChange = { hostInput = it },
+                        enabled = !loading,
                         isError = hostInvalid,
                         modifier = Modifier.weight(0.75F)
                     )
+
+                    Spacer(Modifier.width(Dimens.Layout.Space))
 
                     Text("端口：")
                     OutlinedTextField(
                         value = portInput,
                         onValueChange = { portInput = it },
+                        enabled = !loading,
                         isError = portInvalid,
                         modifier = Modifier.weight(0.25F)
                     )
@@ -86,8 +100,10 @@ fun DeviceConnectDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Button(
+                        enabled = !loading,
                         onClick = {
-                            if (hostInput.isBlank()) {
+                            val hostText = hostInput.trim()
+                            if (hostText.isBlank()) {
                                 hostInvalid = true
                                 setErrorHint(res = Res.string.error_host_blank)
                                 return@Button
@@ -116,21 +132,33 @@ fun DeviceConnectDialog(
                             hostInvalid = false
                             portInvalid = false
 
-                            runCatching {
-                                ADBController.connectRemoteDevice(hostInput, portNum)
-                            }
-                                .onSuccess {
-                                    // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
-                                    onDismiss()
+                            scope.launch {
+                                loading = true
 
-                                    globalStateManager.toastManager.show("已连接")
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        ADBController.connectRemoteDevice(hostText, portNum)
+                                    }
                                 }
-                                .onFailure {
-                                    setErrorHint(text = "${it.message}")
-                                }
+                                    .onSuccess {
+                                        // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
+                                        onDismiss()
+                                        globalStateManager.toastManager.show("已连接远程设备：$hostText")
+                                    }
+                                    .onFailure {
+                                        if (it is CancellationException) throw it
+                                        setErrorHint(text = "${it.message}")
+                                    }
+
+                                loading = false
+                            }
                         }
                     ) {
-                        Text("连接")
+                        if (loading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(Dimens.Layout.Space))
+                        }
+                        Text(text = "连接")
                     }
                 }
             }

@@ -1,18 +1,7 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -23,8 +12,10 @@ import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
+import net.bi4vmr.androidtoolkit.ui.component.ToastManager
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 
 @Composable
 fun GenericPage(globalStateManager: GlobalStateManager) {
@@ -53,6 +44,7 @@ private fun DevicePanel(
     device: ADBDevice?, modifier: Modifier = Modifier
 ) {
     val logicManager: LogicManager = globalStateManager.logicManager
+    val toastManager: ToastManager = globalStateManager.toastManager
 
     if (device == null) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -73,6 +65,12 @@ private fun DevicePanel(
                 logicManager.selectedExecutorFlow.value.openShell(device.getSN())
             }, enabled = enabled) { Text("打开 Shell") }
 
+            Button(onClick = {
+                if (device is LocalDevice) {
+                  val state =  device.startRemoteControl()
+                    toastManager.show("启动远程调试 -> $state")
+                }
+            }, enabled = enabled) { Text("开启远程调试") }
 
             // Button(onClick = { /* TODO 重启 */ }, enabled = enabled) { Text("重启") }
             // Button(onClick = { /* TODO 截图 */ }, enabled = enabled) { Text("截图") }
