@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -59,6 +60,32 @@ object LocalExecutor : ADBExecutor {
     override suspend fun runForText(sn: String, command: String): String? = withContext(Dispatchers.IO) {
         ADBCLIUtil.runForText(sn, command)
     }
+
+    override suspend fun getManufacturer(sn: String): String = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getManufacturer(sn)
+    }
+
+    override suspend fun getBrand(sn: String): String = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getBrand(sn)
+    }
+
+    override suspend fun getModel(sn: String): String = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getModel(sn)
+    }
+
+    override suspend fun getOSVersion(sn: String): String = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getOSVersion(sn)
+    }
+
+    override suspend fun getAPILevel(sn: String): String = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getAPILevel(sn)
+    }
+
+    override suspend fun getName(sn: String, fallback: String): String = withContext(Dispatchers.IO) {
+        ADBController.getDevice(sn)?.getName(fallback) ?: fallback
+    }
+
+    override suspend fun getDeviceType(sn: String): DeviceType? = ADBController.getDevice(sn)?.getType()
 
     override fun openShell(sn: String) {
         ADBCLIUtil.openShell(sn)

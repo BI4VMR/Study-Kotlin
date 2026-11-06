@@ -2,6 +2,7 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -61,6 +62,67 @@ interface ADBExecutor {
      * @return 命令输出文本，若出现异常则返回空值。
      */
     suspend fun runForText(sn: String, command: String): String?
+
+    /**
+     * 获取设备制造商。
+     *
+     * @param[sn] 设备序列号。
+     * @return 制造商。若设备未声明则为空字符串。
+     */
+    suspend fun getManufacturer(sn: String): String
+
+    /**
+     * 获取设备品牌。
+     *
+     * @param[sn] 设备序列号。
+     * @return 品牌。若设备未声明则为空字符串。
+     */
+    suspend fun getBrand(sn: String): String
+
+    /**
+     * 获取设备型号。
+     *
+     * @param[sn] 设备序列号。
+     * @return 型号。若设备未声明则为空字符串。
+     */
+    suspend fun getModel(sn: String): String
+
+    /**
+     * 获取设备 Android 系统版本。
+     *
+     * @param[sn] 设备序列号。
+     * @return 系统版本号。若设备未声明则为空字符串。
+     */
+    suspend fun getOSVersion(sn: String): String
+
+    /**
+     * 获取设备 Android API Level 。
+     *
+     * @param[sn] 设备序列号。
+     * @return API Level 。若设备未声明则为空字符串。
+     */
+    suspend fun getAPILevel(sn: String): String
+
+    /**
+     * 获取设备名称。
+     *
+     * 若为物理机则显示 `<品牌> <型号>` ；若为模拟器则显示模拟器名称。
+     *
+     * @param[sn] 设备序列号。
+     * @param[fallback] 获取失败时的名称。
+     * @return 设备名称。
+     */
+    suspend fun getName(sn: String, fallback: String): String
+
+    /**
+     * 获取设备类型。
+     *
+     * 为避免与执行器自身的 [getType] 混淆，此处命名为 `getDeviceType` 。
+     *
+     * @param[sn] 设备序列号。
+     * @return 设备类型。若设备不存在或出现异常则返回空值。
+     */
+    suspend fun getDeviceType(sn: String): DeviceType?
 
     fun openShell(sn: String)
 }

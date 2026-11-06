@@ -2,6 +2,7 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -40,6 +41,20 @@ class RemoteExecutor(
     override suspend fun getDisplays(sn: String): List<DisplayInfo> = client.getDisplays(sn)
 
     override suspend fun runForText(sn: String, command: String): String? = client.runForText(sn, command)
+
+    override suspend fun getManufacturer(sn: String): String = client.getManufacturer(sn)
+
+    override suspend fun getBrand(sn: String): String = client.getBrand(sn)
+
+    override suspend fun getModel(sn: String): String = client.getModel(sn)
+
+    override suspend fun getOSVersion(sn: String): String = client.getOSVersion(sn)
+
+    override suspend fun getAPILevel(sn: String): String = client.getAPILevel(sn)
+
+    override suspend fun getName(sn: String, fallback: String): String = client.getName(sn, fallback)
+
+    override suspend fun getDeviceType(sn: String): DeviceType? = runCatching { client.getType(sn) }.getOrNull()
 
     override fun openShell(sn: String) {
         client.openShell(sn)

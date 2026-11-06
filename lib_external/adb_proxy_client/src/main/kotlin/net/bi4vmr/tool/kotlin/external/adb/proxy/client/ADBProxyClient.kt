@@ -39,13 +39,17 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ServerInfoResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
@@ -56,6 +60,7 @@ import java.io.EOFException
 import java.io.File
 import java.net.ConnectException
 import java.net.ServerSocket
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 终端桥接程序上行帧类型：窗口尺寸变化（与 `util:shell_transfer` 中的定义保持一致）。
@@ -71,10 +76,10 @@ private const val SHELL_FRAME_RESIZE: Int = 1
 class ADBProxyClient(
 
     /**
-     * 目标主机。
+     * 目标地址。
      */
     @Volatile
-    private var host: String,
+    var host: String,
 
     /**
      * 目标端口。
@@ -82,7 +87,7 @@ class ADBProxyClient(
      * 默认值为 [Constants.PORT_SERVER_DEFAULT]。
      */
     @Volatile
-    private var port: Int = Constants.PORT_SERVER_DEFAULT
+    var port: Int = Constants.PORT_SERVER_DEFAULT
 ) {
 
     /**
@@ -101,12 +106,20 @@ class ADBProxyClient(
     }
 
     /**
-     * 是否加密连接。
+     * 显示名称。
+     *
+     * 便于服务端区分每个服务端实例。
+     */
+    @Volatile
+    var name: String = ADBProxyClient::class.java.simpleName
+
+    /**
+     * 是否启用加密连接。
      *
      * `false` 表示使用明文 HTTP ； `true` 表示使用 HTTPS 。该配置应当与服务端匹配。
      */
     @Volatile
-    private var secure: Boolean = false
+    var enableTLS: Boolean = false
 
     /**
      * SSL 配置。
@@ -114,17 +127,25 @@ class ADBProxyClient(
      * 默认为空值，此时请求不展示与验证客户端证书；若服务器已启用配对认证，则必须配置。
      */
     @Volatile
-    private var sslConfig: SSLConfig? = null
+    var sslConfig: SSLConfig? = null
+
+    /**
+     * 运行时配置。
+     *
+     * 服务启动时复制上述配置变量，以免运行过程中配置变更导致错误。
+     */
+    @Volatile
+    private var runningConfig: RunningConfig? = null
 
     /**
      * Ktor 客户端。
      */
-    private var client: HttpClient = createClient()
+    private var client: HttpClient? = null
 
     /**
      * 子任务作用域。
      */
-    private var taskScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var taskScope: CoroutineScope = CoroutineScope(EmptyCoroutineContext)
 
 
     /**
@@ -181,13 +202,25 @@ class ADBProxyClient(
         /* 重置状态 */
         _serviceErrorFlow.value = null
         _serviceStateFlow.value = ServiceState.PREPARING
-
-        // 释放上次连接遗留的资源
         taskScope.cancel()
-        client.close()
+        client?.close()
+
+
+        /* 复制关键配置 */
+        val conf = RunningConfig(
+            name,
+            host,
+            port,
+            enableTLS,
+            sslConfig
+        )
+        runningConfig = conf
+
         client = createClient()
         taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+
+        /* 初始化双向消息通道 */
         connectWebSocket()
     }
 
@@ -196,9 +229,9 @@ class ADBProxyClient(
     fun isServiceReady(): Boolean = (serviceStateFlow.value == ServiceState.READY)
 
     /**
-     * 释放资源。
+     * 终止连接。
      *
-     * 调用后可再次调用 [init] 重新连接。
+     * 断开与服务端的连接，若要再次连接需要调用 [init] 方法。
      */
     @Synchronized
     fun stop() {
@@ -208,47 +241,13 @@ class ADBProxyClient(
         }
 
         taskScope.cancel()
-        client.close()
+        client?.close()
 
         _serviceErrorFlow.value = null
         _serviceStateFlow.value = ServiceState.INIT
     }
 
-    fun getHost(): String = host
-
-    fun getPort(): Int = port
-
-    /**
-     * 设置目标地址和端口。
-     *
-     * 该配置不会影响已启动的客户端，若要刷新需终止客户端并重新启动。
-     *
-     * @param[host] 目标地址。
-     * @param[port] 目标端口。
-     */
-    fun setTarget(host: String, port: Int) {
-        this.host = host
-        this.port = port
-    }
-
-    fun isSecure(): Boolean = secure
-
-    fun setSecure(secure: Boolean) {
-        this.secure = secure
-    }
-
-    fun getSSLConfig(): SSLConfig? = sslConfig
-
-    /**
-     * 设置 SSL 配置。
-     *
-     * 该配置不会影响已启动的客户端，若要刷新需终止客户端并重新启动。
-     *
-     * @param[config] SSL 配置。
-     */
-    fun setSSLConfig(config: SSLConfig?) {
-        sslConfig = config
-    }
+    fun getRunningConfig(): RunningConfig? = runningConfig
 
 
     /* ----- 服务端管理 ----- */
@@ -261,7 +260,7 @@ class ADBProxyClient(
      */
     suspend fun getServerInfo(): ServerInfoResponse {
         val url = buildURL(APIs.SERVER_INFO)
-        val call = client.post(url)
+        val call = requireClient().post(url)
 
         check(call.status.isSuccess()) {
             "GetServerInfo failed. Status:[${call.status}]"
@@ -272,6 +271,7 @@ class ADBProxyClient(
         check(callResponse.isSuccess()) {
             "GetServerInfo failed. Code:[${callResponse.code}] Message:[${callResponse.message}]"
         }
+
         return requireNotNull(callResponse.data) { "GetServerInfo failed. Data is null." }
     }
 
@@ -283,8 +283,13 @@ class ADBProxyClient(
      */
     suspend fun fetchDeviceList(): List<RemoteDevice> {
         val url = buildURL(APIs.ADB_DEVICES)
-        return client.post(url).body()
+        return requireClient().post(url).body()
     }
+
+
+    /*
+     * ----- 常用命令 -----
+     */
 
     /**
      * 在远程设备上执行 ADB 命令并获取状态码。
@@ -297,7 +302,7 @@ class ADBProxyClient(
      */
     suspend fun runForStatus(sn: String, command: String): Int {
         return try {
-            val response = client.post(buildURL(APIs.ADB_EXEC_STATUS)) {
+            val response = requireClient().post(buildURL(APIs.ADB_EXEC_STATUS)) {
                 val params = ADBExecRequest(
                     sn = sn,
                     command = command
@@ -334,7 +339,7 @@ class ADBProxyClient(
         charset: String? = null
     ): String? {
         return try {
-            val response = client.post(buildURL(APIs.ADB_EXEC_TEXT)) {
+            val response = requireClient().post(buildURL(APIs.ADB_EXEC_TEXT)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBExecRequest(sn, command, redirectError, charset))
             }
@@ -379,7 +384,7 @@ class ADBProxyClient(
      */
     suspend fun getDisplays(sn: String): List<DisplayInfo> {
         return try {
-            val response = client.post(buildURL(APIs.ADB_DISPLAYS)) {
+            val response = requireClient().post(buildURL(APIs.ADB_DISPLAYS)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBExecRequest(sn = sn))
             }
@@ -474,6 +479,131 @@ class ADBProxyClient(
         }
     }
 
+    /*
+     * ----- 设备信息 -----
+     */
+
+    /**
+     * 获取设备属性。
+     *
+     * @param[key] 属性键名。
+     * @param[key] 属性键名。
+     * @return 属性值。若属性不存在则返回空值。
+     */
+    suspend fun getProperty(sn: String, key: String): String? {
+        val response = requireClient().post(buildURL(APIs.ADB_PROPERTY)) {
+            contentType(ContentType.Application.Json)
+            setBody(ADBPropertyRequest(sn = sn, key = key))
+        }
+
+        return if (response.status.isSuccess()) {
+            response.bodyAsText().trim().ifBlank { null }
+        } else {
+            throw IllegalStateException("Failed to get property [$key] from device [$sn]! State:[${response.status}]")
+        }
+    }
+
+    /**
+     * 获取设备属性。
+     *
+     * @param[key] 属性键名。
+     * @param[key] 属性键名。
+     * @return 属性值。若属性不存在则返回空值。
+     */
+    suspend fun getProperty(sn: String, key: String, defaultValue: String): String {
+        return getProperty(sn, key) ?: defaultValue
+    }
+
+    /**
+     * 获取设备制造商。
+     *
+     * @param[sn] 设备序列号。
+     * @return 制造商。若设备未声明则为空字符串。
+     */
+    suspend fun getManufacturer(sn: String): String = getProperty(sn, Propertys.Key.MANUFACTURER, "")
+
+    /**
+     * 获取设备品牌。
+     *
+     * @param[sn] 设备序列号。
+     * @return 品牌。若设备未声明则为空字符串。
+     */
+    suspend fun getBrand(sn: String): String = getProperty(sn, Propertys.Key.BRAND, "")
+
+    /**
+     * 获取设备型号。
+     *
+     * @param[sn] 设备序列号。
+     * @return 型号。若设备未声明则为空字符串。
+     */
+    suspend fun getModel(sn: String): String = getProperty(sn, Propertys.Key.MODEL, "")
+
+    /**
+     * 获取设备 Android 系统版本。
+     *
+     * @param[sn] 设备序列号。
+     * @return 系统版本号。若设备未声明则为空字符串。
+     */
+    suspend fun getOSVersion(sn: String): String = getProperty(sn, Propertys.Key.OS_VERSION, "")
+
+    /**
+     * 获取设备 Android API Level 。
+     *
+     * @param[sn] 设备序列号。
+     * @return API Level 。若设备未声明则为空字符串。
+     */
+    suspend fun getAPILevel(sn: String): String = getProperty(sn, Propertys.Key.API_LEVEL, "")
+
+    /**
+     * 获取设备名称。
+     *
+     * 若为物理机则显示 `<品牌> <型号>` ；若为模拟器则显示模拟器名称。
+     *
+     * @param[sn] 设备序列号。
+     * @param[default] 获取失败时的名称。默认值为 `Unknown` 。
+     * @return 设备名称。
+     */
+    suspend fun getName(sn: String, default: String = "Unknown"): String {
+        return try {
+            val response = requireClient().post(buildURL(APIs.ADB_DEVICE_NAME)) {
+                contentType(ContentType.Application.Json)
+                setBody(ADBDeviceRequest(sn = sn))
+            }
+
+            if (response.status.isSuccess()) {
+                response.bodyAsText().trim().ifBlank { default }
+            } else {
+                logger.warn("Failed to get device name. Reason:[${response.bodyAsText()}]")
+                default
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to get device name. Reason:[${e.message}]")
+            default
+        }
+    }
+
+    /**
+     * 获取设备类型。
+     *
+     * @param[sn] 设备序列号。
+     * @return 设备类型。
+     * @throws[IllegalStateException] 请求失败。
+     */
+    suspend fun getType(sn: String): DeviceType {
+        val response = requireClient().post(buildURL(APIs.ADB_DEVICE_TYPE)) {
+            contentType(ContentType.Application.Json)
+            setBody(ADBDeviceRequest(sn = sn))
+        }
+
+        check(response.status.isSuccess()) {
+            "Failed to get type of device [$sn]! Reason:[${response.bodyAsText()}]"
+        }
+
+        val text = response.bodyAsText().trim()
+        return DeviceType.entries.firstOrNull { it.name == text }
+            ?: throw IllegalStateException("Invalid device type returned by server: [$text]")
+    }
+
     /**
      * 请求服务端为指定设备启动投屏转发。
      *
@@ -511,7 +641,7 @@ class ADBProxyClient(
         )
 
         /* 发起 HTTP 请求 */
-        val response = client.post(buildURL(APIs.ADB_CAST_START)) {
+        val response = requireClient().post(buildURL(APIs.ADB_CAST_START)) {
             contentType(ContentType.Application.Json)
             setBody(params)
         }
@@ -524,56 +654,54 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
-    private fun buildURL(path: String): Url =
-        URLBuilder(
-            protocol = if (secure) URLProtocol.HTTPS else URLProtocol.HTTP,
-            host = host,
-            port = port
-        )
-            .apply {
-                path(path)
-            }
-            .build()
 
-    private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
-        if (secure) {
-            client.wss(host = host, port = port, path = path, block = block)
-        } else {
-            client.webSocket(host = host, port = port, path = path, block = block)
-        }
+    /**
+     * 获取运行时配置。
+     *
+     * 配置不存在则抛出异常。
+     *
+     * @return 配置信息。
+     */
+    private fun requireRunningConfig(): RunningConfig {
+        return runningConfig ?: throw IllegalStateException("Client is not initialized!")
     }
 
+    /**
+     * 获取客户端。
+     *
+     * 实例不存在则抛出异常。
+     *
+     * @return 客户端。
+     */
+    private fun requireClient(): HttpClient {
+        return client ?: throw IllegalStateException("Client is not initialized! Have you call `init()` at first?")
+    }
 
     private fun createClient(): HttpClient {
         return HttpClient(CIO) {
             engine {
-                val ssl = sslConfig
-                if (ssl == null) {
-                    return@engine
-                }
+                // 如果未配置 SSL 则使用默认的 SSLContext ，无需执行后续的自定义引擎配置。
+                val ssl = runningConfig?.sslConfig ?: return@engine
 
                 https {
-                    this.trustManager = PinningTrustManager(null)
-                    // 向服务端出示客户端证书
-                    try {
-                        addKeyStore(
-                            store = ssl.getKeyStore(),
-                            password = ssl.keyPassword.toCharArray(),
-                            alias = ssl.keyAlias
-                        )
-                    } catch (e: Exception) {
-                        logger.warn("Failed to add keystore for client certificate. Reason:[${e.message}]")
-                        e.printStackTrace()
-                    }
+                    // TODO
+                    trustManager = PinningTrustManager(null)
+                    // 双向认证：向服务端出示客户端证书
+                    addKeyStore(
+                        store = ssl.getKeyStore(),
+                        password = ssl.keyPassword.toCharArray(),
+                        alias = ssl.keyAlias
+                    )
                 }
             }
 
             // 日志输出
-            install(Logging) { level = LogLevel.INFO }
+            install(Logging) { level = LogLevel.ALL }
             // 自动反序列化
             install(ContentNegotiation) { json(jsonTool) }
             // WebSocket 支持
             install(WebSockets)
+            // TODO
             // install(HttpTimeout)
         }
     }
@@ -616,4 +744,23 @@ class ADBProxyClient(
 
     // 是否可以终止服务端
     private fun canStop(): Boolean = (getServiceState() != ServiceState.INIT)
+
+    private fun buildURL(path: String): Url =
+        URLBuilder(
+            protocol = if (requireRunningConfig().enableTLS) URLProtocol.HTTPS else URLProtocol.HTTP,
+            host = host,
+            port = port
+        )
+            .apply {
+                path(path)
+            }
+            .build()
+
+    private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
+        if (requireRunningConfig().enableTLS) {
+            requireClient().wss(host = host, port = port, path = path, block = block)
+        } else {
+            requireClient().webSocket(host = host, port = port, path = path, block = block)
+        }
+    }
 }

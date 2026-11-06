@@ -1,6 +1,5 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server
 
-import kotlinx.serialization.Serializable
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairRequestListener
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.callbacks.PairedPeerStore
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
@@ -8,12 +7,11 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 /**
  * 运行时配置。
  *
- * 服务器启动时复制部分配置信息，防止运行时配置被修改导致非预期的错误。
+ * 服务端启动时复制部分配置信息，防止运行时配置被修改导致非预期的错误。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-@Serializable
 data class RunningConfig(
 
     /**

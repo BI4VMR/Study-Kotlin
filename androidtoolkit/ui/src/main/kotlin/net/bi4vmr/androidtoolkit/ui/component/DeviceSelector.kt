@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,10 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CancellationException
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 
@@ -152,6 +155,7 @@ private fun DeviceList(
                     items(devices, key = { it.getSN() }) { device ->
                         val isSelected = (device.getSN() == selected?.getSN())
                         DeviceListItem(
+                            executor = executor,
                             device = device,
                             selected = isSelected,
                             onClick = { onSelect(device) }
@@ -216,10 +220,28 @@ private fun ExecutorStatePanel(
 
 @Composable
 private fun DeviceListItem(
+    executor: ADBExecutor,
     device: ADBDevice,
     selected: Boolean,
     onClick: (device: ADBDevice) -> Unit
 ) {
+    val sn: String = device.getSN()
+    val deviceState: DeviceState = device.getState()
+
+    // 以执行器、序列号与状态为键：列表项被复用或设备重新上线时重新获取，旧任务随键变化自动取消。
+    val name: String? by produceState(initialValue = null, executor, sn, deviceState) {
+        value = null
+        if (deviceState != DeviceState.ONLINE) return@produceState
+
+        value = try {
+            executor.getName(sn, "").ifBlank { null }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -238,7 +260,12 @@ private fun DeviceListItem(
         ) {
             Icon(Icons.Filled.Devices, null)
             Spacer(Modifier.width(Dimens.Layout.Space))
-            Text(device.getSN(), style = MaterialTheme.typography.titleSmall)
+            Column {
+                Text(name ?: sn, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                if (name != null) {
+                    Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                }
+            }
             Spacer(Modifier.weight(1F))
             Text(device.getState().name, style = MaterialTheme.typography.labelSmall)
         }

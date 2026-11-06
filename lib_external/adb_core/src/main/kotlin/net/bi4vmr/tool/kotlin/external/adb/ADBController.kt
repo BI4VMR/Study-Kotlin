@@ -4,7 +4,6 @@ import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener
 import com.android.ddmlib.IDevice
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBController.init
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -384,6 +383,29 @@ object ADBController {
         synchronized(lock) {
             return deviceList.toList()
         }
+    }
+
+    /**
+     * 获取指定设备。
+     *
+     * @param[sn] 设备序列号。
+     * @return 设备。如果未找到则返回空值。
+     */
+    @JvmStatic
+    fun getDevice(sn: String): LocalDevice? {
+        return getDevices().find { it.getSN() == sn }
+    }
+
+    /**
+     * 获取指定设备。
+     *
+     * @param[sn] 设备序列号。
+     * @return 设备。
+     * @throws[IllegalArgumentException] 未找到指定设备。
+     */
+    @JvmStatic
+    fun requireDevice(sn: String): LocalDevice {
+        return getDevice(sn) ?: throw IllegalArgumentException("Device not found! SN:[$sn]")
     }
 
     /**

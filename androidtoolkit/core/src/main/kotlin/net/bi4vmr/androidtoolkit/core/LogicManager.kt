@@ -332,6 +332,8 @@ object LogicManager {
         _selectedExecutorFlow.value = executor
     }
 
+    fun getSelectedExecutor(): ADBExecutor = _selectedExecutorFlow.value
+
     fun selectDevice(device: ADBDevice?) {
         if (device != null) {
             preferredSN = device.getSN()
@@ -349,10 +351,10 @@ object LogicManager {
     suspend fun addRemoteExecutor(
         host: String,
         port: Int = Constants.PORT_SERVER_DEFAULT,
-        secure: Boolean = true,
+        enableTLS: Boolean = true,
         onPairingCode: (String) -> Unit = {}
     ) {
-        if (secure) {
+        if (enableTLS) {
             /* 检测配对状态 */
             val pairClient = ADBPairClient(host, port, cSSLConf)
             try {
@@ -370,10 +372,10 @@ object LogicManager {
 
         val client = ADBProxyClient(host, port)
             .apply {
-                setSecure(secure)
-                setSSLConfig(cSSLConf)
-                init()
+                this.enableTLS = enableTLS
+                this.sslConfig = cSSLConf
             }
+        client.init()
 
         // 版本验证
         val serverInfo = client.getServerInfo()
@@ -388,7 +390,7 @@ object LogicManager {
             RemoteExecutorRecord(
                 host = host,
                 port = port,
-                secure = secure,
+                secure = enableTLS,
                 addedTimestamp = System.currentTimeMillis()
             )
         )
@@ -403,8 +405,8 @@ object LogicManager {
 
         val client = ADBProxyClient(host, port)
             .apply {
-                setSecure(true)
-                setSSLConfig(cSSLConf)
+                this.enableTLS = true
+                this.sslConfig = cSSLConf
             }
         val executor = RemoteExecutor(host, port, client).apply { init() }
         _executorsFlow.update { it + executor }

@@ -3,7 +3,7 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto
 import kotlinx.serialization.Serializable
 
 /**
- * 通用请求参数。
+ * 请求：通用参数。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0

@@ -4,6 +4,7 @@ import net.bi4vmr.tool.java.common.base.io.BaseIOUtil
 import net.bi4vmr.tool.java.common.base.io.FileIOUtil
 import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
@@ -21,31 +22,6 @@ import java.io.IOException
  * @since 1.0.0
  */
 object ADBCLIUtil {
-
-    /**
-     * 设备属性名称：制造商。
-     */
-    private const val PROPERTY_MANUFACTURER = "ro.product.manufacturer"
-
-    /**
-     * 设备属性名称：品牌。
-     */
-    private const val PROPERTY_BRAND = "ro.product.brand"
-
-    /**
-     * 设备属性名称：型号。
-     */
-    private const val PROPERTY_MODEL = "ro.product.model"
-
-    /**
-     * 设备属性名称： Android 版本。
-     */
-    private const val PROPERTY_OSVERSION = "ro.build.version.release"
-
-    /**
-     * 设备属性名称： Android API Level 。
-     */
-    private const val PROPERTY_APILEVEL = "ro.build.version.sdk"
 
     /**
      * 正则表达式： ADB 命令。
@@ -320,7 +296,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun getManufacturer(sn: String): String =
-        getProperty(sn, PROPERTY_MANUFACTURER, "")
+        getProperty(sn, Propertys.Key.MANUFACTURER, "")
 
     /**
      * 获取设备品牌。
@@ -330,7 +306,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun getBrand(sn: String): String =
-        getProperty(sn, PROPERTY_BRAND, "")
+        getProperty(sn, Propertys.Key.BRAND, "")
 
     /**
      * 获取设备型号。
@@ -340,7 +316,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun getModel(sn: String): String =
-        getProperty(sn, PROPERTY_MODEL, "")
+        getProperty(sn, Propertys.Key.MODEL, "")
 
     /**
      * 获取设备 Android 系统版本。
@@ -350,7 +326,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun getOSVersion(sn: String): String =
-        getProperty(sn, PROPERTY_OSVERSION, "")
+        getProperty(sn, Propertys.Key.OS_VERSION, "")
 
     /**
      * 获取设备 Android API Level 。
@@ -360,7 +336,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun getAPILevel(sn: String): String =
-        getProperty(sn, PROPERTY_APILEVEL, "")
+        getProperty(sn, Propertys.Key.API_LEVEL, "")
 
 
     /*

@@ -21,7 +21,10 @@ import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
@@ -119,6 +122,40 @@ class ADBCoreModule : ADBProxyModule {
                 call.respondText(result, ContentType.Application.Json)
             }
 
+            post(APIs.ADB_PROPERTY) {
+                val params: ADBPropertyRequest = try {
+                    call.receive()
+                } catch (e: Exception) {
+                    call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                if (params.sn.isBlank() || params.key.isBlank()) {
+                    call.respondText("Parameter [sn] and [key] are required.", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val value = withContext(Dispatchers.IO) {
+                    ADBCLIUtil.getProperty(params.sn, params.key)
+                }
+                if (value == null) {
+                    call.respondText("Failed to get property.", status = HttpStatusCode.InternalServerError)
+                } else {
+                    call.respondText(value, ContentType.Text.Plain)
+                }
+            }
+
+            post(APIs.ADB_DEVICE_NAME) {
+                val device = receiveLocalDevice(call) ?: return@post
+                val name = withContext(Dispatchers.IO) { device.getName() }
+                call.respondText(name, ContentType.Text.Plain)
+            }
+
+            post(APIs.ADB_DEVICE_TYPE) {
+                val device = receiveLocalDevice(call) ?: return@post
+                call.respondText(device.getType().name, ContentType.Text.Plain)
+            }
+
             webSocket(APIs.ADB_EVENTS) {
                 onADBEventsWSConnect(this, server.jsonTool)
             }
@@ -143,6 +180,31 @@ class ADBCoreModule : ADBProxyModule {
             ListSerializer(RemoteDevice.serializer()),
             list
         )
+    }
+
+    /**
+     * 解析请求体并查找本地设备。
+     *
+     * 若参数无效或设备不存在，将直接响应错误并返回空值。
+     */
+    private suspend fun receiveLocalDevice(call: ApplicationCall): LocalDevice? {
+        val params: ADBDeviceRequest = try {
+            call.receive()
+        } catch (e: Exception) {
+            call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
+            return null
+        }
+
+        if (params.sn.isBlank()) {
+            call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
+            return null
+        }
+
+        val device = ADBController.getDevice(params.sn)
+        if (device == null) {
+            call.respondText("Device not exist.", status = HttpStatusCode.NotFound)
+        }
+        return device
     }
 
     private suspend fun onADBExecForStatus(params: ADBExecRequest): Int {

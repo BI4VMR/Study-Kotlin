@@ -16,6 +16,8 @@ import java.io.IOException
  *
  * [getSN] 、 [getState] 、 [getType] 、 [isOnline] 方法为内存读写，不必在子线程调用；其他方法耗时可能较长，建议在非 UI 线程调用。
  *
+ * 其他方法均为 [ADBCLIUtil] 相关功能的快捷调用，例如： [ADBCLIUtil.screenshotAsPNG] 在此处可以针对当前设备调用，省略 `sn` 参数。
+ *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
@@ -54,29 +56,6 @@ data class LocalDevice(
             IDevice.DeviceState.ONLINE -> DeviceState.ONLINE
             IDevice.DeviceState.RECOVERY -> DeviceState.RECOVERY
             IDevice.DeviceState.BOOTLOADER -> DeviceState.BOOTLOADER
-        }
-    }
-
-    /**
-     * 获取设备类型。
-     *
-     * @return 枚举。
-     */
-    fun getType(): DeviceType {
-        if (ddmDevice.isEmulator) {
-            return DeviceType.EMULATOR
-        }
-
-        val sn = getSN()
-        return if (
-        // `adb connect` 命令主动连接的设备
-            sn.contains(':') ||
-            // Android 11 开始新增扫码配对方式连接的设备
-            sn.contains("._adb-tls-connect.")
-        ) {
-            DeviceType.NETWORK
-        } else {
-            DeviceType.USB
         }
     }
 
@@ -277,13 +256,36 @@ data class LocalDevice(
      * @return 设备名称。
      */
     @JvmOverloads
-    fun getName(default: String = "设备不可用"): String {
+    fun getName(default: String = "Unknown"): String {
         if (ddmDevice.isEmulator) {
             return ddmDevice.avdName
         }
 
         val name = "${getBrand()} ${getModel()}"
         return if (name.trim().isBlank()) default else name
+    }
+
+    /**
+     * 获取设备类型。
+     *
+     * @return 设备类型。
+     */
+    fun getType(): DeviceType {
+        if (ddmDevice.isEmulator) {
+            return DeviceType.EMULATOR
+        }
+
+        val sn = getSN()
+        return if (
+        // `adb connect` 命令主动连接的设备
+            sn.contains(':') ||
+            // Android 11 开始新增扫码配对方式连接的设备
+            sn.contains("._adb-tls-connect.")
+        ) {
+            DeviceType.NETWORK
+        } else {
+            DeviceType.USB
+        }
     }
 
 

@@ -29,6 +29,15 @@ object APIs {
     /* ----- 基础功能 ----- */
 
     /**
+     * 信令消息。
+     *
+     * 服务端用于通告设备状态变更等事件。
+     *
+     * 协议为 WebSocket 。
+     */
+    const val ADB_EVENTS: String = "/adb/events"
+
+    /**
      * 查询设备列表。
      *
      * 请求方式为 HTTP POST ，返回 JSON 设备列表。
@@ -57,20 +66,33 @@ object APIs {
     const val ADB_DISPLAYS: String = "/adb/displays"
 
     /**
-     * 信令消息。
-     *
-     * 服务端用于通告设备状态变更等事件。
-     *
-     * 协议为 WebSocket 。
-     */
-    const val ADB_EVENTS: String = "/adb/events"
-
-    /**
      * 远程 ADB Shell 。
      *
      * 协议为 WebSocket ，请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest] 。
      */
     const val ADB_SHELL: String = "/adb/shell"
+
+    /**
+     * 获取设备属性。
+     *
+     * 请求方式为 HTTP POST ，请求体为 [ADBPropertyRequest] ；返回纯文本，内容为属性值。
+     */
+    const val ADB_PROPERTY: String = "/adb/property"
+
+    /**
+     * 获取设备名称。
+     *
+     * 请求方式为 HTTP POST ，请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest] ；返回纯文本，内容为设备名称。
+     */
+    const val ADB_DEVICE_NAME: String = "/adb/device/name"
+
+    /**
+     * 获取设备类型。
+     *
+     * 请求方式为 HTTP POST ，请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest] ；返回纯文本，内容为
+     * [net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType] 的枚举名称。
+     */
+    const val ADB_DEVICE_TYPE: String = "/adb/device/type"
 
 
     /* ----- 屏幕投射 ----- */
