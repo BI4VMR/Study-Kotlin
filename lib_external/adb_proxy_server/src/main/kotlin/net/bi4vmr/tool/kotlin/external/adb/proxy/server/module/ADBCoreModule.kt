@@ -19,9 +19,9 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
+import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
@@ -52,7 +52,7 @@ class ADBCoreModule : ADBProxyModule {
 
         routing {
             post(APIs.SERVER_INFO) {
-                val response = service.onGetServerInfo()
+                val response = service.getServerInfo()
                 val responseWrapper = BaseResponse(data = response)
                 call.respond(responseWrapper)
             }
@@ -146,14 +146,45 @@ class ADBCoreModule : ADBProxyModule {
             }
 
             post(APIs.ADB_DEVICE_NAME) {
-                val device = receiveLocalDevice(call) ?: return@post
-                val name = withContext(Dispatchers.IO) { device.getName() }
-                call.respondText(name, ContentType.Text.Plain)
+                /* 参数校验 */
+                val params: ADBDeviceRequest = try {
+                    call.receive()
+                } catch (_: Exception) {
+                    call.respondText("Invalid request body!", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val sn = params.sn
+                if (sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required!", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+
+                /* 业务逻辑 */
+                val response = withContext(Dispatchers.IO) { service.getDeviceName(sn) }
+                call.respond(response)
             }
 
             post(APIs.ADB_DEVICE_TYPE) {
-                val device = receiveLocalDevice(call) ?: return@post
-                call.respondText(device.getType().name, ContentType.Text.Plain)
+                /* 参数校验 */
+                val params: ADBDeviceRequest = try {
+                    call.receive()
+                } catch (_: Exception) {
+                    call.respondText("Invalid request body!", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val sn = params.sn
+                if (sn.isBlank()) {
+                    call.respondText("Parameter [sn] is required!", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+
+                /* 业务逻辑 */
+                val response = withContext(Dispatchers.IO) { service.getDeviceType(sn) }
+                call.respond(response)
             }
 
             webSocket(APIs.ADB_EVENTS) {

@@ -73,4 +73,16 @@ data class BaseResponse<T> @JvmOverloads constructor(
     fun isFailure(): Boolean {
         return code != CODE_SUCCESS
     }
+
+    /**
+     * 获取数据。
+     *
+     * 适用于明确必须返回数据的接口。
+     *
+     * @return 数据。
+     * @throws[IllegalStateException] 如果数据为空值，则抛出异常。
+     */
+    fun requireData(): T {
+        return data ?: throw IllegalStateException("Data is null!")
+    }
 }

@@ -1,6 +1,8 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants
 
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
@@ -82,17 +84,16 @@ object APIs {
     /**
      * 获取设备名称。
      *
-     * 请求方式为 HTTP POST ，请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest] ；返回纯文本，内容为设备名称。
+     * 请求方式为 HTTP POST ，请求体为 [ADBDeviceRequest] ；返回纯文本，内容为设备名称，特殊值 `Unknown` 表示设备离线等状态。
      */
-    const val ADB_DEVICE_NAME: String = "/adb/device/name"
+    const val ADB_DEVICE_NAME: String = "/adb/device-name"
 
     /**
      * 获取设备类型。
      *
-     * 请求方式为 HTTP POST ，请求体为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest] ；返回纯文本，内容为
-     * [net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType] 的枚举名称。
+     * 请求方式为 HTTP POST ，请求体为 [ADBDeviceRequest] ；返回纯文本，内容为 [DeviceType] 枚举名称。
      */
-    const val ADB_DEVICE_TYPE: String = "/adb/device/type"
+    const val ADB_DEVICE_TYPE: String = "/adb/device-type"
 
 
     /* ----- 屏幕投射 ----- */
