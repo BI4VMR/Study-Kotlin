@@ -16,9 +16,10 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
  */
 class RemoteExecutor(
     val host: String,
-    val port: Int,
-    val client: ADBProxyClient
+    val port: Int
 ) : ADBExecutor {
+
+    val client: ADBProxyClient = ADBProxyClient(host, port)
 
     override fun getType(): ExecutorType = ExecutorType.REMOTE
 

@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
@@ -23,10 +25,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -40,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CancellationException
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
+import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
@@ -77,6 +82,15 @@ fun DeviceSelector(
                     onClick = { logicManager.selectExecutor(executor) }
                 ) {
                     Text(text = executor.getDisplayName(), maxLines = 1)
+
+                    if (executor is RemoteExecutor) {
+                        IconButton(
+                            onClick = { logicManager.removeRemoteExecutor(executor) },
+                            modifier = Modifier.size(24.dp).padding(start = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Close, null)
+                        }
+                    }
                 }
             }
         }
@@ -104,6 +118,12 @@ private fun DeviceList(
 ) {
     val state: ServiceState by executor.getStateFlow().collectAsStateWithLifecycle()
     val error: Exception? by executor.getExceptionFlow().collectAsStateWithLifecycle()
+
+    LaunchedEffect(executor) {
+        if (executor.getStateFlow().value == ServiceState.INIT) {
+            executor.init()
+        }
+    }
 
     Column(modifier = modifier) {
         when {

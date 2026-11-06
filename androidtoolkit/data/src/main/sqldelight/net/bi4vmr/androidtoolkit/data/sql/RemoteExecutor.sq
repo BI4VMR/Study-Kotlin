@@ -1,19 +1,19 @@
--- 已添加的远程执行器（ADB 代理服务端地址），启动时自动重连。
 CREATE TABLE remote_executor (
     host TEXT NOT NULL,
     port INTEGER NOT NULL,
-    secure INTEGER NOT NULL,
-    added_timestamp INTEGER NOT NULL,
+    enable_tls INTEGER NOT NULL,
+    create_time INTEGER NOT NULL,
     PRIMARY KEY (host, port)
 );
+
 
 selectAll:
 SELECT *
 FROM remote_executor
-ORDER BY added_timestamp ASC;
+ORDER BY create_time ASC;
 
-upsert:
-INSERT OR REPLACE INTO remote_executor(host, port, secure, added_timestamp)
+replace:
+INSERT OR REPLACE INTO remote_executor(host, port, enable_tls, create_time)
 VALUES (?, ?, ?, ?);
 
 deleteByAddress:

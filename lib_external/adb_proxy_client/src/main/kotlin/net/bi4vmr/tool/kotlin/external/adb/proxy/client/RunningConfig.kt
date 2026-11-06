@@ -30,7 +30,7 @@ data class RunningConfig(
     /**
      * 是否启用加密连接。
      */
-    val enableTLS: Boolean = false,
+    val enableTLS: Boolean,
 
     /**
      * SSL 证书配置。

@@ -92,4 +92,9 @@ object FileManager {
     fun getConfigFile(): File = File(getConfigDir(), "config.preferences_pb")
 
     fun getDBFile(): File = File(getDBDir(), "data.db")
+
+    /**
+     * 获取内置 SSL 证书文件。
+     */
+    fun getSSLCertFile(): File = File(getUserDataDir(), "cert.jks")
 }

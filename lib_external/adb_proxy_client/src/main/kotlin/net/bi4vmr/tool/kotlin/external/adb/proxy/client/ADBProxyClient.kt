@@ -680,7 +680,7 @@ class ADBProxyClient(
     private fun createClient(): HttpClient {
         return HttpClient(CIO) {
             engine {
-                // 如果未配置 SSL 则使用默认的 SSLContext ，无需执行后续的自定义引擎配置。
+                // 如果未配置 SSL 则直接返回，无需配置双向证书验证。
                 val ssl = runningConfig?.sslConfig ?: return@engine
 
                 https {
@@ -707,6 +707,7 @@ class ADBProxyClient(
     }
 
     private fun connectWebSocket() {
+        println("   ->  $runningConfig")
         // 进入该方法前，客户端状态已在 PREPARING 。
         taskScope.launch {
             try {

@@ -106,6 +106,7 @@ include(":M04_Utils:C01_Test:S03_MockK")
 
 // ----- 用户界面 -----
 include(":M07_GUI:C01_CMP:S01_Desktop")
+include(":scaleable")
 
 
 // TODO Test

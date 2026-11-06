@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -76,7 +75,7 @@ fun SegmentedTabRowScope.SegmentedTab(
     val contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
     else MaterialTheme.colorScheme.onSurface
 
-    Box(
+    Row(
         modifier = modifier
             .background(
                 if (selected) MaterialTheme.colorScheme.primaryContainer

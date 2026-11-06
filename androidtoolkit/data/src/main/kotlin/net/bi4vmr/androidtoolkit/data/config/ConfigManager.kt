@@ -44,6 +44,9 @@ class ConfigManager(
      */
     private val logger = LoggerFactory.getLogger(ConfigManager::class.java)
 
+    /**
+     * AndroidX DataStore.
+     */
     private val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(scope = taskScope) {
         file
     }

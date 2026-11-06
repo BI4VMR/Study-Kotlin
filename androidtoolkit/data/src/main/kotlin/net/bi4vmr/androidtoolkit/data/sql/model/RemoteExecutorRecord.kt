@@ -1,7 +1,7 @@
 package net.bi4vmr.androidtoolkit.data.sql.model
 
 /**
- * 远程执行器记录。
+ * 实体类：远程执行器。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -9,22 +9,22 @@ package net.bi4vmr.androidtoolkit.data.sql.model
 data class RemoteExecutorRecord(
 
     /**
-     * 服务端地址。
+     * 目标地址。
      */
     val host: String,
 
     /**
-     * 服务端端口。
+     * 目标端口。
      */
     val port: Int,
 
     /**
-     * 是否使用加密连接。
+     * 是否启用 TLS 。
      */
-    val secure: Boolean,
+    val enableTLS: Boolean,
 
     /**
-     * 添加时间戳。
+     * 创建时间 。
      */
-    val addedTimestamp: Long
+    val createTime: Long = System.currentTimeMillis()
 )

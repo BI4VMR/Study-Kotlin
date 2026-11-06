@@ -7,12 +7,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -80,26 +82,16 @@ object LogicManager {
      */
     val adbProxyServer: ADBProxyServer by lazy { ADBProxyServer() }
 
-    val cSSLConf: SSLConfig by lazy {
-        // TODO
-        val file = File(fileManager.getUserDataDir(), "client.jks")
-        if (!file.exists()) {
-            generateCertificate(
-                file = file,
-                algorithm = "SHA256withRSA",
-                keyAlias = "key1",
-                keyPassword = "1",
-                jksPassword = "1",
-                keySizeInBits = 2048
-            )
-        }
-        val conf = SSLConfig(
-            keyStoreFile = file,
-            keyStorePassword = "1",
-            keyAlias = "key1",
-            keyPassword = "1"
+    /**
+     * SSL 配置。
+     */
+    val sslConfig: SSLConfig by lazy {
+        SSLConfig(
+            keyStoreFile = getSSLCertFile(),
+            keyStorePassword = "",
+            keyAlias = "default",
+            keyPassword = ""
         )
-        conf
     }
 
 
@@ -129,17 +121,17 @@ object LogicManager {
         }
     }
 
+    private val remoteExecutorDAO: RemoteExecutorDAO by lazy {
+        initDB()
+        MainDB.remoteExecutorDAO
+    }
+
     /**
      * 已配对对端数据库。
      */
     private val pairedPeerDAO: PairedPeerDAO by lazy {
         initDB()
         MainDB.pairedPeerDAO
-    }
-
-    private val remoteExecutorDAO: RemoteExecutorDAO by lazy {
-        initDB()
-        MainDB.remoteExecutorDAO
     }
 
     @Volatile
@@ -184,18 +176,31 @@ object LogicManager {
         }
     }
 
-
     /**
      * Flow : 执行器列表。
+     *
+     * 数据驱动，根据数据库记录生成执行器列表，并跟随数据库刷新。
      */
-    private val _executorsFlow: MutableStateFlow<List<ADBExecutor>> =
-        // 本地执行器总是可用的，将其固定放置在列表首位。
-        MutableStateFlow(listOf(LocalExecutor))
+    val executorsFlow: StateFlow<List<ADBExecutor>> =
+        remoteExecutorDAO.observe().flatMapLatest { records ->
+            // 本地执行器总是可用的，将其固定放置在列表首位。
+            val list: MutableList<ADBExecutor> = mutableListOf(LocalExecutor)
+            // 根据存储的记录创建远程执行器
+            records.forEach { record ->
+                val executor = RemoteExecutor(record.host, record.port)
+                executor.client.apply {
+                    enableTLS = record.enableTLS
+                    sslConfig = this@LogicManager.sslConfig
+                }
 
-    /**
-     * Flow : 执行器列表。
-     */
-    val executorsFlow: StateFlow<List<ADBExecutor>> = _executorsFlow
+                list.add(executor)
+            }
+            flowOf(list)
+        }.stateIn(
+            taskScope,
+            SharingStarted.WhileSubscribed(5000),
+            listOf(LocalExecutor)
+        )
 
     /**
      * Flow : 当前选中的执行器。
@@ -297,9 +302,6 @@ object LogicManager {
             /* 设置终端桥接程序文件路径 */
             ShellTransferHelper.setTransferFile(fileManager.getInternalShellTransferFile())
 
-            /* 恢复上次保存的远程执行器 */
-            restoreRemoteExecutors()
-
             /* 启动 MCP 服务，环境变量 ANDROIDTOOLKIT_MCP_PORT=0 可禁用 */
             val mcpPort = System.getenv("ANDROIDTOOLKIT_MCP_PORT")?.toIntOrNull() ?: McpService.PORT_DEFAULT
             if (mcpPort > 0) {
@@ -322,9 +324,15 @@ object LogicManager {
         }
     }
 
+    /**
+     * 释放资源。
+     *
+     * 本类不支持重复初始化，通常仅在进程被关闭前调用。
+     */
     fun release() {
+        taskScope.cancel()
         // 释放所有远程执行器
-        _executorsFlow.value.forEach { it.release() }
+        executorsFlow.value.forEach { it.release() }
     }
 
 
@@ -356,7 +364,7 @@ object LogicManager {
     ) {
         if (enableTLS) {
             /* 检测配对状态 */
-            val pairClient = ADBPairClient(host, port, cSSLConf)
+            val pairClient = ADBPairClient(host, port, sslConfig)
             try {
                 val pairState = pairClient.fetchPairInfo()
 
@@ -373,7 +381,7 @@ object LogicManager {
         val client = ADBProxyClient(host, port)
             .apply {
                 this.enableTLS = enableTLS
-                this.sslConfig = cSSLConf
+                this.sslConfig = this@LogicManager.sslConfig
             }
         client.init()
 
@@ -383,52 +391,20 @@ object LogicManager {
             throw IllegalStateException("Server version is [${serverInfo.version}], mismatch with [${Constants.PROTOCOL_VERSION}]!")
         }
 
-        connectRemoteExecutor(host, port)
-
         // 连接建立后持久化，下次启动时自动加载。
         remoteExecutorDAO.save(
             RemoteExecutorRecord(
                 host = host,
                 port = port,
-                secure = enableTLS,
-                addedTimestamp = System.currentTimeMillis()
+                enableTLS = enableTLS
             )
         )
-    }
-
-    /**
-     * 建立远程执行器连接并注册到执行器列表，同一地址已存在时忽略。
-     */
-    private fun connectRemoteExecutor(host: String, port: Int) {
-        val exists = _executorsFlow.value.any { it is RemoteExecutor && it.host == host && it.port == port }
-        if (exists) return
-
-        val client = ADBProxyClient(host, port)
-            .apply {
-                this.enableTLS = true
-                this.sslConfig = cSSLConf
-            }
-        val executor = RemoteExecutor(host, port, client).apply { init() }
-        _executorsFlow.update { it + executor }
-    }
-
-    /**
-     * 加载数据库中保存的远程执行器。
-     *
-     * 这些服务端此前已完成配对，因此直接建立连接；单个连接失败不影响其他记录。
-     */
-    private fun restoreRemoteExecutors() {
-        remoteExecutorDAO.list().forEach { record ->
-            runCatching { connectRemoteExecutor(record.host, record.port) }
-                .onFailure { println("LogicManager: failed to restore remote executor [${record.host}:${record.port}]: $it") }
-        }
     }
 
     /**
      * 移除远程执行器，并删除数据库记录。
      */
     fun removeRemoteExecutor(executor: RemoteExecutor) {
-        _executorsFlow.update { list -> list.filterNot { it === executor } }
         if (_selectedExecutorFlow.value === executor) {
             _selectedExecutorFlow.value = LocalExecutor
         }
@@ -456,26 +432,7 @@ object LogicManager {
 
     fun startProxyServer() {
         taskScope.launch {
-            // TODO TEST KEY
-            val file = File(fileManager.getUserDataDir(), "server.jks")
-            if (!file.exists()) {
-                generateCertificate(
-                    file = file,
-                    algorithm = "SHA256withRSA",
-                    keyAlias = "Key1",
-                    keyPassword = "1",
-                    jksPassword = "1",
-                    keySizeInBits = 2048
-                )
-            }
-            val conf = SSLConfig(
-                keyStoreFile = file,
-                keyStorePassword = "1",
-                keyAlias = "Key1",
-                keyPassword = "1"
-            )
-            adbProxyServer.sslConfig = conf
-
+            adbProxyServer.sslConfig = sslConfig
 
             val address = configManager.proxyInterfaceFlow.first()
             val port = configManager.proxyPortFlow.first()
@@ -540,5 +497,21 @@ object LogicManager {
         taskScope.launch {
             configManager.setProxyPort(port)
         }
+    }
+
+    private fun getSSLCertFile(): File {
+        val file = FileManager.getSSLCertFile()
+        if (!file.exists()) {
+            generateCertificate(
+                file = file,
+                algorithm = "SHA256withRSA",
+                jksPassword = "",
+                keyAlias = "default",
+                keyPassword = "",
+                keySizeInBits = 2048
+            )
+        }
+
+        return file
     }
 }
