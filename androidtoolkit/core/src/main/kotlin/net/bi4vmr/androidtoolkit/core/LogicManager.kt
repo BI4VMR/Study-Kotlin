@@ -3,27 +3,15 @@
 package net.bi4vmr.androidtoolkit.core
 
 import io.ktor.network.tls.certificates.generateCertificate
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.core.mcp.McpService
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
@@ -251,6 +239,8 @@ object LogicManager {
 
     /* ----- 配置项 ----- */
 
+    val darkModeFlow: Flow<DarkMode> = configManager.darkModeFlow
+
     val nodeNameFlow: Flow<String> = configManager.nodeNameFlow
 
     val adbExecFileModeFlow: Flow<ADBExecFileMode> = configManager.adbExecFileModeFlow
@@ -449,6 +439,12 @@ object LogicManager {
 
 
     /* ----- 配置项 ----- */
+
+    fun setDarkMode(mode: DarkMode) {
+        taskScope.launch {
+            configManager.setDarkMode(mode)
+        }
+    }
 
     fun setNodeName(name: String) {
         taskScope.launch {

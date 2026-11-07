@@ -2,6 +2,7 @@
     <!-- 全局 -->
     <string name="app_name">Android 开发工具箱</string>
 
+    <string name="placeholder_loading">加载中…</string>
     <string name="placeholder_device_name">未知设备</string>
 
     <string name="button_confirm">确认</string>
@@ -23,6 +24,13 @@
 
     <!-- 设置 -->
     <string name="setting_common">通用</string>
+    <string name="setting_common_dark_mode">深色模式</string>
+    <string name="setting_common_dark_mode_auto">跟随系统</string>
+    <string name="setting_common_dark_mode_light">浅色</string>
+    <string name="setting_common_dark_mode_dark">深色</string>
     <string name="setting_common_node_name">节点名称</string>
     <string name="setting_common_node_name_info">设备标识，使用 ADB 转发器等功能时将会在对端设备展示。</string>
+
+    <!-- 组件 -->
+    <string name="deviceselector_title">设备管理</string>
 </resources>

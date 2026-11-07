@@ -5,7 +5,7 @@ import androidx.compose.ui.window.application
 import net.bi4vmr.androidtoolkit.ui.App
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.app_name
-import net.bi4vmr.androidtoolkit.ui.theme.DefaultTheme
+import net.bi4vmr.androidtoolkit.ui.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -20,8 +20,6 @@ fun main() = application {
         title = stringResource(Res.string.app_name),
         onCloseRequest = ::exitApplication
     ) {
-        DefaultTheme {
             App()
-        }
     }
 }

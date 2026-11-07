@@ -20,6 +20,7 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.placeholder_device_name
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import org.jetbrains.compose.resources.getString
@@ -42,16 +43,18 @@ fun DeviceSelector(
 
     var connectProxyDialogState: Boolean by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space),
+        modifier = modifier.padding(Dimens.Layout.Padding)
+    ) {
         Text(
-            text = "设备列表",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
+            text = "设备管理",
+            style = MaterialTheme.typography.titleSmall
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             // 执行器列表
-            SegmentedTabRow(modifier = Modifier.padding(horizontal = 8.dp)) {
+            SegmentedTabRow {
                 executors.forEach { executor ->
                     SegmentedTab(
                         selected = executor == selectedExecutor,
@@ -60,9 +63,10 @@ fun DeviceSelector(
                         Text(text = executor.getDisplayName(), maxLines = 1)
 
                         if (executor is RemoteExecutor) {
+                            Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
                             IconButton(
                                 onClick = { logicManager.removeRemoteExecutor(executor) },
-                                modifier = Modifier.size(24.dp).padding(start = 4.dp)
+                                modifier = Modifier.size(Dimens.Icon.Small)
                             ) {
                                 Icon(Icons.Filled.Close, null)
                             }
@@ -71,12 +75,16 @@ fun DeviceSelector(
                 }
             }
 
-            // 连接远程执行器
+            Spacer(Modifier.weight(1F))
+
+            Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
+
+            // 按钮：连接远程执行器
             IconButton(
                 onClick = { connectProxyDialogState = true },
-                modifier = Modifier.size(24.dp).padding(start = 4.dp)
+                modifier = Modifier.size(Dimens.Icon.Normal)
             ) {
-                Icon(Icons.Filled.Add, null)
+                Icon(Icons.Filled.Add, null, Modifier.size(Dimens.Icon.Normal))
             }
         }
 
@@ -164,7 +172,7 @@ private fun DeviceList(
             else -> {
                 LazyColumn(
                     modifier = Modifier.weight(1F),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(devices, key = { it.getSN() }) { device ->
@@ -227,7 +235,10 @@ private fun DeviceListItem(
     val state = device.getState()
 
     val name: String by produceState(initialValue = "-", executor, sn, state) {
-      value =  executor.getName(sn, getString(Res.string.placeholder_device_name))
+        value = executor.getName(sn, getString(Res.string.placeholder_device_name))
+    }
+    val type: DeviceType? by produceState(initialValue = null, executor, sn, state) {
+        value = executor.getDeviceType(sn)
     }
 
     Card(
@@ -240,11 +251,11 @@ private fun DeviceListItem(
             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
         ),
         modifier = Modifier.fillMaxWidth(),
-        onClick = { onClick(device) },
+        onClick = { onClick(device) }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(Dimens.Layout.Space)
+            modifier = Modifier.padding(Dimens.Layout.ListItemPadding)
         ) {
             Icon(Icons.Filled.Devices, null)
             Spacer(Modifier.width(Dimens.Layout.Space))
@@ -253,7 +264,16 @@ private fun DeviceListItem(
                 Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
             }
             Spacer(Modifier.weight(1F))
-            Text(device.getState().name, style = MaterialTheme.typography.labelSmall)
+
+            // 按钮：连接远程执行器
+            if (type == DeviceType.NETWORK) {
+                IconButton(
+                    onClick = { },
+                    modifier = Modifier.size(Dimens.Icon.Small)
+                ) {
+                    Icon(Icons.Filled.Delete, null, Modifier.size(Dimens.Icon.Small))
+                }
+            }
         }
     }
 }

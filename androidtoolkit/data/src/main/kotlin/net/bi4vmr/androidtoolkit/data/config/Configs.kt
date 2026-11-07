@@ -17,6 +17,8 @@ object Configs {
 
     object Key {
 
+        val COMMON_DARK_MODE = intPreferencesKey("common_dark_mode")
+
         val COMMON_NODE_NAME = stringPreferencesKey("common_node_name")
 
         val ADB_EXEC_MODE = intPreferencesKey("adb_exec_mode")

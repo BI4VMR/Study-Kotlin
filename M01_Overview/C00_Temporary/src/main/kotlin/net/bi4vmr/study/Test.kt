@@ -1,22 +1,44 @@
 package net.bi4vmr.study
 
-import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
-import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
+import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
+import java.io.File
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
 fun main() {
-    Uuid.generateV4().toHexString().uppercase().let {
-        println(it)
-    }
+    // Uuid.generateV4().toHexString().uppercase().let {
+    //     println(it)
+    // }
+    //
+    // TerminalUtil.launch(
+    //     terminal = Terminals.CMD,
+    //     command = "ps",
+    //     newWindow = false,
+    //     keep = true
+    // )
 
-    TerminalUtil.launch(
-        terminal = Terminals.CMD,
-        command = "ps",
-        newWindow = false,
-        keep = true
-    )
+    ADBController.init()
+    ADBController.getDevices().firstOrNull()?.let {
+        println(it.getSN())
+        it.pushFile(
+            File("C:\\Users\\bi4vmr\\Download\\搞机工具箱11.0.0.zip"),
+            "/sdcard/Download/",
+            object : ADBFileTransferListener() {
+                override fun onStart(size: Long) {
+                    println("onStart size -> $size")
+                }
+
+                override fun onProgress(size: Long, progress: Double) {
+                    println("onProgress size -> $size, progress -> $progress")
+                }
+
+                override fun onEnd(cancel: Boolean) {
+                    println("onEnd cancel -> $cancel")
+                }
+            }
+        )
+    }
 
     // embeddedServer(CIO, port = 8080) {
     //     routing {

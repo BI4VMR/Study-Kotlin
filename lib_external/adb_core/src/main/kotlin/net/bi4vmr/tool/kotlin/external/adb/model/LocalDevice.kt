@@ -1,6 +1,11 @@
 package net.bi4vmr.tool.kotlin.external.adb.model
 
 import com.android.ddmlib.IDevice
+import com.android.ddmlib.SyncException
+import com.android.ddmlib.SyncService
+import net.bi4vmr.tool.java.common.base.file.FilePathUtil
+import net.bi4vmr.tool.java.common.base.system.CLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -9,7 +14,9 @@ import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * ADB 本地设备。
@@ -296,11 +303,137 @@ data class LocalDevice(
     /**
      * 推送文件到设备。
      *
-     * @param[src] PC 上的源文件。
-     * @param[remote] 设备上的目标路径。
+     * DDMLib 封装，适用于需要获取进度或随时取消的场景。
+     *
+     * @param[local] 源文件（PC 端）。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
+     * @throws[FileNotFoundException] 源文件不存在或不可读。
+     * @throws[IllegalStateException] 源文件指向目录。
+     * @throws[IllegalArgumentException] 未指明目标路径。
+     * @throws[IOException] 目标路径不可写入。
+     * @throws[SyncException] 传输失败或用户取消推送。
+     */
+    fun pushFile(local: File, remote: String, listener: ADBFileTransferListener? = null) {
+        /* 参数校验 */
+        if (!local.canRead()) {
+            throw FileNotFoundException("Input file not exist or readable! Path:[${local}]")
+        }
+
+        if (local.isDirectory) {
+            throw IllegalStateException("Input file is a directory! Path:[${local}]")
+        }
+
+        if (remote.isBlank()) {
+            throw IllegalArgumentException("Remote path is empty!")
+        }
+
+
+        /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
+        val remoteIsDir = (remote.length > 1) && (remote.last() == '/')
+        val remotePath = if (remoteIsDir) {
+            "$remote${local.name}"
+        } else {
+            remote
+        }
+
+        // ADB 将数据传输至临时文件后才判断目标路径是否可写，提前判断并报错可节省大文件传输的耗时。
+        val remoteParent = FilePathUtil.getParent(remotePath)
+        val state = runForStatus("test -w \"$remoteParent\"")
+        if (!CLIUtil.isSuccess(state)) {
+            throw IOException("Remote directory cannot be write! Path:[$remoteParent]")
+        }
+
+        val syncService = ddmDevice.syncService
+            ?: throw IllegalStateException("Cannot get SyncService for device [${getSN()}]!")
+
+        // DDMLib 进度回调实现
+        val monitor = object : SyncService.ISyncProgressMonitor {
+
+            val totalSize: Long = local.length()
+            var transferredSize: Long = 0L
+            val cancelled = AtomicBoolean(false)
+
+
+            init {
+                // 监听用户发出的取消指令
+                listener?.setCancelNotifier {
+                    cancelled.set(true)
+                }
+            }
+
+
+            /**
+             * 回调方法：传输开始。
+             *
+             * @param[totalWork] 文件大小（字节）。该值受到 [Integer.MAX_VALUE] 的限制无法表示大于 `2GB` 的数据，最好使用其他方法
+             * 获取文件大小。
+             */
+            override fun start(totalWork: Int) {
+                listener?.onStart(totalSize)
+            }
+
+            /**
+             * 回调方法：传输结束。
+             *
+             * 如果中途被取消则不会回调该方法。
+             */
+            override fun stop() {
+                listener?.onEnd(false)
+            }
+
+            /**
+             * 回调方法：子任务开始。
+             *
+             * @param[name] 文件名称。
+             */
+            override fun startSubTask(name: String?) {
+                // 传输单个文件无需使用该方法
+            }
+
+            /**
+             * 回调方法：传输进度更新。
+             *
+             * @param[work] 当前分块大小（字节）。
+             */
+            override fun advance(work: Int) {
+                transferredSize += work
+
+                // 无法获取文件长度时，以 `NaN` 通告进度。
+                if (totalSize <= 0) {
+                    listener?.onProgress(transferredSize, Double.NaN)
+                } else {
+                    val progress = transferredSize.toDouble() / totalSize.toDouble()
+                    listener?.onProgress(transferredSize, progress)
+                }
+            }
+
+            /**
+             * 回调方法：是否取消传输。
+             *
+             * 传输每个数据分块前都会回调一次该方法，若返回 `true` 则取消本次传输。
+             */
+            override fun isCanceled(): Boolean {
+                return cancelled.get()
+            }
+        }
+
+        // DDMLib 不支持含有非 ASCII 字符的路径，先将数据写入临时文件，再改名为目标名称。
+        val tempFileName = "androidtoolkit.temp"
+        val tempPath = "$remoteParent/$tempFileName"
+        syncService.pushFile(local.absolutePath, tempPath, monitor)
+        runForStatus("mv \'$tempPath\' \'$remotePath\'")
+    }
+
+    /**
+     * 推送文件到设备。
+     *
+     * `adb push` 命令封装，适用于无需获取进度的简单场景。
+     *
+     * @param[local] PC 端源文件。
+     * @param[remote] Android 端目标路径。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
-    fun pushFile(src: File, remote: String): Boolean = ADBCLIUtil.pushFile(getSN(), src, remote)
+    fun pushFileByCLI(local: File, remote: String): Boolean = ADBCLIUtil.pushFile(getSN(), local, remote)
 
     /**
      * 同步文件系统。

@@ -16,6 +16,7 @@ tasks.withType<Test> {
 
 dependencies {
     implementation(project(":lib_gui:interaction"))
+    implementation(project(":lib_external:adb_core"))
     implementation(privateLibJava.common.base)
 
     implementation(libKotlin.ktx.coroutines.core)

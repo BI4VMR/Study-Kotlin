@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.tool.java.common.base.net.NetUtil
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.util.UUID
 
 
 /**
@@ -51,6 +51,12 @@ class ConfigManager(
         file
     }
 
+
+    val darkModeFlow: Flow<DarkMode> =
+        dataStore.data.map {
+            val code = it[Configs.Key.COMMON_DARK_MODE] ?: DarkMode.AUTO.code
+            DarkMode.fromCode(code)
+        }
 
     val nodeNameFlow: Flow<String> =
         dataStore.data.map {
@@ -104,6 +110,12 @@ class ConfigManager(
         }
     }
 
+    suspend fun getDarkMode(): DarkMode =
+        darkModeFlow.first()
+
+    suspend fun setDarkMode(mode: DarkMode) {
+        dataStore.edit { it[Configs.Key.COMMON_DARK_MODE] = mode.code }
+    }
 
     suspend fun getNodeName(): String =
         nodeNameFlow.first()
@@ -152,21 +164,6 @@ class ConfigManager(
 
 
     /* ----- 配对信息 ----- */
-
-    /**
-     * 本客户端的唯一标识，首次调用时生成。
-     */
-    suspend fun getClientID(): String {
-        var id = dataStore.data.first()[Configs.Key.CLIENT_ID]
-        if (id == null) {
-            dataStore.edit {
-                id = it[Configs.Key.CLIENT_ID] ?: UUID.randomUUID().toString().also { new ->
-                    it[Configs.Key.CLIENT_ID] = new
-                }
-            }
-        }
-        return requireNotNull(id)
-    }
 
     /**
      * 服务端侧：已配对的客户端。条目格式： `id|pairedAt|tokenHash|name` ，名称置于末尾以允许包含分隔符。

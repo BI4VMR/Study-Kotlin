@@ -539,20 +539,28 @@ class ADBProxyClient(
      * @return 设备名称。
      */
     suspend fun getName(sn: String, default: String = "Unknown"): String {
+        logger.debug("GetName. SN:[$sn] Default:[$default]")
         return try {
-            val response = requireClient().post(buildURL(APIs.ADB_DEVICE_NAME)) {
+            /* 发起 HTTP 请求 */
+            val httpResponse = requireClient().post(buildURL(APIs.ADB_DEVICE_NAME)) {
                 contentType(ContentType.Application.Json)
                 setBody(ADBDeviceRequest(sn))
             }
 
-            if (response.status.isSuccess()) {
-                response.bodyAsText().trim().ifBlank { default }
-            } else {
-                logger.warn("Failed to get [$sn] name! Reason:[${response.bodyAsText()}]")
-                default
+            /* 检查 HTTP 响应 */
+            check(httpResponse.status.isSuccess()) {
+                "Failed to get [$sn] name! Reason:[${httpResponse.bodyAsText()}]"
             }
+
+            /* 检查业务结果 */
+            val response: BaseResponse<String> = httpResponse.body()
+            check(response.isSuccess()) {
+                "Failed to get [$sn] name! Reason:[${response.message}]"
+            }
+
+            response.requireData()
         } catch (e: Exception) {
-            logger.warn("Failed to get [$sn] name! Reason:[${e.message}]")
+            logger.warn("GetName - Failed to get [$sn] name! Reason:[${e.message}]")
             default
         }
     }
@@ -565,18 +573,27 @@ class ADBProxyClient(
      * @throws[IllegalStateException] 请求失败。
      */
     suspend fun getType(sn: String): DeviceType {
-        val response = requireClient().post(buildURL(APIs.ADB_DEVICE_TYPE)) {
+        logger.debug("GetType. SN:[$sn]")
+        /* 发起 HTTP 请求 */
+        val httpResponse = requireClient().post(buildURL(APIs.ADB_DEVICE_TYPE)) {
             contentType(ContentType.Application.Json)
             setBody(ADBDeviceRequest(sn))
         }
 
-        check(response.status.isSuccess()) {
-            "Failed to get [$sn] type! Reason:[${response.bodyAsText()}]"
+        /* 检查 HTTP 响应 */
+        check(httpResponse.status.isSuccess()) {
+            "Failed to get [$sn] type! Reason:[${httpResponse.bodyAsText()}]"
         }
 
-        val text = response.bodyAsText().trim()
-        return DeviceType.entries.firstOrNull { it.name == text }
-            ?: throw IllegalStateException("Invalid device type from server. Type:[$text]")
+        /* 检查业务结果 */
+        val response: BaseResponse<String> = httpResponse.body()
+        check(response.isSuccess()) {
+            "Failed to get [$sn] type! Reason:[${response.message}]"
+        }
+
+        val enumName = response.requireData()
+        return DeviceType.entries.firstOrNull { it.name == enumName }
+            ?: throw IllegalStateException("Invalid device type name from server. Type:[$enumName]")
     }
 
     /**

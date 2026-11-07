@@ -25,14 +25,15 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
     Row(modifier = Modifier.fillMaxSize()) {
         DeviceSelector(
             globalStateManager = globalStateManager,
-            modifier = Modifier.width(280.dp).fillMaxHeight()
+            modifier = Modifier.weight(0.4F).fillMaxHeight()
         )
 
         VerticalDivider()
+
         DevicePanel(
             globalStateManager = globalStateManager,
             device = selectedDevice,
-            modifier = Modifier.weight(1F).fillMaxHeight()
+            modifier = Modifier.weight(0.6F).fillMaxHeight()
         )
     }
 }
@@ -67,7 +68,7 @@ private fun DevicePanel(
 
             Button(onClick = {
                 if (device is LocalDevice) {
-                  val state =  device.startRemoteControl()
+                    val state = device.startRemoteControl()
                     toastManager.show("启动远程调试 -> $state")
                 }
             }, enabled = enabled) { Text("开启远程调试") }

@@ -67,6 +67,7 @@ fun DeviceConnectDialog(
                     OutlinedTextField(
                         value = hostInput,
                         onValueChange = { hostInput = it },
+                        singleLine = true,
                         enabled = !loading,
                         isError = hostInvalid,
                         modifier = Modifier.weight(0.75F)
@@ -78,6 +79,7 @@ fun DeviceConnectDialog(
                     OutlinedTextField(
                         value = portInput,
                         onValueChange = { portInput = it },
+                        singleLine = true,
                         enabled = !loading,
                         isError = portInvalid,
                         modifier = Modifier.weight(0.25F)
@@ -158,7 +160,7 @@ fun DeviceConnectDialog(
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(Dimens.Layout.Space))
                         }
-                        Text(text = "连接")
+                        Text(stringResource(Res.string.button_connect))
                     }
                 }
             }

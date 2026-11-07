@@ -125,7 +125,7 @@ object ADBCastTransfer {
                  *
                  * 每次启动服务端其文件都会自行删除，因此每次开始屏幕投射前都要复制。
                  */
-                val filePushReady = device.pushFile(serverFile, ScrcpyServerHelper.PATH_ON_DEVICE)
+                val filePushReady = device.pushFileByCLI(serverFile, ScrcpyServerHelper.PATH_ON_DEVICE)
                 if (!filePushReady) {
                     val info = "Push Scrcpy server file to device failed!"
                     logger.error(info)

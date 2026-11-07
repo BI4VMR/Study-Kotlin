@@ -13,14 +13,17 @@ object Dimens {
         // 图标与文字之间的间距
         val Space = 8.dp
 
-        // 卡片圆角
-        val CardCorner = 12.dp
+        // 图标与文字之间的间距（较小）
+        val SpaceSmall = 4.dp
 
         // 弹窗内容边距
         val DialogPadding = 14.dp
 
         // 弹窗圆角
         val DialogCorner = 8.dp
+
+        // 表项边距
+        val ListItemPadding = 6.dp
     }
 
     object Text {
@@ -42,16 +45,14 @@ object Dimens {
     }
 
     object Icon {
-        // 触摸区域
-        val Touch = 32.dp
+
+        // 较小图标
+        val Small = 20.dp
 
         // 标准图标
         val Normal = 24.dp
 
-        // 卡片图标
-        val Subtitle = 22.dp
-
-        // 按钮等图标
-        val Small = 20.dp
+        // 较大图标
+        val Large = 32.dp
     }
 }
