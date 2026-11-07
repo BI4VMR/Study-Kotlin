@@ -1,40 +1,20 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.URLBuilder
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import io.ktor.http.path
-import io.ktor.network.tls.addKeyStore
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.network.tls.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
@@ -46,12 +26,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ServerInfoResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import org.slf4j.LoggerFactory
@@ -567,17 +542,17 @@ class ADBProxyClient(
         return try {
             val response = requireClient().post(buildURL(APIs.ADB_DEVICE_NAME)) {
                 contentType(ContentType.Application.Json)
-                setBody(ADBDeviceRequest(sn = sn))
+                setBody(ADBDeviceRequest(sn))
             }
 
             if (response.status.isSuccess()) {
                 response.bodyAsText().trim().ifBlank { default }
             } else {
-                logger.warn("Failed to get device name. Reason:[${response.bodyAsText()}]")
+                logger.warn("Failed to get [$sn] name! Reason:[${response.bodyAsText()}]")
                 default
             }
         } catch (e: Exception) {
-            logger.warn("Failed to get device name. Reason:[${e.message}]")
+            logger.warn("Failed to get [$sn] name! Reason:[${e.message}]")
             default
         }
     }
@@ -592,16 +567,16 @@ class ADBProxyClient(
     suspend fun getType(sn: String): DeviceType {
         val response = requireClient().post(buildURL(APIs.ADB_DEVICE_TYPE)) {
             contentType(ContentType.Application.Json)
-            setBody(ADBDeviceRequest(sn = sn))
+            setBody(ADBDeviceRequest(sn))
         }
 
         check(response.status.isSuccess()) {
-            "Failed to get type of device [$sn]! Reason:[${response.bodyAsText()}]"
+            "Failed to get [$sn] type! Reason:[${response.bodyAsText()}]"
         }
 
         val text = response.bodyAsText().trim()
         return DeviceType.entries.firstOrNull { it.name == text }
-            ?: throw IllegalStateException("Invalid device type returned by server: [$text]")
+            ?: throw IllegalStateException("Invalid device type from server. Type:[$text]")
     }
 
     /**

@@ -1,55 +1,28 @@
 package net.bi4vmr.androidtoolkit.ui.component
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.CancellationException
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
+import net.bi4vmr.androidtoolkit.ui.placeholder_device_name
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import org.jetbrains.compose.resources.getString
 
 /**
  * ADB 执行器与设备列表。
@@ -67,6 +40,8 @@ fun DeviceSelector(
     val devices: List<ADBDevice> by logicManager.devicesFlow.collectAsStateWithLifecycle()
     val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
 
+    var connectProxyDialogState: Boolean by remember { mutableStateOf(false) }
+
     Column(modifier = modifier) {
         Text(
             text = "设备列表",
@@ -74,24 +49,34 @@ fun DeviceSelector(
             modifier = Modifier.padding(16.dp)
         )
 
-        // 执行器列表
-        SegmentedTabRow(modifier = Modifier.padding(horizontal = 8.dp)) {
-            executors.forEach { executor ->
-                SegmentedTab(
-                    selected = executor == selectedExecutor,
-                    onClick = { logicManager.selectExecutor(executor) }
-                ) {
-                    Text(text = executor.getDisplayName(), maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // 执行器列表
+            SegmentedTabRow(modifier = Modifier.padding(horizontal = 8.dp)) {
+                executors.forEach { executor ->
+                    SegmentedTab(
+                        selected = executor == selectedExecutor,
+                        onClick = { logicManager.selectExecutor(executor) }
+                    ) {
+                        Text(text = executor.getDisplayName(), maxLines = 1)
 
-                    if (executor is RemoteExecutor) {
-                        IconButton(
-                            onClick = { logicManager.removeRemoteExecutor(executor) },
-                            modifier = Modifier.size(24.dp).padding(start = 4.dp)
-                        ) {
-                            Icon(Icons.Filled.Close, null)
+                        if (executor is RemoteExecutor) {
+                            IconButton(
+                                onClick = { logicManager.removeRemoteExecutor(executor) },
+                                modifier = Modifier.size(24.dp).padding(start = 4.dp)
+                            ) {
+                                Icon(Icons.Filled.Close, null)
+                            }
                         }
                     }
                 }
+            }
+
+            // 连接远程执行器
+            IconButton(
+                onClick = { connectProxyDialogState = true },
+                modifier = Modifier.size(24.dp).padding(start = 4.dp)
+            ) {
+                Icon(Icons.Filled.Add, null)
             }
         }
 
@@ -104,6 +89,13 @@ fun DeviceSelector(
             onSelect = { logicManager.selectDevice(it) },
             modifier = Modifier.weight(1F)
         )
+
+        if (connectProxyDialogState) {
+            ProxyConnectDialog(
+                globalStateManager,
+                onDismiss = { connectProxyDialogState = false }
+            )
+        }
     }
 }
 
@@ -118,6 +110,9 @@ private fun DeviceList(
 ) {
     val state: ServiceState by executor.getStateFlow().collectAsStateWithLifecycle()
     val error: Exception? by executor.getExceptionFlow().collectAsStateWithLifecycle()
+
+    var connectDeviceDialogState: Boolean by remember { mutableStateOf(false) }
+
 
     LaunchedEffect(executor) {
         if (executor.getStateFlow().value == ServiceState.INIT) {
@@ -185,9 +180,6 @@ private fun DeviceList(
             }
         }
 
-        var connectDeviceDialogState: Boolean by remember { mutableStateOf(false) }
-        var connectProxyDialogState: Boolean by remember { mutableStateOf(false) }
-
         Row {
             OutlinedButton(
                 onClick = { connectDeviceDialogState = true }
@@ -195,26 +187,12 @@ private fun DeviceList(
                 Icon(Icons.Filled.Add, null)
                 Text("添加设备")
             }
-
-            OutlinedButton(
-                onClick = { connectProxyDialogState = true }
-            ) {
-                Icon(Icons.Filled.Add, null)
-                Text("添加转发器")
-            }
         }
 
         if (connectDeviceDialogState) {
             DeviceConnectDialog(
                 globalStateManager,
                 onDismiss = { connectDeviceDialogState = false }
-            )
-        }
-
-        if (connectProxyDialogState) {
-            ProxyConnectDialog(
-                globalStateManager,
-                onDismiss = { connectProxyDialogState = false }
             )
         }
     }
@@ -245,21 +223,11 @@ private fun DeviceListItem(
     selected: Boolean,
     onClick: (device: ADBDevice) -> Unit
 ) {
-    val sn: String = device.getSN()
-    val deviceState: DeviceState = device.getState()
+    val sn = device.getSN()
+    val state = device.getState()
 
-    // 以执行器、序列号与状态为键：列表项被复用或设备重新上线时重新获取，旧任务随键变化自动取消。
-    val name: String? by produceState(initialValue = null, executor, sn, deviceState) {
-        value = null
-        if (deviceState != DeviceState.ONLINE) return@produceState
-
-        value = try {
-            executor.getName(sn, "").ifBlank { null }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
+    val name: String by produceState(initialValue = "-", executor, sn, state) {
+      value =  executor.getName(sn, getString(Res.string.placeholder_device_name))
     }
 
     Card(
@@ -276,15 +244,13 @@ private fun DeviceListItem(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(Dimens.Layout.Padding)
+            modifier = Modifier.padding(Dimens.Layout.Space)
         ) {
             Icon(Icons.Filled.Devices, null)
             Spacer(Modifier.width(Dimens.Layout.Space))
             Column {
-                Text(name ?: sn, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                if (name != null) {
-                    Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                }
+                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
             }
             Spacer(Modifier.weight(1F))
             Text(device.getState().name, style = MaterialTheme.typography.labelSmall)

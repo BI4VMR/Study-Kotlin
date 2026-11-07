@@ -2,6 +2,8 @@
     <!-- 全局 -->
     <string name="app_name">Android 开发工具箱</string>
 
+    <string name="placeholder_device_name">未知设备</string>
+
     <string name="button_confirm">确认</string>
     <string name="button_cancel">取消</string>
     <string name="button_save">保存</string>
