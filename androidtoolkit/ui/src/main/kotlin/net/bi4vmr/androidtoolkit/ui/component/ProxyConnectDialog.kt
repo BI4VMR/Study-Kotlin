@@ -1,29 +1,9 @@
 package net.bi4vmr.androidtoolkit.ui.component
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -50,10 +30,10 @@ fun ProxyConnectDialog(
     // TODO TEST
     var host: String by remember { mutableStateOf("127.0.0.1") }
     var port: Int by remember { mutableIntStateOf(Constants.PORT_SERVER_DEFAULT) }
-    var loading: Boolean by remember { mutableStateOf(false) }
-    var secure: Boolean by remember { mutableStateOf(true) }
+    var enableTLS: Boolean by remember { mutableStateOf(true) }
     var pairingCode: String? by remember { mutableStateOf(null) }
     var errorInfo: String? by remember { mutableStateOf(null) }
+    var loading: Boolean by remember { mutableStateOf(false) }
     var connectJob: Job? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
 
@@ -83,6 +63,7 @@ fun ProxyConnectDialog(
                     OutlinedTextField(
                         value = host,
                         onValueChange = { host = it },
+                        singleLine = true,
                         enabled = !loading,
                         modifier = Modifier.weight(0.75F)
                     )
@@ -91,6 +72,7 @@ fun ProxyConnectDialog(
                     OutlinedTextField(
                         value = port.toString(),
                         onValueChange = { port = it.toIntOrNull() ?: Constants.PORT_SERVER_DEFAULT },
+                        singleLine = true,
                         enabled = !loading,
                         modifier = Modifier.weight(0.25F)
                     )
@@ -98,8 +80,8 @@ fun ProxyConnectDialog(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
-                        checked = secure,
-                        onCheckedChange = { secure = it },
+                        checked = enableTLS,
+                        onCheckedChange = { enableTLS = it },
                         enabled = !loading
                     )
                     Text("启用 TLS")
@@ -124,7 +106,7 @@ fun ProxyConnectDialog(
                             errorInfo = null
                             connectJob = scope.launch {
                                 try {
-                                    logicManager.addRemoteExecutor(host, port, secure) { pairingCode = it }
+                                    logicManager.addRemoteExecutor(host, port, enableTLS) { pairingCode = it }
                                     onDismiss()
                                 } catch (e: CancellationException) {
                                     throw e

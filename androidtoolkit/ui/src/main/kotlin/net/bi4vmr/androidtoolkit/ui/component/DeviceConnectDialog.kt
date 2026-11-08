@@ -12,6 +12,7 @@ import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.*
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
@@ -34,10 +35,13 @@ fun DeviceConnectDialog(
             onDismiss()
         }
     ) {
+        val logicManager: LogicManager = globalStateManager.logicManager
+
         var hostInput: String by remember { mutableStateOf("") }
         var hostInvalid: Boolean by remember { mutableStateOf(false) }
         var portInput: String by remember { mutableStateOf(ADBController.PORT_DEVICE.toString()) }
         var portInvalid: Boolean by remember { mutableStateOf(false) }
+        var save: Boolean by remember { mutableStateOf(false) }
 
         var loading: Boolean by remember { mutableStateOf(false) }
         var errorRes: StringResource? by remember { mutableStateOf(null) }
@@ -84,6 +88,15 @@ fun DeviceConnectDialog(
                         isError = portInvalid,
                         modifier = Modifier.weight(0.25F)
                     )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = save,
+                        onCheckedChange = { save = it },
+                        enabled = !loading
+                    )
+                    Text("记住此设备")
                 }
 
                 // 错误提示
@@ -139,12 +152,13 @@ fun DeviceConnectDialog(
 
                                 runCatching {
                                     withContext(Dispatchers.IO) {
-                                        ADBController.connectRemoteDevice(hostText, portNum)
+                                        logicManager.addRemoteDevice(hostText, portNum, save)
                                     }
                                 }
                                     .onSuccess {
                                         // 全局设备列表将会自动刷新，此处只需要关闭窗口即可。
                                         onDismiss()
+                                        // TODO 记住设备
                                         globalStateManager.toastManager.show("已连接远程设备：$hostText")
                                     }
                                     .onFailure {

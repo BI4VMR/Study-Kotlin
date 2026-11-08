@@ -6,6 +6,7 @@ import com.android.ddmlib.SyncService
 import net.bi4vmr.tool.java.common.base.file.FilePathUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFilesTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -17,6 +18,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * ADB 本地设备。
@@ -316,11 +318,11 @@ data class LocalDevice(
     fun pushFile(local: File, remote: String, listener: ADBFileTransferListener? = null) {
         /* 参数校验 */
         if (!local.canRead()) {
-            throw FileNotFoundException("Input file not exist or readable! Path:[${local}]")
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
         }
 
         if (local.isDirectory) {
-            throw IllegalStateException("Input file is a directory! Path:[${local}]")
+            throw IllegalStateException("Input is a directory! Path:[${local}]")
         }
 
         if (remote.isBlank()) {
@@ -422,6 +424,135 @@ data class LocalDevice(
         val tempPath = "$remoteParent/$tempFileName"
         syncService.pushFile(local.absolutePath, tempPath, monitor)
         runForStatus("mv \'$tempPath\' \'$remotePath\'")
+    }
+
+    /**
+     * 推送目录到设备。
+     *
+     * DDMLib 封装，递归传输目录内的所有文件（包括空目录），支持获取每个文件的状态、总体进度以及随时取消。
+     *
+     * @param[local] 源目录（PC 端）。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将源目录写入该目录并保持原名，否则表示源目录的内容写入路径指定
+     * 的目录。
+     * @throws[FileNotFoundException] 源目录不存在或不可读。
+     * @throws[IllegalStateException] 源文件不是目录。
+     * @throws[IllegalArgumentException] 未指明目标路径。
+     * @throws[IOException] 目标目录无法创建或不可写入。
+     * @throws[SyncException] 传输失败或用户取消推送。
+     */
+    fun pushDirectory(local: File, remote: String, listener: ADBFilesTransferListener? = null) {
+        /* 参数校验 */
+        if (!local.canRead()) {
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
+        }
+
+        if (!local.isDirectory) {
+            throw IllegalStateException("Input is not a directory! Path:[${local}]")
+        }
+
+        if (remote.isBlank()) {
+            throw IllegalArgumentException("Remote path is empty!")
+        }
+
+        /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
+        val remoteIsDir = (remote.length > 1) && (remote.last() == '/')
+        val remoteRoot = if (remoteIsDir) {
+            "$remote${local.name}"
+        } else {
+            remote.trimEnd('/').ifEmpty { "/" }
+        }
+
+        // 收集待传输的目录与文件，保持遍历顺序以便按目录层级创建。
+        val localDirs = mutableListOf<File>()
+        val localFiles = mutableListOf<File>()
+        local.walkTopDown().forEach {
+            when {
+                it.isDirectory -> localDirs.add(it)
+                it.isFile -> localFiles.add(it)
+            }
+        }
+
+        fun toRemotePath(file: File): String {
+            val relative = file.relativeTo(local).invariantSeparatorsPath
+            return if (relative.isEmpty()) remoteRoot else "${remoteRoot.trimEnd('/')}/$relative"
+        }
+
+        // 用户取消时，同时通知正在传输的文件。
+        val currentFileListener = AtomicReference<ADBFileTransferListener?>(null)
+        listener?.setCancelNotifier {
+            currentFileListener.get()?.notifyCancel()
+        }
+
+        val totalSize = localFiles.sumOf { it.length() }
+        var totalTransferred = 0L
+
+        fun notifyTotalProgress() {
+            val progress = if (totalSize <= 0) Double.NaN else totalTransferred.toDouble() / totalSize.toDouble()
+            listener?.onProgress(totalTransferred, progress)
+        }
+
+        fun cancelAndThrow(): Nothing {
+            listener?.onEnd(true)
+            throw SyncException(SyncException.SyncError.CANCELED)
+        }
+
+        if (listener?.isCancelled() == true) {
+            cancelAndThrow()
+        }
+
+        // 预先创建所有目录，空目录也会被保留。
+        localDirs.forEach { dir ->
+            val remoteDir = toRemotePath(dir)
+            val state = runForStatus("mkdir -p \'$remoteDir\'")
+            if (!CLIUtil.isSuccess(state)) {
+                throw IOException("Remote directory cannot be created! Path:[$remoteDir]")
+            }
+        }
+
+        listener?.onStart(localFiles.size, totalSize)
+
+        localFiles.forEachIndexed { index, file ->
+            val remotePath = toRemotePath(file)
+            val baseTransferred = totalTransferred
+
+            // 将单文件事件转换为目录传输事件
+            val fileListener = object : ADBFileTransferListener() {
+                override fun onStart(size: Long) {
+                    listener?.onFileStart(index, file, remotePath, size)
+                }
+
+                override fun onProgress(size: Long, progress: Double) {
+                    listener?.onFileProgress(index, file, size, progress)
+                    totalTransferred = baseTransferred + size
+                    notifyTotalProgress()
+                }
+            }
+
+            // 先登记再检查，避免两者之间发出的取消指令丢失。
+            currentFileListener.set(fileListener)
+            if (listener?.isCancelled() == true) {
+                cancelAndThrow()
+            }
+
+            try {
+                pushFile(file, remotePath, fileListener)
+            } catch (e: SyncException) {
+                if (e.errorCode == SyncException.SyncError.CANCELED) {
+                    listener?.onFileEnd(index, file, true)
+                    cancelAndThrow()
+                }
+                throw e
+            }
+
+            // 空文件不会触发进度回调，此处校正总体进度。
+            totalTransferred = baseTransferred + file.length()
+            if (file.length() <= 0) {
+                notifyTotalProgress()
+            }
+            listener?.onFileEnd(index, file, false)
+        }
+
+        listener?.onEnd(false)
     }
 
     /**

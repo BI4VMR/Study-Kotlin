@@ -2,7 +2,7 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.generateCertificate
+import io.ktor.network.tls.certificates.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.core.mcp.McpService
@@ -15,8 +15,11 @@ import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
+import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteDeviceDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteExecutorDAO
+import net.bi4vmr.androidtoolkit.data.sql.model.RemoteDeviceRecord
 import net.bi4vmr.androidtoolkit.data.sql.model.RemoteExecutorRecord
+import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
@@ -83,6 +86,33 @@ object LogicManager {
     }
 
 
+    // Kotlin Object 中的属性与初始化块按照声明顺序执行，因此必须先声明数据库初始化逻辑再声明相关属性。
+    init {
+        val dbDir = fileManager.getDBDir().apply { mkdirs() }
+        MainDB.init(dbDir.absolutePath)
+    }
+
+    /**
+     * 数据访问类：远程执行器。
+     */
+    private val remoteExecutorDAO: RemoteExecutorDAO by lazy {
+        MainDB.remoteExecutorDAO
+    }
+
+    /**
+     * 数据访问类：远程设备。
+     */
+    private val remoteDeviceDAO: RemoteDeviceDAO by lazy {
+        MainDB.remoteDeviceDAO
+    }
+
+    /**
+     * 数据访问类：已认证执行器。
+     */
+    private val pairedPeerDAO: PairedPeerDAO by lazy {
+        MainDB.pairedPeerDAO
+    }
+
     private val _pendingPairingsFlow: MutableStateFlow<List<PairRequest>> = MutableStateFlow(emptyList())
 
     /**
@@ -107,33 +137,6 @@ object LogicManager {
         override fun onResult(request: PairRequest, result: PairResult) {
             _pendingPairingsFlow.update { list -> list.filterNot { it === request } }
         }
-    }
-
-    private val remoteExecutorDAO: RemoteExecutorDAO by lazy {
-        initDB()
-        MainDB.remoteExecutorDAO
-    }
-
-    /**
-     * 已配对对端数据库。
-     */
-    private val pairedPeerDAO: PairedPeerDAO by lazy {
-        initDB()
-        MainDB.pairedPeerDAO
-    }
-
-    @Volatile
-    private var dbInitialized: Boolean = false
-
-    /**
-     * 初始化数据库。UI 可能先于 init 协程访问，此处确保目录存在且只初始化一次。
-     */
-    @Synchronized
-    private fun initDB() {
-        if (dbInitialized) return
-        val dbDir = fileManager.getDBDir().apply { mkdirs() }
-        MainDB.init(dbDir.absolutePath)
-        dbInitialized = true
     }
 
     /**
@@ -175,7 +178,7 @@ object LogicManager {
             val list: MutableList<ADBExecutor> = mutableListOf(LocalExecutor)
             // 根据存储的记录创建远程执行器
             records.forEach { record ->
-                val executor = RemoteExecutor(record.host, record.port)
+                val executor = RemoteExecutor(record.id, record.host, record.port)
                 executor.client.apply {
                     enableTLS = record.enableTLS
                     sslConfig = this@LogicManager.sslConfig
@@ -259,7 +262,6 @@ object LogicManager {
     /* ----- 生命周期 ----- */
 
     init {
-        /* 初始化 */
         taskScope.launch {
             fileManager.init()
 
@@ -401,6 +403,37 @@ object LogicManager {
         executor.release()
         taskScope.launch {
             remoteExecutorDAO.delete(executor.host, executor.port)
+        }
+    }
+
+    /**
+     * 添加远程设备。
+     *
+     * @param[host] 设备地址。
+     * @param[port] 设备端口。
+     * @param[save] 是否记住设备。
+     * @throws[IllegalArgumentException] 端口号超出范围。
+     * @throws[IllegalStateException] 连接失败。错误信息可通过异常消息读取。
+     */
+    fun addRemoteDevice(host: String, port: Int, save: Boolean) {
+        val executor = getSelectedExecutor()
+
+        // 如果主机信息已存在，则不进行添加。
+        val exist = remoteDeviceDAO.checkIfExist(host, port, executor.getID())
+        if (exist) {
+            throw IllegalStateException("Remote device [$host:$port] already exist in [$executor]!")
+        }
+
+        ADBController.connectRemoteDevice(host, port)
+
+        // 连接成功后，如果需要保存设备信息，在子线程写入数据库。
+        if (save) {
+            val record = RemoteDeviceRecord(
+                host = host,
+                port = port,
+                executorID = executor.getID()
+            )
+            remoteDeviceDAO.replace(record)
         }
     }
 

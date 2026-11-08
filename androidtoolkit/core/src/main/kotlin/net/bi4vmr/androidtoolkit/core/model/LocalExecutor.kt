@@ -1,12 +1,9 @@
 package net.bi4vmr.androidtoolkit.core.model
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
+import net.bi4vmr.tool.java.common.base.id.IDUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -27,6 +24,9 @@ object LocalExecutor : ADBExecutor {
 
     private val taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+
+    // 本地执行器固定返回无效 ID 。
+    override fun getID(): String = IDUtil.UUID_NL_INVALID
 
     override fun getType(): ExecutorType = ExecutorType.LOCAL
 

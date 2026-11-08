@@ -1,5 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.callback
 
+import java.io.File
+
 /**
  * ADB 目录传输监听器。
  *
@@ -13,6 +15,70 @@ abstract class ADBFilesTransferListener {
 
     private var cancelNotifier: (() -> Unit)? = null
 
+
+    /**
+     * 事件：总体传输开始。
+     *
+     * @param[count] 文件总数。
+     * @param[size] 所有文件的总大小（字节）。
+     */
+    open fun onStart(count: Int, size: Long) {
+        // 默认不作任何操作
+    }
+
+    /**
+     * 事件：总体传输进度更新。
+     *
+     * @param[size] 所有文件已传输的数据量（字节）。
+     * @param[progress] 总体进度（比例）。总大小为 `0` 时为 `NaN` 。
+     */
+    open fun onProgress(size: Long, progress: Double) {
+        // 默认不作任何操作
+    }
+
+    /**
+     * 事件：总体传输结束。
+     *
+     * @param[cancel] 传输是否被用户取消。
+     */
+    open fun onEnd(cancel: Boolean) {
+        // 默认不作任何操作
+    }
+
+    /**
+     * 事件：单个文件传输开始。
+     *
+     * @param[index] 文件序号（从 `0` 开始）。
+     * @param[local] 源文件（PC 端）。
+     * @param[remote] 目标路径（Android 端）。
+     * @param[size] 文件大小（字节）。
+     */
+    open fun onFileStart(index: Int, local: File, remote: String, size: Long) {
+        // 默认不作任何操作
+    }
+
+    /**
+     * 事件：单个文件传输进度更新。
+     *
+     * @param[index] 文件序号（从 `0` 开始）。
+     * @param[local] 源文件（PC 端）。
+     * @param[size] 该文件已传输的数据量（字节）。
+     * @param[progress] 该文件的进度（比例）。文件大小为 `0` 时为 `NaN` 。
+     */
+    open fun onFileProgress(index: Int, local: File, size: Long, progress: Double) {
+        // 默认不作任何操作
+    }
+
+    /**
+     * 事件：单个文件传输结束。
+     *
+     * @param[index] 文件序号（从 `0` 开始）。
+     * @param[local] 源文件（PC 端）。
+     * @param[cancel] 传输是否被用户取消。
+     */
+    open fun onFileEnd(index: Int, local: File, cancel: Boolean) {
+        // 默认不作任何操作
+    }
 
     /**
      * 取消传输任务。

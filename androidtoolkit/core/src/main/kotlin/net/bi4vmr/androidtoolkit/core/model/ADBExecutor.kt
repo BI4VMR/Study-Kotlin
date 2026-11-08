@@ -17,6 +17,8 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
  */
 interface ADBExecutor {
 
+    fun getID(): String
+
     fun getType(): ExecutorType
 
     /**

@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import net.bi4vmr.androidtoolkit.data.sql.MainDatabase
 import net.bi4vmr.androidtoolkit.data.sql.RemoteExecutorQueries
 import net.bi4vmr.androidtoolkit.data.sql.model.RemoteExecutorRecord
-import net.bi4vmr.tool.kotlin.common.base.toBoolean
-import net.bi4vmr.tool.kotlin.common.base.toLong
+import net.bi4vmr.tool.kotlin.common.base.general.toBoolean
+import net.bi4vmr.tool.kotlin.common.base.general.toLong
 
 /**
  * 数据访问类：远程执行器。

@@ -1,5 +1,7 @@
 package net.bi4vmr.androidtoolkit.data.sql.model
 
+import net.bi4vmr.tool.java.common.base.id.IDUtil
+
 /**
  * 实体类：远程执行器。
  *
@@ -7,6 +9,11 @@ package net.bi4vmr.androidtoolkit.data.sql.model
  * @since 1.0.0
  */
 data class RemoteExecutorRecord(
+
+    /**
+     * ID.
+     */
+    val id: String = IDUtil.GUIDv7(),
 
     /**
      * 目标地址。

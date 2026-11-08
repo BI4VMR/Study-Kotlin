@@ -9,17 +9,35 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 
 /**
- * 远程执行器，通过 ADB 代理服务端操作其所在主机的设备。
+ * 远程执行器。
+ *
+ * 通过 ADB 代理服务端操作其所在主机的设备。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
 class RemoteExecutor(
+
+    /**
+     * 数据库 ID 。
+     */
+    val id: String,
+
+    /**
+     * 目标地址。
+     */
     val host: String,
+
+    /**
+     * 目标端口。
+     */
     val port: Int
 ) : ADBExecutor {
 
     val client: ADBProxyClient = ADBProxyClient(host, port)
+
+
+    override fun getID(): String = id
 
     override fun getType(): ExecutorType = ExecutorType.REMOTE
 

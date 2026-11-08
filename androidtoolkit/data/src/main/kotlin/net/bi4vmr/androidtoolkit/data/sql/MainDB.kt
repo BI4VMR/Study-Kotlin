@@ -3,6 +3,7 @@ package net.bi4vmr.androidtoolkit.data.sql
 import app.cash.sqldelight.TransactionWithReturn
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
+import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteDeviceDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteExecutorDAO
 import java.io.File
 
@@ -16,16 +17,23 @@ object MainDB {
 
     private const val FILE_NAME: String = "main.db"
 
+    @Volatile
     private lateinit var instance: MainDatabase
 
-    val pairedPeerDAO: PairedPeerDAO by lazy {
+
+    val remoteDeviceDAO: RemoteDeviceDAO by lazy {
         checkInit()
-        PairedPeerDAO(instance)
+        RemoteDeviceDAO(instance)
     }
 
     val remoteExecutorDAO: RemoteExecutorDAO by lazy {
         checkInit()
         RemoteExecutorDAO(instance)
+    }
+
+    val pairedPeerDAO: PairedPeerDAO by lazy {
+        checkInit()
+        PairedPeerDAO(instance)
     }
 
 
@@ -36,11 +44,12 @@ object MainDB {
         instance = MainDatabase.Companion(driver)
     }
 
+    fun <R> withTransaction(block: TransactionWithReturn<R>.() -> R) = instance.transactionWithResult { block() }
+
+
     private fun checkInit() {
         if (!::instance.isInitialized) {
             throw IllegalStateException("DB is not initialized, Had you call `init()` at first?")
         }
     }
-
-    fun <R> withTransaction(block: TransactionWithReturn<R>.() -> R) = instance.transactionWithResult { block() }
 }

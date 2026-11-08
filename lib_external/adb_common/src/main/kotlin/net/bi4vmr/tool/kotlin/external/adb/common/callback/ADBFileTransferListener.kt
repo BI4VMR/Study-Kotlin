@@ -27,7 +27,7 @@ abstract class ADBFileTransferListener {
      * 事件：传输进度更新。
      *
      * @param[size] 已传输数据量（字节）。
-     * @param[size] 进度（比例）。
+     * @param[progress] 进度（比例）。如果文件大小获取失败，则为 `NaN` 。
      */
     open fun onProgress(size: Long, progress: Double) {
         // 默认不作任何操作
