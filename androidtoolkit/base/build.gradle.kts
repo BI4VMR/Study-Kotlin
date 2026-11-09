@@ -1,6 +1,5 @@
 plugins {
     alias(libKotlin.plugins.core)
-    alias(libKotlin.plugins.sqldelight)
 }
 
 dependencies {

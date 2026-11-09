@@ -17,6 +17,7 @@ import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -61,10 +62,15 @@ data class LocalDevice(
      */
     override fun getState(): DeviceState {
         return when (ddmState) {
-            IDevice.DeviceState.OFFLINE -> DeviceState.OFFLINE
             IDevice.DeviceState.ONLINE -> DeviceState.ONLINE
-            IDevice.DeviceState.RECOVERY -> DeviceState.RECOVERY
+            IDevice.DeviceState.UNAUTHORIZED -> DeviceState.UNAUTHORIZED
+            IDevice.DeviceState.AUTHORIZING -> DeviceState.AUTHORIZING
             IDevice.DeviceState.BOOTLOADER -> DeviceState.BOOTLOADER
+            IDevice.DeviceState.FASTBOOTD -> DeviceState.FASTBOOTD
+            IDevice.DeviceState.RECOVERY -> DeviceState.RECOVERY
+            IDevice.DeviceState.SIDELOAD -> DeviceState.SIDELOAD
+            IDevice.DeviceState.OFFLINE -> DeviceState.OFFLINE
+            IDevice.DeviceState.DISCONNECTED -> DeviceState.DISCONNECTED
         }
     }
 
@@ -345,9 +351,6 @@ data class LocalDevice(
             throw IOException("Remote directory cannot be write! Path:[$remoteParent]")
         }
 
-        val syncService = ddmDevice.syncService
-            ?: throw IllegalStateException("Cannot get SyncService for device [${getSN()}]!")
-
         // DDMLib 进度回调实现
         val monitor = object : SyncService.ISyncProgressMonitor {
 
@@ -419,12 +422,12 @@ data class LocalDevice(
             }
         }
 
-        // DDMLib 不支持含有非 ASCII 字符的路径，先将数据写入临时文件，再改名为目标名称。
-        val tempFileName = "androidtoolkit.temp"
-        val tempPath = "$remoteParent/$tempFileName"
-        syncService.pushFile(local.absolutePath, tempPath, monitor)
-        syncService.close()
-        runForStatus("mv \'$tempPath\' \'$remotePath\'")
+        val syncService = ddmDevice.syncService
+            ?: throw IllegalStateException("Cannot get SyncService for device [${getSN()}]!")
+
+        syncService.use { syncService ->
+            syncService.pushFile(local.absolutePath, remotePath, monitor)
+        }
     }
 
     /**
@@ -572,9 +575,9 @@ data class LocalDevice(
      *
      * DDMLib 封装，适用于需要获取进度或随时取消的场景。
      *
-     * @param[remote] 源路径（Android 端）。如果以 `/` 结尾表示将文件写入该目录并保持原名，否则表示使用路径指定的文件名称。
-     * @param[local] 目标文件（PC 端）。
-     * @throws[FileNotFoundException] 源文件不存在或不可读。
+     * @param[remote] 源路径（Android 端）。
+     * @param[local] 目标文件（PC 端）。如果以 `/` 结尾表示将文件写入该目录并保持原名，否则表示使用路径指定的文件名称。
+     * @throws[FileNotFoundException] 目标目录不可写。
      * @throws[IllegalStateException] 源文件指向目录。
      * @throws[IllegalArgumentException] 未指明目标路径。
      * @throws[IOException] 目标路径不可写入。
@@ -586,37 +589,36 @@ data class LocalDevice(
             throw IllegalArgumentException("Remote path is empty!")
         }
 
-        // if (!local.canWrite()) {
-        //     throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
-        // }
-        //
-        // if (local.isDirectory) {
-        //     throw IllegalStateException("Input is a directory! Path:[${local}]")
-        // }
-
 
         /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
-        // val remoteIsDir = (remote.length > 1) && (remote.last() == '/')
-        // val remotePath = if (remoteIsDir) {
-        //     "$remote${local.name}"
-        // } else {
-        //     remote
-        // }
+        val remoteFileName = FilePathUtil.getFileName(remote)
+        val localPath = if (local.isDirectory) {
+            if (!local.canWrite()) {
+                throw FileNotFoundException("Local path not exist or writeable! Path:[${local}]")
+            }
 
-        // ADB 将数据传输至临时文件后才判断目标路径是否可写，提前判断并报错可节省大文件传输的耗时。
-        val remoteParent = FilePathUtil.getParent(remotePath)
-        val state = runForStatus("test -w \"$remoteParent\"")
-        if (!CLIUtil.isSuccess(state)) {
-            throw IOException("Remote directory cannot be write! Path:[$remoteParent]")
+            "${local.absolutePath}${File.separator}${remoteFileName}"
+        } else {
+            val parent = local.parentFile
+            if (!parent.canWrite()) {
+                throw FileNotFoundException("Local path not exist or writeable! Path:[${parent}]")
+            }
+
+            local.absolutePath
         }
 
-        val syncService = ddmDevice.syncService
-            ?: throw IllegalStateException("Cannot get SyncService for device [${getSN()}]!")
+        // 检查设备上是否存在该文件
+        val isFile: Boolean = CLIUtil.isSuccess(runForStatus("test -f \"$remote\""))
+        if (!isFile) {
+            throw FileNotFoundException("Remote file not exist or is directory! Path:[$remote]")
+        }
+
+        // 读取文件大小（DDMLib 输入路径时不会回调文件大小，需要通过命令读取。）
+        val fileSize: Long = runForText("stat -c %s \"$remote\"")?.toLongOrNull() ?: 0L
 
         // DDMLib 进度回调实现
         val monitor = object : SyncService.ISyncProgressMonitor {
 
-            val totalSize: Long = local.length()
             var transferredSize: Long = 0L
             val cancelled = AtomicBoolean(false)
 
@@ -636,7 +638,7 @@ data class LocalDevice(
              * 获取文件大小。
              */
             override fun start(totalWork: Int) {
-                listener?.onStart(totalSize)
+                listener?.onStart(fileSize)
             }
 
             /**
@@ -666,10 +668,10 @@ data class LocalDevice(
                 transferredSize += work
 
                 // 文件为空或无法获取长度时，以 `NaN` 通告进度。
-                if (totalSize <= 0) {
+                if (fileSize <= 0) {
                     listener?.onProgress(transferredSize, Double.NaN)
                 } else {
-                    val progress = transferredSize.toDouble() / totalSize.toDouble()
+                    val progress = transferredSize.toDouble() / fileSize.toDouble()
                     listener?.onProgress(transferredSize, progress)
                 }
             }
@@ -684,12 +686,12 @@ data class LocalDevice(
             }
         }
 
-        // DDMLib 不支持含有非 ASCII 字符的路径，先将数据写入临时文件，再改名为目标名称。
-        val tempFileName = "androidtoolkit.temp"
-        val tempPath = "$remoteParent/$tempFileName"
-        syncService.pushFile(local.absolutePath, tempPath, monitor)
-        syncService.pullFile()
-        runForStatus("mv \'$tempPath\' \'$remotePath\'")
+        val syncService = ddmDevice.syncService
+            ?: throw IllegalStateException("Cannot get SyncService for device [${getSN()}]!")
+
+        syncService.use { syncService ->
+            syncService.pullFile(remote, localPath, monitor)
+        }
     }
 
     /**
@@ -767,4 +769,15 @@ data class LocalDevice(
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     fun cleanForward(): Boolean = ADBCLIUtil.cleanForward(getSN())
+
+
+    /**
+     * 将 UTF-8 路径转为 ISO-8859-1 路径。
+     *
+     * DDMLib `r13` 等旧版本要求路径以 ISO_8859_1 传输，否则非 ASCII 字符会显示为 `?`；Google 仓库中的新版本已支持 UTF-8 不可调用本方法。
+     *
+     * @return 编码后的路径。
+     */
+    private fun String.toDDMLibPath(): String =
+        String(this.toByteArray(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1)
 }

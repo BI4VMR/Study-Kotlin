@@ -7,7 +7,7 @@ log4j2-slf4j = "2.26.1"
 uuidCreator = "6.1.1"
 gson = "2.10.1"
 pty4j = "0.14.0"
-ddmlib = "r13"
+ddmlib = "32.5.1"
 
 
 # ----- 数据存储 -----
@@ -90,7 +90,7 @@ pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
 
 # < ADB >
 # DDMLib
-ddmlib = { group = "com.google.android.tools", name = "ddmlib", version.ref = "ddmlib" }
+ddmlib = { group = "com.android.tools.ddms", name = "ddmlib", version.ref = "ddmlib" }
 
 
 # ----- 数据存储 -----
