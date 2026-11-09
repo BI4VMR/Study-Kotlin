@@ -10,11 +10,14 @@ import androidx.compose.ui.window.Window
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.GlobalWindowManager
+import net.bi4vmr.androidtoolkit.ui.Res
+import net.bi4vmr.androidtoolkit.ui.common_ic_cast
 import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBLocalCastView
 import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBRemoteCastView
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
-import net.bi4vmr.androidtoolkit.ui.GlobalWindowManager
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 设备投屏窗口。
@@ -28,8 +31,9 @@ fun ADBCastWindow(
     record: CastRecord
 ) {
     Window(
-        onCloseRequest = { globalStateManager.windowManager.removeWindow(record) },
-        title = "投屏 - ${record.device.getSN()} (Display ${record.displayID})"
+        title = "${record.device.getSN()}  # ${record.displayID}",
+        icon = painterResource(Res.drawable.common_ic_cast),
+        onCloseRequest = { globalStateManager.windowManager.removeWindow(record) }
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val device = record.device
@@ -53,6 +57,7 @@ fun ADBCastWindow(
         }
     }
 }
+
 
 /**
  * 投屏窗口记录。

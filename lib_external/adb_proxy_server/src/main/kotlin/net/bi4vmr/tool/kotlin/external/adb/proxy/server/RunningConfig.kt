@@ -15,11 +15,6 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 data class RunningConfig(
 
     /**
-     * 服务端 ID 。
-     */
-    val id: String,
-
-    /**
      * 服务端名称。
      */
     val name: String,

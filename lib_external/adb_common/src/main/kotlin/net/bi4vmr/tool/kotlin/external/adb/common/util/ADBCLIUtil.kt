@@ -42,8 +42,8 @@ object ADBCLIUtil {
      * @return [Process] 实例，永不为空，进程启动失败时抛出异常。
      * @throws[IOException] 进程启动失败。
      */
-    @JvmOverloads
     @JvmStatic
+    @JvmOverloads
     fun run(sn: String, command: String, redirectError: Boolean = true): Process {
         val optimizedCommand = buildCommand(sn, command)
         return CLIUtil.run(optimizedCommand, redirectError)
@@ -151,8 +151,8 @@ object ADBCLIUtil {
      * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
      * @return 二进制数据。若出现错误则返回空值。
      */
-    @JvmOverloads
     @JvmStatic
+    @JvmOverloads
     fun screenshotAsPNG(sn: String, displayID: String? = null): ByteArray? {
         try {
             val cmd = if (displayID == null) {
@@ -185,8 +185,8 @@ object ADBCLIUtil {
      * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
      * @return `true` 表示操作成功； `false` 表示操作失败。
      */
-    @JvmOverloads
     @JvmStatic
+    @JvmOverloads
     fun screenshotAsPNG(sn: String, file: File, displayID: String? = null): Boolean {
         try {
             val cmd = if (displayID == null) {
@@ -216,6 +216,7 @@ object ADBCLIUtil {
      * @throws[IllegalStateException] 没有可用的终端程序。
      */
     @JvmStatic
+    @JvmOverloads
     fun openShell(
         sn: String,
         terminal: Terminal? = null,
@@ -347,13 +348,13 @@ object ADBCLIUtil {
      * 发送文件。
      *
      * @param[sn] 设备序列号。
-     * @param[src] PC上的文件。
-     * @param[remote] 设备上的目标路径。
+     * @param[local] 源文件（PC 端）。
+     * @param[remote] 目标路径（Android 端）。
      * @return 状态码。若出现异常则返回 `-1` 。
      */
     @JvmStatic
-    fun pushFile(sn: String, src: File, remote: String): Boolean {
-        val cmd = String.format("${getExecutableName()} -s %s push \"%s\" \"%s\"", sn, src.absolutePath, remote)
+    fun pushFile(sn: String, local: File, remote: String): Boolean {
+        val cmd = String.format("${getExecutableName()} -s %s push \"%s\" \"%s\"", sn, local.absolutePath, remote)
         val status = CLIUtil.runForStatus(cmd)
         return CLIUtil.isSuccess(status)
     }
@@ -539,10 +540,21 @@ object ADBCLIUtil {
      * 判断语句是否为 ADB 命令。
      *
      * @param[command] 命令语句。
-     * @return `true` 表示 ADB 命令， `false` 表示非 ADB 命令。
+     * @return `true` 表示 ADB 命令，`false` 表示非 ADB 命令。
      */
     @JvmStatic
     fun isADBCommand(command: String): Boolean {
         return command.startsWith("adb ")
+    }
+
+    /**
+     * 判断语句是否为 ADB Shell 命令。
+     *
+     * @param[command] 命令语句。
+     * @return `true` 表示 ADB Shell 命令，`false` 表示非 ADB Shell 命令。
+     */
+    @JvmStatic
+    fun isADBShellCommand(command: String): Boolean {
+        return adbCMDRegex.matches(command)
     }
 }

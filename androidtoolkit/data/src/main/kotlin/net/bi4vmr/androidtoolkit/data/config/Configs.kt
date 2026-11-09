@@ -3,7 +3,6 @@ package net.bi4vmr.androidtoolkit.data.config
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 
@@ -31,17 +30,7 @@ object Configs {
 
         val PROXY_PORT = intPreferencesKey("proxy_port")
 
-        val PROXY_ENCRYPT = booleanPreferencesKey("proxy_encrypt")
-
-        val PROXY_TRUST_ALL = booleanPreferencesKey("proxy_trust_all")
-
-        /** 服务端已配对的客户端，条目格式见 [ConfigManager]。 */
-        val PAIRED_CLIENTS = stringSetPreferencesKey("paired_clients")
-
-        /** 客户端已配对的服务端，条目格式见 [ConfigManager]。 */
-        val PAIRED_SERVERS = stringSetPreferencesKey("paired_servers")
-
-        val CLIENT_ID = stringPreferencesKey("client_id")
+        val PROXY_TLS = booleanPreferencesKey("proxy_tls")
     }
 
     object Value {
@@ -56,9 +45,6 @@ object Configs {
 
         const val PROXY_PORT_DEFAULT: Int = Constants.PORT_SERVER_DEFAULT
 
-        const val PROXY_ENCRYPT_DEFAULT: Boolean = true
-
-        // 调试开关：开启后服务端信任所有连接，默认关闭。
-        const val PROXY_TRUST_ALL_DEFAULT: Boolean = false
+        const val PROXY_TLS_DEFAULT: Boolean = true
     }
 }

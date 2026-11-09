@@ -25,7 +25,7 @@ object LocalExecutor : ADBExecutor {
     private val taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 
-    // 本地执行器固定返回无效 ID 。
+    // 本地执行器固定返回无效 ID
     override fun getID(): String = IDUtil.UUID_NL_INVALID
 
     override fun getType(): ExecutorType = ExecutorType.LOCAL

@@ -72,14 +72,6 @@ class ADBProxyServer(
     }
 
     /**
-     * 服务端 ID 。
-     *
-     * 便于客户端区分每个服务端实例，可由上层应用在首次启动时持久化并设置。
-     */
-    @Volatile
-    var id: String = ""
-
-    /**
      * 显示名称。
      *
      * 便于客户端区分每个服务端实例。
@@ -179,7 +171,6 @@ class ADBProxyServer(
 
             // 复制关键配置
             val conf = RunningConfig(
-                id,
                 name,
                 address,
                 port,

@@ -19,6 +19,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -33,6 +34,8 @@ import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.EOFException
 import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
 import java.net.ConnectException
 import java.net.ServerSocket
 import kotlin.coroutines.EmptyCoroutineContext
@@ -376,6 +379,102 @@ class ADBProxyClient(
         } catch (e: Exception) {
             logger.warn("Failed to get displays. Reason:[${e.message}]")
             emptyList()
+        }
+    }
+    /*
+     * ----- 文件系统 -----
+     */
+
+    /**
+     * 推送文件到远程设备。
+     *
+     * 文件先由本机上传至服务端，再由服务端推送至设备。监听器回调的进度为整体进度，上传与设备推送两个阶段各占一半。
+     *
+     * @param[sn] 设备序列号。
+     * @param[local] 源文件（本机）。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
+     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
+     * @throws[FileNotFoundException] 源文件不存在或不可读。
+     * @throws[IllegalStateException] 源文件指向目录。
+     * @throws[IllegalArgumentException] 未指明目标路径。
+     * @throws[IOException] 传输失败或用户取消推送。
+     */
+    suspend fun pushFile(sn: String, local: File, remote: String, listener: ADBFileTransferListener? = null) {
+        /* 参数校验 */
+        require(sn.isNotBlank()) { "Device SN is required!" }
+        if (!local.canRead()) {
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
+        }
+        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
+        require(remote.isNotBlank()) { "Remote path is empty!" }
+
+        val total = local.length()
+        val path = APIs.ADB_FILE_PUSH +
+            "?sn=${sn.encodeURLParameter()}" +
+            "&remote=${remote.encodeURLParameter()}" +
+            "&name=${local.name.encodeURLParameter()}" +
+            "&size=$total"
+
+        fun notifyProgress(transferred: Long) {
+            if (total <= 0) {
+                listener?.onProgress(transferred / 2, Double.NaN)
+            } else {
+                listener?.onProgress(transferred / 2, transferred.toDouble() / (total * 2).toDouble())
+            }
+        }
+
+        var result: FilePushEvent? = null
+        openWebSocket(path) {
+            listener?.setCancelNotifier {
+                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
+            }
+            listener?.onStart(total)
+
+            /* 上传文件数据 */
+            val uploadJob = launch(Dispatchers.IO) {
+                local.inputStream().use { input ->
+                    val buffer = ByteArray(64 * 1024)
+                    var uploaded = 0L
+                    while (listener?.isCancelled() != true) {
+                        val count = input.read(buffer)
+                        if (count < 0) {
+                            send(Frame.Text(FilePushEvent.CMD_EOF))
+                            break
+                        }
+                        send(Frame.Binary(true, buffer.copyOf(count)))
+                        uploaded += count
+                        notifyProgress(uploaded)
+                    }
+                }
+            }
+
+            /* 接收服务端事件 */
+            for (frame in incoming) {
+                if (frame !is Frame.Text) {
+                    continue
+                }
+
+                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
+                when (event.type) {
+                    FilePushEvent.TYPE_PROGRESS -> notifyProgress(total + event.size)
+                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
+                        result = event
+                        break
+                    }
+                }
+            }
+            uploadJob.cancel()
+        }
+
+        val event = result ?: throw IOException("Connection closed before push completed!")
+        when {
+            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
+            event.cancel -> {
+                listener?.onEnd(true)
+                throw IOException("Push cancelled by user!")
+            }
+
+            else -> listener?.onEnd(false)
         }
     }
 

@@ -1,0 +1,31 @@
+CREATE TABLE executor_record (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    host TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    enable_tls INTEGER NOT NULL,
+    create_time INTEGER NOT NULL,
+    update_time INTEGER NOT NULL
+);
+
+
+queryAll:
+SELECT *
+FROM executor_record
+ORDER BY update_time ASC;
+
+queryByID:
+SELECT *
+FROM executor_record
+WHERE id = ?;
+
+replace:
+INSERT OR REPLACE INTO executor_record(id, name, host, port, enable_tls, create_time, update_time)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteByID:
+DELETE FROM executor_record
+WHERE id = ?;
+
+checkIfExist:
+SELECT EXISTS(SELECT 1 FROM executor_record WHERE host = ? AND port = ?);

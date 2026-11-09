@@ -65,7 +65,7 @@ fun DeviceSelector(
                         if (executor is RemoteExecutor) {
                             Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
                             IconButton(
-                                onClick = { logicManager.removeRemoteExecutor(executor) },
+                                onClick = { logicManager.removeRemoteExecutor(executor.id) },
                                 modifier = Modifier.size(Dimens.Icon.Small)
                             ) {
                                 Icon(Icons.Filled.Close, null)

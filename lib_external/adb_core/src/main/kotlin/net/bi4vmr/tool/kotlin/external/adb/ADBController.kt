@@ -4,7 +4,6 @@ import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener
 import com.android.ddmlib.IDevice
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
-import net.bi4vmr.tool.kotlin.external.adb.ADBController.init
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBServiceListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -428,7 +427,7 @@ object ADBController {
         // DDM 库只能发送 ADB Shell 命令，此处直接调用 CLI 连接设备，因此不需要判断 DDM 库的状态。
         val cmd = "adb connect $ip:$port"
         val output = CLIUtil.runForText(cmd, true, StandardCharsets.UTF_8.name())
-            ?: throw IllegalStateException("CLI execute failed! CMD:[$cmd]")
+            ?: throw IllegalStateException("CLI output is NULL! CMD:[$cmd]")
         if (!ADBOutputParser.isDeviceConnected(output)) {
             throw IllegalStateException(output.trim())
         }

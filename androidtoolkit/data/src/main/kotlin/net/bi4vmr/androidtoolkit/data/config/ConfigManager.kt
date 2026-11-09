@@ -90,14 +90,9 @@ class ConfigManager(
             it[Configs.Key.PROXY_PORT] ?: Configs.Value.PROXY_PORT_DEFAULT
         }
 
-    val proxyEncryptFlow: Flow<Boolean> =
+    val proxyTLSFlow: Flow<Boolean> =
         dataStore.data.map {
-            it[Configs.Key.PROXY_ENCRYPT] ?: Configs.Value.PROXY_ENCRYPT_DEFAULT
-        }
-
-    val proxyTrustAllFlow: Flow<Boolean> =
-        dataStore.data.map {
-            it[Configs.Key.PROXY_TRUST_ALL] ?: Configs.Value.PROXY_TRUST_ALL_DEFAULT
+            it[Configs.Key.PROXY_TLS] ?: Configs.Value.PROXY_TLS_DEFAULT
         }
 
 
@@ -110,8 +105,8 @@ class ConfigManager(
         }
     }
 
-    suspend fun getDarkMode(): DarkMode =
-        darkModeFlow.first()
+
+    suspend fun getDarkMode(): DarkMode = darkModeFlow.first()
 
     suspend fun setDarkMode(mode: DarkMode) {
         dataStore.edit { it[Configs.Key.COMMON_DARK_MODE] = mode.code }
@@ -138,52 +133,27 @@ class ConfigManager(
         dataStore.edit { it[Configs.Key.ADB_EXEC_PATH_USER] = file.absolutePath }
     }
 
+    suspend fun getProxyStartOnInit(): Boolean = proxyStartOnInitFlow.first()
+
     suspend fun setProxyStartOnInit(enabled: Boolean) {
         dataStore.edit { it[Configs.Key.PROXY_START_ON_INIT] = enabled }
     }
+
+    suspend fun getProxyInterface(): String = proxyInterfaceFlow.first()
 
     suspend fun setProxyInterface(address: String) {
         dataStore.edit { it[Configs.Key.PROXY_INTERFACE] = address }
     }
 
+    suspend fun getProxyPort(): Int = proxyPortFlow.first()
+
     suspend fun setProxyPort(port: Int) {
         dataStore.edit { it[Configs.Key.PROXY_PORT] = port }
     }
 
-    suspend fun setProxyEncrypt(enabled: Boolean) {
-        dataStore.edit { it[Configs.Key.PROXY_ENCRYPT] = enabled }
+    suspend fun setProxyTLS(enable: Boolean) {
+        dataStore.edit { it[Configs.Key.PROXY_TLS] = enable }
     }
 
-    suspend fun getProxyEncrypt(): Boolean = proxyEncryptFlow.first()
-
-    suspend fun setProxyTrustAll(enabled: Boolean) {
-        dataStore.edit { it[Configs.Key.PROXY_TRUST_ALL] = enabled }
-    }
-
-    suspend fun getProxyTrustAll(): Boolean = proxyTrustAllFlow.first()
-
-
-    /* ----- 配对信息 ----- */
-
-    /**
-     * 服务端侧：已配对的客户端。条目格式： `id|pairedAt|tokenHash|name` ，名称置于末尾以允许包含分隔符。
-     */
-    val pairedClientsFlow: Flow<Set<String>> =
-        dataStore.data.map { it[Configs.Key.PAIRED_CLIENTS] ?: emptySet() }
-
-    suspend fun getPairedClients(): Set<String> = pairedClientsFlow.first()
-
-    suspend fun setPairedClients(entries: Set<String>) {
-        dataStore.edit { it[Configs.Key.PAIRED_CLIENTS] = entries }
-    }
-
-    /**
-     * 客户端侧：已配对的服务端。条目格式： `host:port|fingerprint|token` 。
-     */
-    suspend fun getPairedServers(): Set<String> =
-        dataStore.data.first()[Configs.Key.PAIRED_SERVERS] ?: emptySet()
-
-    suspend fun setPairedServers(entries: Set<String>) {
-        dataStore.edit { it[Configs.Key.PAIRED_SERVERS] = entries }
-    }
+    suspend fun getProxyTLS(): Boolean = proxyTLSFlow.first()
 }

@@ -27,7 +27,7 @@ class ADBCoreService(
     fun getServerInfo(): ServerInfoResponse {
         val conf = server.getRunningConfig()
         requireNotNull(conf) { "Running config not found! have you call `start()` at first?" }
-        return ServerInfoResponse(conf.id, conf.name, Constants.PROTOCOL_VERSION)
+        return ServerInfoResponse(conf.name, Constants.PROTOCOL_VERSION)
     }
 
     fun getDeviceName(sn: String): BaseResponse<String> {

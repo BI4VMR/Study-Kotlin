@@ -10,12 +10,14 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBDeviceListener
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
@@ -26,10 +28,13 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceReque
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.service.ADBCoreService
 import org.slf4j.LoggerFactory
+import java.io.File
+import java.nio.file.Files
 
 /**
  * 服务端核心：基本能力。
@@ -194,6 +199,10 @@ class ADBCoreModule : ADBProxyModule {
             webSocket(APIs.ADB_SHELL) {
                 onADBShellWSConnect(this)
             }
+
+            webSocket(APIs.ADB_FILE_PUSH) {
+                onADBFilePushWSConnect(this, server.jsonTool)
+            }
         }
     }
 
@@ -351,6 +360,106 @@ class ADBCoreModule : ADBProxyModule {
         } finally {
             shellToRemoteJob.cancel()
             process.destroy()
+        }
+    }
+
+    private suspend fun onADBFilePushWSConnect(session: DefaultWebSocketServerSession, jsonTool: Json) {
+        /* 参数校验 */
+        val query = session.call.request.queryParameters
+        val sn = query["sn"]
+        val remote = query["remote"]
+        val name = query["name"]?.let { File(it).name }
+        logger.debug("Receive [${APIs.ADB_FILE_PUSH}] request. SN:[$sn] Remote:[$remote] Name:[$name]")
+        if (sn.isNullOrBlank() || remote.isNullOrBlank() || name.isNullOrBlank()) {
+            session.close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Parameter [sn], [remote] and [name] are required."))
+            return
+        }
+
+        val device = ADBController.getDevice(sn)
+        if (device == null || !device.isOnline()) {
+            session.close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Device not ready or not exist."))
+            return
+        }
+
+        fun sendEvent(event: FilePushEvent) {
+            session.outgoing.trySend(Frame.Text(jsonTool.encodeToString(FilePushEvent.serializer(), event)))
+        }
+
+        // 保持原文件名，使目标路径以 `/` 结尾时的规则与本地推送一致。
+        val tempDir = withContext(Dispatchers.IO) { Files.createTempDirectory("adb_proxy_push_").toFile() }
+        val tempFile = File(tempDir, name)
+        try {
+            /* 接收文件数据 */
+            var completed = false
+            withContext(Dispatchers.IO) {
+                tempFile.outputStream().buffered().use { output ->
+                    val iterator = session.incoming.iterator()
+                    var receiving = true
+                    while (receiving && iterator.hasNext()) {
+                        val frame = iterator.next()
+                        if (frame is Frame.Binary) {
+                            output.write(frame.readBytes())
+                        } else if (frame is Frame.Text) {
+                            when (frame.readText()) {
+                                FilePushEvent.CMD_EOF -> {
+                                    completed = true
+                                    receiving = false
+                                }
+
+                                FilePushEvent.CMD_CANCEL -> receiving = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!completed) {
+                sendEvent(FilePushEvent(FilePushEvent.TYPE_END, cancel = true))
+                return
+            }
+
+
+            /* 推送至设备 */
+            val listener = object : ADBFileTransferListener() {
+                override fun onStart(size: Long) {
+                    sendEvent(FilePushEvent(FilePushEvent.TYPE_START, total = size))
+                }
+
+                override fun onProgress(size: Long, progress: Double) {
+                    sendEvent(FilePushEvent(FilePushEvent.TYPE_PROGRESS, size = size, total = tempFile.length()))
+                }
+            }
+
+            // 推送期间监听客户端的取消指令
+            val cancelJob = session.launch {
+                for (frame in session.incoming) {
+                    if (frame is Frame.Text && frame.readText() == FilePushEvent.CMD_CANCEL) {
+                        listener.notifyCancel()
+                    }
+                }
+                // 客户端断开时同样取消推送
+                listener.notifyCancel()
+            }
+
+            try {
+                withContext(Dispatchers.IO) { device.pushFile(tempFile, remote, listener) }
+                sendEvent(FilePushEvent(FilePushEvent.TYPE_END, size = tempFile.length(), total = tempFile.length()))
+            } catch (e: Exception) {
+                if (listener.isCancelled()) {
+                    sendEvent(FilePushEvent(FilePushEvent.TYPE_END, cancel = true))
+                } else {
+                    logger.warn("Failed to push file. Reason:[${e.message}]")
+                    sendEvent(FilePushEvent(FilePushEvent.TYPE_ERROR, message = e.message ?: e.javaClass.name))
+                }
+            } finally {
+                cancelJob.cancel()
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to receive file. Reason:[${e.message}]")
+            sendEvent(FilePushEvent(FilePushEvent.TYPE_ERROR, message = e.message ?: e.javaClass.name))
+        } finally {
+            withContext(NonCancellable + Dispatchers.IO) { tempDir.deleteRecursively() }
+            session.close()
         }
     }
 }

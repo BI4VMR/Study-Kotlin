@@ -17,10 +17,6 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
  */
 interface ADBExecutor {
 
-    fun getID(): String
-
-    fun getType(): ExecutorType
-
     /**
      * 初始化，可重复调用。用于首次连接，或初始化失败、连接断开后重试。
      */
@@ -30,6 +26,10 @@ interface ADBExecutor {
      * 释放资源，可重复调用。释放后可再次调用 [init] 重新连接。
      */
     fun release() {}
+
+    fun getType(): ExecutorType
+
+    fun getID(): String
 
     fun getDisplayName(): String
 

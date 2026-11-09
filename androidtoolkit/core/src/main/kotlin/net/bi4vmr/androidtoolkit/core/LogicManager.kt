@@ -2,9 +2,23 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import io.ktor.network.tls.certificates.generateCertificate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
 import net.bi4vmr.androidtoolkit.core.mcp.McpService
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
@@ -14,11 +28,10 @@ import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.androidtoolkit.data.sql.MainDB
+import net.bi4vmr.androidtoolkit.data.sql.dao.ExecutorRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteDeviceDAO
-import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteExecutorDAO
 import net.bi4vmr.androidtoolkit.data.sql.model.RemoteDeviceRecord
-import net.bi4vmr.androidtoolkit.data.sql.model.RemoteExecutorRecord
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -37,7 +50,6 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.net.ConnectException
 
 /**
@@ -76,14 +88,7 @@ object LogicManager {
     /**
      * SSL 配置。
      */
-    val sslConfig: SSLConfig by lazy {
-        SSLConfig(
-            keyStoreFile = getSSLCertFile(),
-            keyStorePassword = "",
-            keyAlias = "default",
-            keyPassword = ""
-        )
-    }
+    val sslConfig: SSLConfig by lazy { getDefaultSSLConfig() }
 
 
     // Kotlin Object 中的属性与初始化块按照声明顺序执行，因此必须先声明数据库初始化逻辑再声明相关属性。
@@ -95,8 +100,8 @@ object LogicManager {
     /**
      * 数据访问类：远程执行器。
      */
-    private val remoteExecutorDAO: RemoteExecutorDAO by lazy {
-        MainDB.remoteExecutorDAO
+    private val executorRecordDAO: ExecutorRecordDAO by lazy {
+        MainDB.executorRecordDAO
     }
 
     /**
@@ -173,12 +178,13 @@ object LogicManager {
      * 数据驱动，根据数据库记录生成执行器列表，并跟随数据库刷新。
      */
     val executorsFlow: StateFlow<List<ADBExecutor>> =
-        remoteExecutorDAO.observe().flatMapLatest { records ->
+        executorRecordDAO.observeAll().flatMapLatest { records ->
             // 本地执行器总是可用的，将其固定放置在列表首位。
             val list: MutableList<ADBExecutor> = mutableListOf(LocalExecutor)
             // 根据存储的记录创建远程执行器
             records.forEach { record ->
                 val executor = RemoteExecutor(record.id, record.host, record.port)
+                executor.name = record.name
                 executor.client.apply {
                     enableTLS = record.enableTLS
                     sslConfig = this@LogicManager.sslConfig
@@ -186,6 +192,7 @@ object LogicManager {
 
                 list.add(executor)
             }
+
             flowOf(list)
         }.stateIn(
             taskScope,
@@ -254,9 +261,7 @@ object LogicManager {
 
     val proxyPortFlow: Flow<Int> = configManager.proxyPortFlow
 
-    val proxyEncryptFlow: Flow<Boolean> = configManager.proxyEncryptFlow
-
-    val proxyTrustAllFlow: Flow<Boolean> = configManager.proxyTrustAllFlow
+    val proxyTLSFlow: Flow<Boolean> = configManager.proxyTLSFlow
 
 
     /* ----- 生命周期 ----- */
@@ -354,6 +359,12 @@ object LogicManager {
         enableTLS: Boolean = true,
         onPairingCode: (String) -> Unit = {}
     ) {
+        // 如果主机信息已存在，则不进行添加。
+        val exist = executorRecordDAO.checkIfExist(host, port)
+        if (exist) {
+            throw IllegalStateException("Remote executor [$host:$port] already exist!")
+        }
+
         if (enableTLS) {
             /* 检测配对状态 */
             val pairClient = ADBPairClient(host, port, sslConfig)
@@ -383,27 +394,31 @@ object LogicManager {
             throw IllegalStateException("Server version is [${serverInfo.version}], mismatch with [${Constants.PROTOCOL_VERSION}]!")
         }
 
-        // 连接建立后持久化，下次启动时自动加载。
-        remoteExecutorDAO.save(
-            RemoteExecutorRecord(
-                host = host,
-                port = port,
-                enableTLS = enableTLS
-            )
+        // 连接成功则记录至数据库
+        val record = ExecutorRecord(
+            name = serverInfo.name,
+            host = host,
+            port = port,
+            enableTLS = enableTLS
         )
+        executorRecordDAO.save(record)
     }
 
     /**
      * 移除远程执行器，并删除数据库记录。
      */
-    fun removeRemoteExecutor(executor: RemoteExecutor) {
-        if (_selectedExecutorFlow.value === executor) {
-            _selectedExecutorFlow.value = LocalExecutor
+    fun removeRemoteExecutor(executorID: String) {
+        val executor = executorsFlow.value.find { it.getID() == executorID } ?: return
+
+        // 如果被删除的项也是当前选中的项，则把选中状态切换至本地执行器。
+        val selectedExecutorID = getSelectedExecutor().getID()
+        if (selectedExecutorID == executorID) {
+            selectExecutor(LocalExecutor)
         }
+
         executor.release()
-        taskScope.launch {
-            remoteExecutorDAO.delete(executor.host, executor.port)
-        }
+
+        executorRecordDAO.delete(executor.getID())
     }
 
     /**
@@ -455,15 +470,17 @@ object LogicManager {
 
     fun startProxyServer() {
         taskScope.launch {
-            adbProxyServer.sslConfig = sslConfig
+            adbProxyServer.apply {
+                name = configManager.getNodeName()
+                address = configManager.getProxyInterface()
+                port = configManager.getProxyPort()
+                if (configManager.getProxyTLS()) {
+                    sslConfig = this@LogicManager.sslConfig
+                }
+                pairRequestListener = this@LogicManager.pairRequestListener
+                pairedPeerStore = this@LogicManager.pairedClientStore
+            }
 
-            val address = configManager.proxyInterfaceFlow.first()
-            val port = configManager.proxyPortFlow.first()
-
-            adbProxyServer.address = address
-            adbProxyServer.port = port
-            adbProxyServer.pairRequestListener = pairRequestListener
-            adbProxyServer.pairedPeerStore = pairedClientStore
             adbProxyServer.start()
         }
     }
@@ -503,44 +520,50 @@ object LogicManager {
         }
     }
 
-    /**
-     * 设置是否信任所有连接（仅用于调试），即时生效。
-     */
-    /**
-     * 设置是否启用加密与配对，需要重启转发器后生效。
-     */
-    fun setProxyEncrypt(enabled: Boolean) {
-        taskScope.launch {
-            configManager.setProxyEncrypt(enabled)
-        }
-    }
-
-    fun setProxyTrustAll(enabled: Boolean) {
-        // proxySecurity?.trustAllClients = enabled
-        taskScope.launch {
-            configManager.setProxyTrustAll(enabled)
-        }
-    }
-
     fun setProxyPort(port: Int) {
         taskScope.launch {
             configManager.setProxyPort(port)
         }
     }
 
-    private fun getSSLCertFile(): File {
+    fun setProxyTLS(enable: Boolean) {
+        taskScope.launch {
+            configManager.setProxyTLS(enable)
+        }
+    }
+
+
+    /* ----- 内部方法 ----- */
+
+    /**
+     * 获取默认 SSL 证书配置。
+     *
+     * 如果证书文件不存在，则使用默认配置重新生成。
+     *
+     * @return 配置。
+     */
+    private fun getDefaultSSLConfig(): SSLConfig {
+        val keyName = "default"
+        // 该证书仅使用公钥表明节点身份，不用于验证节点身份，无需密码保护。
+        val pwd = ""
+
         val file = FileManager.getSSLCertFile()
         if (!file.exists()) {
             generateCertificate(
                 file = file,
                 algorithm = "SHA256withRSA",
-                jksPassword = "",
-                keyAlias = "default",
-                keyPassword = "",
+                jksPassword = pwd,
+                keyAlias = keyName,
+                keyPassword = pwd,
                 keySizeInBits = 2048
             )
         }
 
-        return file
+        return SSLConfig(
+            keyStoreFile = file,
+            keyStorePassword = pwd,
+            keyAlias = keyName,
+            keyPassword = pwd
+        )
     }
 }

@@ -12,17 +12,12 @@ import kotlinx.serialization.Serializable
 data class ServerInfoResponse(
 
     /**
-     * 服务端 ID 。
-     */
-    val id: String = "",
-
-    /**
      * 服务端名称。
      */
-    val name: String = "",
+    val name: String,
 
     /**
      * 协议版本。
      */
-    val version: String = ""
+    val version: String
 )

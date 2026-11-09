@@ -1,11 +1,27 @@
 package net.bi4vmr.androidtoolkit.ui.setting
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,13 +53,10 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
     val proxyPort: Int by globalStateManager.logicManager
         .proxyPortFlow.collectAsStateWithLifecycle(0)
 
-    val proxyEncrypt: Boolean by globalStateManager.logicManager
-        .proxyEncryptFlow.collectAsStateWithLifecycle(true)
+    val proxyTLS: Boolean by globalStateManager.logicManager.proxyTLSFlow
+        .collectAsStateWithLifecycle(true)
     val serverError: Exception? by globalStateManager.logicManager
         .adbProxyServer.errorFlow.collectAsStateWithLifecycle(null)
-    val proxyTrustAll: Boolean by globalStateManager.logicManager
-        .proxyTrustAllFlow.collectAsStateWithLifecycle(false)
-    val fingerprint: String? = "TODO"
     val pairedClients: List<PairedPeer> by globalStateManager.logicManager
         .pairedClientsFlow.collectAsStateWithLifecycle(emptyList())
 
@@ -81,81 +94,8 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                     })
                 Text("自动启动转发器")
             }
-        }
 
-        SettingColumn(label = "安全") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = proxyEncrypt,
-                    onCheckedChange = { new ->
-                        globalStateManager.logicManager.setProxyEncrypt(new)
-                    })
-                Text("启用加密与配对（需重启转发器生效）")
-            }
-            if (!proxyEncrypt) {
-                Text("加密已关闭：通信为明文，且任何人都可以操作本机设备。", color = Color.Red)
-            }
             serverError?.let { Text("转发器启动失败：${it.message}", color = Color.Red) }
-            Text("证书指纹（SHA-256）：${fingerprint ?: "服务启动后生成"}")
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = proxyTrustAll,
-                    onCheckedChange = { new ->
-                        globalStateManager.logicManager.setProxyTrustAll(new)
-                    })
-                Text("信任所有连接（仅用于调试，将跳过配对与认证）", color = if (proxyTrustAll) Color.Red else Color.Unspecified)
-            }
-
-            Text("已配对的客户端")
-            if (pairedClients.isEmpty()) {
-                Text("无")
-            }
-            Column {
-                pairedClients.forEach { client ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1F)) {
-                            Text("${client.name} ->", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(
-                                "指纹：${client.fingerprint}",
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                "配对时间：${timeFormat.format(Date(client.pairedTimestamp))}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        TextButton(onClick = { pendingRevoke = client }) {
-                            Icon(Icons.Default.Delete, null)
-                            Spacer(Modifier.width(Dimens.Layout.Space))
-                            Text("删除")
-                        }
-                    }
-                }
-            }
-
-            pendingRevoke?.let { client ->
-                AlertDialog(
-                    onDismissRequest = { pendingRevoke = null },
-                    title = { Text("删除配对记录") },
-                    text = { Text("确定删除客户端「${client.name}」的配对记录吗？删除后该客户端需要重新配对才能访问转发器。") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            globalStateManager.logicManager.revokePairedClient(client.fingerprint)
-                            pendingRevoke = null
-                        }) {
-                            Text("删除", color = Color.Red)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { pendingRevoke = null }) {
-                            Text("取消")
-                        }
-                    }
-                )
-            }
         }
 
         SettingColumn(label = "网络配置") {
@@ -179,6 +119,59 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                     singleLine = true,
                     isError = portInvalid
                 )
+            }
+        }
+
+        SettingColumn(label = "安全机制") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = proxyTLS,
+                    onCheckedChange = { new ->
+                        globalStateManager.logicManager.setProxyTLS(new)
+                    })
+                Text("启用 TLS 加密")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = proxyTLS,
+                    onCheckedChange = { new ->
+                        globalStateManager.logicManager.setProxyTLS(new)
+                    })
+                Text("启用认证")
+            }
+
+            if (!proxyTLS) {
+                Text("加密已关闭：通信为明文，且任何人都可以操作本机设备。", color = Color.Red)
+            }
+
+            Text("已配对的客户端")
+            if (pairedClients.isEmpty()) {
+                Text("无")
+            }
+
+            Column {
+                pairedClients.forEach { client ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1F)) {
+                            Text("${client.name} ->", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "指纹：${client.fingerprint}",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                "配对时间：${timeFormat.format(Date(client.pairedTimestamp))}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        TextButton(onClick = { pendingRevoke = client }) {
+                            Icon(Icons.Default.Delete, null)
+                            Spacer(Modifier.width(Dimens.Layout.Space))
+                            Text("删除")
+                        }
+                    }
+                }
             }
 
 
@@ -230,6 +223,27 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                     Spacer(Modifier.width(Dimens.Layout.Space))
                     Text("保存")
                 }
+            }
+
+            pendingRevoke?.let { client ->
+                AlertDialog(
+                    onDismissRequest = { pendingRevoke = null },
+                    title = { Text("删除配对记录") },
+                    text = { Text("确定删除客户端「${client.name}」的配对记录吗？删除后该客户端需要重新配对才能访问转发器。") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            globalStateManager.logicManager.revokePairedClient(client.fingerprint)
+                            pendingRevoke = null
+                        }) {
+                            Text("删除", color = Color.Red)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pendingRevoke = null }) {
+                            Text("取消")
+                        }
+                    }
+                )
             }
         }
     }

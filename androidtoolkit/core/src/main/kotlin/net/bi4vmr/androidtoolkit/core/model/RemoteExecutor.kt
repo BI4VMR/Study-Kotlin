@@ -36,10 +36,9 @@ class RemoteExecutor(
 
     val client: ADBProxyClient = ADBProxyClient(host, port)
 
+    @Volatile
+    var name: String = "$host:$port"
 
-    override fun getID(): String = id
-
-    override fun getType(): ExecutorType = ExecutorType.REMOTE
 
     override fun init() {
         client.init()
@@ -49,7 +48,11 @@ class RemoteExecutor(
         client.stop()
     }
 
-    override fun getDisplayName(): String = "$host:$port"
+    override fun getType(): ExecutorType = ExecutorType.REMOTE
+
+    override fun getID(): String = id
+
+    override fun getDisplayName(): String = name
 
     override fun getStateFlow(): StateFlow<ServiceState> = client.serviceStateFlow
 

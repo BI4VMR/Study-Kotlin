@@ -95,6 +95,16 @@ object APIs {
      */
     const val ADB_DEVICE_TYPE: String = "/adb/device-type"
 
+    /**
+     * 推送文件到设备。
+     *
+     * 协议为 WebSocket ，查询参数为 `sn` （设备序列号）、 `remote` （目标路径）、 `name` （源文件名称）与 `size` （源文件大小）。
+     *
+     * 客户端先以二进制帧发送文件内容，随后发送文本帧 `eof` ；任意时刻发送文本帧 `cancel` 可取消传输。服务端以文本帧返回
+     * [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent] 。
+     */
+    const val ADB_FILE_PUSH: String = "/adb/file/push"
+
 
     /* ----- 屏幕投射 ----- */
 
