@@ -1,10 +1,9 @@
 package net.bi4vmr.study
 
-import net.bi4vmr.tool.java.common.base.file.FilePathUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import java.io.File
+import kotlin.concurrent.thread
 import kotlin.uuid.ExperimentalUuidApi
 
 @OptIn(ExperimentalUuidApi::class)
@@ -20,27 +19,28 @@ fun main() {
     //     keep = true
     // )
 
-    ADBExecutableHelper.setExecutablePath("/home/bi4vmr/Software/Android-SDK/platform-tools/adb")
-    ADBController.init()
-    ADBController.getDevices().firstOrNull()?.let {
-        println(it.getSN())
-        it.pushFile(
-            File("/home/bi4vmr/Downloads/jadx-1.5.2.zip"),
-            "/sdcard/Download/abc/",
-            object : ADBFileTransferListener() {
-                override fun onStart(size: Long) {
-                    println("onStart size -> $size")
-                }
+    thread {
+        ADBController.init()
+        ADBController.getDevices().firstOrNull()?.let {
+            println(it.getSN())
+            it.pushFile(
+                File("C:\\Users\\bi4vmr\\Download\\殷正洋 - 05.东南苦行山.flac"),
+                "/sdcard/Download/",
+                object : ADBFileTransferListener() {
+                    override fun onStart(size: Long) {
+                        println("onStart size -> $size")
+                    }
 
-                override fun onProgress(size: Long, progress: Double) {
-                    println("onProgress size -> $size, progress -> $progress")
-                }
+                    override fun onProgress(size: Long, progress: Double) {
+                        println("onProgress size -> $size, progress -> $progress")
+                    }
 
-                override fun onEnd(cancel: Boolean) {
-                    println("onEnd cancel -> $cancel")
+                    override fun onEnd() {
+                        println("onEnd")
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
     // embeddedServer(CIO, port = 8080) {

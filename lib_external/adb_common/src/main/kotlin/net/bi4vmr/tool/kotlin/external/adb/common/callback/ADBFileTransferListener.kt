@@ -3,6 +3,8 @@ package net.bi4vmr.tool.kotlin.external.adb.common.callback
 /**
  * ADB 文件传输监听器。
  *
+ * 该监听器事件通知线程与方法调用线程一致，若需要在 UI 中展示进度，需注意线程切换。
+ *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
@@ -29,7 +31,7 @@ abstract class ADBFileTransferListener {
      * 事件：传输进度更新。
      *
      * @param[size] 已传输数据量（字节）。
-     * @param[progress] 进度（比例）。值域： `[0, 1]` ；如果文件大小获取失败，则为 `NaN` 。
+     * @param[progress] 进度（比例）。值域：`[0, 1]`；如果文件大小获取失败，则为 `NaN`。
      */
     open fun onProgress(size: Long, progress: Double) {
         // 默认不作任何操作，子类可根据需要重写。
@@ -37,10 +39,8 @@ abstract class ADBFileTransferListener {
 
     /**
      * 事件：传输结束。
-     *
-     * @param[cancel] 传输是否被用户取消。
      */
-    open fun onEnd(cancel: Boolean) {
+    open fun onEnd() {
         // 默认不作任何操作，子类可根据需要重写。
     }
 

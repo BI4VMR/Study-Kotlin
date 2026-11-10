@@ -19,7 +19,6 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * ADB 本地设备。
@@ -386,7 +385,7 @@ data class LocalDevice(
              * 如果中途被取消则不会回调该方法。
              */
             override fun stop() {
-                listener?.onEnd(false)
+                listener?.onEnd()
             }
 
             /**
@@ -478,98 +477,52 @@ data class LocalDevice(
         }
         listener?.onStart(totalCount)
 
+        var currentIndex = 0
+        var currentPath = ""
+        val cancelled = AtomicBoolean(false)
+        // 单个文件传输任务监听器
+        val fileListener: ADBFileTransferListener = object : ADBFileTransferListener() {
 
-        val fileListener:ADBFileTransferListener = AtomicReference(null)
-        // 用户取消时，同时通知正在传输的文件。
-        listener?.setCancelNotifier {
-            fileListener. get()?.notifyCancel()
+            override fun onStart(size: Long) {
+                currentIndex++
+
+                // 只有目录时，以 `NaN` 通告进度。
+                if (totalCount <= 0) {
+                    listener?.onProgress(currentIndex, Double.NaN)
+                } else {
+                    val progress = currentIndex.toDouble() / totalCount.toDouble()
+                    listener?.onProgress(currentIndex, progress)
+                }
+
+                listener?.onFileStart(currentPath, size)
+            }
+
+            override fun onProgress(size: Long, progress: Double) {
+                listener?.onFileProgress(size, progress)
+            }
+
+            override fun onEnd() {
+                listener?.onFileEnd()
+            }
         }
 
-        var currentIndex = 0
+        // 收到取消指令时，通知正在传输的任务。
+        listener?.setCancelNotifier {
+            cancelled.set(true)
+            fileListener.notifyCancel()
+        }
+
+
         /* 深度优先遍历源目录，处理每个元素。 */
         local.walkTopDown().forEach {
             // 创建文件时将会自动创建父目录，因此无需处理目录。
             if (!it.isFile) return@forEach
 
-
+            currentPath = it.absolutePath
+            pushFile(it, remotePath, fileListener)
         }
 
-        // fun toRemotePath(file: File): String {
-        //     val relative = file.relativeTo(local).invariantSeparatorsPath
-        //     return if (relative.isEmpty()) remoteRoot else "${remoteRoot.trimEnd('/')}/$relative"
-        // }
-        //
-        // // 用户取消时，同时通知正在传输的文件。
-        // val currentFileListener = AtomicReference<ADBFileTransferListener?>(null)
-        // listener?.setCancelNotifier {
-        //     currentFileListener.get()?.notifyCancel()
-        // }
-        //
-        // fun notifyTotalProgress() {
-        //     val progress = if (totalSize <= 0) Double.NaN else totalTransferred.toDouble() / totalSize.toDouble()
-        //     listener?.onProgress(totalTransferred, progress)
-        // }
-        //
-        // fun cancelAndThrow(): Nothing {
-        //     listener?.onEnd(true)
-        //     throw SyncException(SyncException.SyncError.CANCELED)
-        // }
-        //
-        // if (listener?.isCancelled() == true) {
-        //     cancelAndThrow()
-        // }
-        //
-        // // 预先创建所有目录，空目录也会被保留。
-        // localDirs.forEach { dir ->
-        //     val remoteDir = toRemotePath(dir)
-        //     val state = runForStatus("mkdir -p \'$remoteDir\'")
-        //     if (!CLIUtil.isSuccess(state)) {
-        //         throw IOException("Remote directory cannot be created! Path:[$remoteDir]")
-        //     }
-        // }
-        //
-        // listener?.onStart(localFiles.size, totalSize)
-        //
-        // localFiles.forEachIndexed { index, file ->
-        //     val remotePath = toRemotePath(file)
-        //     val baseTransferred = totalTransferred
-        //
-        //     // 将单文件事件转换为目录传输事件
-        //     val fileListener = object : ADBFileTransferListener() {
-        //         override fun onStart(size: Long) {
-        //             listener?.onFileStart(index, file, remotePath, size)
-        //         }
-        //
-        //         override fun onProgress(size: Long, progress: Double) {
-        //             listener?.onFileProgress(index, file, size, progress)
-        //             totalTransferred = baseTransferred + size
-        //             notifyTotalProgress()
-        //         }
-        //     }
-        //
-        //     // 先登记再检查，避免两者之间发出的取消指令丢失。
-        //     currentFileListener.set(fileListener)
-        //     if (listener?.isCancelled() == true) {
-        //         cancelAndThrow()
-        //     }
-        //
-        //     try {
-        //         pushFile(file, remotePath, fileListener)
-        //     } catch (e: SyncException) {
-        //         if (e.errorCode == SyncException.SyncError.CANCELED) {
-        //             listener?.onFileEnd(index, file, true)
-        //             cancelAndThrow()
-        //         }
-        //         throw e
-        //     }
-        //
-        //     if (file.length() <= 0) {
-        //         notifyTotalProgress()
-        //     }
-        //     listener?.onFileEnd(index, file, false)
-        // }
-        //
-        // listener?.onEnd(false)
+        listener?.onEnd()
     }
 
     /**
@@ -660,7 +613,7 @@ data class LocalDevice(
              * 如果中途被取消则不会回调该方法。
              */
             override fun stop() {
-                listener?.onEnd(false)
+                listener?.onEnd()
             }
 
             /**

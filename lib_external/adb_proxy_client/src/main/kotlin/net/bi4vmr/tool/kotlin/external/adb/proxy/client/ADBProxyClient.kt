@@ -470,11 +470,11 @@ class ADBProxyClient(
         when {
             event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
             event.cancel -> {
-                listener?.onEnd(true)
+                listener?.onEnd()
                 throw IOException("Push cancelled by user!")
             }
 
-            else -> listener?.onEnd(false)
+            else -> listener?.onEnd()
         }
     }
 
