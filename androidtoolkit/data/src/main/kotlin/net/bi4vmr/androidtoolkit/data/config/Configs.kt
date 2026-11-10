@@ -3,8 +3,6 @@ package net.bi4vmr.androidtoolkit.data.config
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 
 /**
  * 配置项。
@@ -14,37 +12,19 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
  */
 object Configs {
 
-    object Key {
+    val COMMON_DARK_MODE = intPreferencesKey("common_dark_mode")
 
-        val COMMON_DARK_MODE = intPreferencesKey("common_dark_mode")
+    val COMMON_NODE_NAME = stringPreferencesKey("common_node_name")
 
-        val COMMON_NODE_NAME = stringPreferencesKey("common_node_name")
+    val ADB_EXEC_MODE = intPreferencesKey("adb_exec_mode")
 
-        val ADB_EXEC_MODE = intPreferencesKey("adb_exec_mode")
+    val ADB_EXEC_PATH_USER = stringPreferencesKey("adb_exec_path_user")
 
-        val ADB_EXEC_PATH_USER = stringPreferencesKey("adb_exec_path_user")
+    val PROXY_START_ON_INIT = booleanPreferencesKey("proxy_start_on_init")
 
-        val PROXY_START_ON_INIT = booleanPreferencesKey("proxy_start_on_init")
+    val PROXY_INTERFACE = stringPreferencesKey("proxy_interface")
 
-        val PROXY_INTERFACE = stringPreferencesKey("proxy_interface")
+    val PROXY_PORT = intPreferencesKey("proxy_port")
 
-        val PROXY_PORT = intPreferencesKey("proxy_port")
-
-        val PROXY_TLS = booleanPreferencesKey("proxy_tls")
-    }
-
-    object Value {
-
-        const val COMMON_NODE_NAME: String = "AndroidToolkit"
-
-        val ADB_EXEC_MODE_DEFAULT: Int = ADBExecFileMode.INTERNAL.code
-
-        const val PROXY_START_ON_INIT_DEFAULT: Boolean = true
-
-        const val PROXY_INTERFACE_DEFAULT: String = "0.0.0.0"
-
-        const val PROXY_PORT_DEFAULT: Int = Constants.PORT_SERVER_DEFAULT
-
-        const val PROXY_TLS_DEFAULT: Boolean = true
-    }
+    val PROXY_TLS = booleanPreferencesKey("proxy_tls")
 }

@@ -560,12 +560,12 @@ data class LocalDevice(
     }
 
     /**
-     * 推送文件到设备。
+     * 推送文件到 Android 设备。
      *
      * `adb push` 命令封装，支持目录，适用于无需获取进度的简单场景。
      *
-     * @param[local] PC 端源文件。
-     * @param[remote] Android 端目标路径。
+     * @param[local] 源路径（PC 端）。
+     * @param[remote] 目标路径（Android 端）。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     fun pushFileByCLI(local: File, remote: String): Boolean = ADBCLIUtil.pushFile(getSN(), local, remote)
@@ -695,6 +695,17 @@ data class LocalDevice(
     }
 
     /**
+     * 从 Android 设备拉取文件。
+     *
+     * `adb pull` 命令封装，支持目录，适用于无需获取进度的简单场景。
+     *
+     * @param[remote] 源路径（Android 端）。
+     * @param[local] 目标路径（PC 端）。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    fun pullFileByCLI(remote: String, local: File): Boolean = ADBCLIUtil.pullFile(getSN(), remote, local)
+
+    /**
      * 同步文件系统。
      *
      * 部分设备写入文件后需执行此命令，否则其他进程可能读取到不完整的数据。
@@ -774,7 +785,8 @@ data class LocalDevice(
     /**
      * 将 UTF-8 路径转为 ISO-8859-1 路径。
      *
-     * DDMLib `r13` 等旧版本要求路径以 ISO_8859_1 传输，否则非 ASCII 字符会显示为 `?`；Google 仓库中的新版本已支持 UTF-8 不可调用本方法。
+     * DDMLib `com.google.android.tools:ddmlib:r13` 等早期版本要求路径以 ISO_8859_1 传输，否则非 ASCII 字符会显示为 `?`；
+     * Google 仓库中的 `com.android.tools.ddms:ddmlib:32.5.1` 等较新版本已支持 UTF-8 路径，无需调用本方法。
      *
      * @return 编码后的路径。
      */

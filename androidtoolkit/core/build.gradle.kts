@@ -4,7 +4,8 @@ plugins {
 
 dependencies {
     /* 工程组件 */
-    api(project(":androidtoolkit:data"))
+    api(project(":androidtoolkit:base"))
+    implementation(project(":androidtoolkit:data"))
 
 
     /* 私有组件 */

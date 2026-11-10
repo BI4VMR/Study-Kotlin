@@ -28,7 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import net.bi4vmr.androidtoolkit.data.config.Configs
+import net.bi4vmr.androidtoolkit.base.constants.ConfigDefaults
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
@@ -192,10 +192,10 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                 Button(onClick = {
                     /* 如果输入框为空，将其设为默认值。 */
                     if (interfaceText.isBlank()) {
-                        interfaceText = Configs.Value.PROXY_INTERFACE_DEFAULT
+                        interfaceText = ConfigDefaults.PROXY_INTERFACE
                     }
                     if (portText.isBlank()) {
-                        portText = Configs.Value.PROXY_PORT_DEFAULT.toString()
+                        portText = ConfigDefaults.PROXY_PORT.toString()
                     }
 
                     /* 检查端口号是否符合规则 */

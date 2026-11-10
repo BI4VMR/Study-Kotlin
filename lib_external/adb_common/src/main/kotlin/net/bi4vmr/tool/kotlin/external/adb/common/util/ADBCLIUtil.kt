@@ -345,16 +345,35 @@ object ADBCLIUtil {
      */
 
     /**
-     * 发送文件。
+     * 推送文件到 Android 设备。
+     *
+     * `adb push` 命令封装，支持目录，适用于无需获取进度的简单场景。
      *
      * @param[sn] 设备序列号。
-     * @param[local] 源文件（PC 端）。
+     * @param[local] 源路径（PC 端）。
      * @param[remote] 目标路径（Android 端）。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun pushFile(sn: String, local: File, remote: String): Boolean {
         val cmd = String.format("${getExecutableName()} -s %s push \"%s\" \"%s\"", sn, local.absolutePath, remote)
+        val status = CLIUtil.runForStatus(cmd)
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 从 Android 设备拉取文件。
+     *
+     * `adb pull` 命令封装，支持目录，适用于无需获取进度的简单场景。
+     *
+     * @param[sn] 设备序列号。
+     * @param[remote] 源路径（Android 端）。
+     * @param[local] 目标路径（PC 端）。
+     * @return 状态码。若出现异常则返回 `-1`。
+     */
+    @JvmStatic
+    fun pullFile(sn: String, remote: String, local: File): Boolean {
+        val cmd = String.format("${getExecutableName()} -s %s pull \"%s\" \"%s\"", sn, remote, local.absolutePath)
         val status = CLIUtil.runForStatus(cmd)
         return CLIUtil.isSuccess(status)
     }

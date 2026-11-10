@@ -33,7 +33,9 @@ compose-viewmodel = "2.10.0"
 
 reorderable = "2.4.3"
 coil3 = "3.5.0"
+
 filekit = "0.14.2"
+composeNativeTray = "2.1.7"
 
 
 # ----- 测试工具 -----
@@ -174,6 +176,7 @@ reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reo
 # < Coil3 >
 # Coil3・Compose 支持
 coil3-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
+
 # < FileKit >
 # FileKit・核心
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
@@ -181,6 +184,10 @@ filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "file
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
 # FileKit・对话框・Compose 扩展
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+
+# < ComposeNativeTray >
+# ComposeNativeTray（取代 Compose Desktop 内置的 Tray 组件，解决 Linux 平台图标背景不透明等问题。）
+composeNativeTray = { module = "dev.nucleusframework:composenativetray", version.ref = "composeNativeTray" }
 
 
 # ----- 测试工具 -----

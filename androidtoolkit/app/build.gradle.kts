@@ -1,6 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
-val version = "1.0.1"
+val version = "1.0.0"
 
 
 plugins {
@@ -64,4 +64,5 @@ dependencies {
     /* 外部组件 */
     runtimeOnly(libJava.slf4j.simple)
     implementation(compose.desktop.currentOs)
+    implementation(libKotlin.composeNativeTray)
 }

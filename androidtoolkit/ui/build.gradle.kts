@@ -13,7 +13,8 @@ compose.resources {
 
 dependencies {
     /* 工程组件 */
-    api(project(":androidtoolkit:core"))
+    implementation(project(":androidtoolkit:base"))
+    implementation(project(":androidtoolkit:core"))
 
 
     /* 私有组件 */

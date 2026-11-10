@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import net.bi4vmr.androidtoolkit.base.constants.ConfigDefaults
 import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.tool.java.common.base.net.NetUtil
@@ -54,45 +55,45 @@ class ConfigManager(
 
     val darkModeFlow: Flow<DarkMode> =
         dataStore.data.map {
-            val code = it[Configs.Key.COMMON_DARK_MODE] ?: DarkMode.AUTO.code
+            val code = it[Configs.COMMON_DARK_MODE] ?: DarkMode.AUTO.code
             DarkMode.fromCode(code)
         }
 
     val nodeNameFlow: Flow<String> =
         dataStore.data.map {
-            it[Configs.Key.COMMON_NODE_NAME] ?: ""
+            it[Configs.COMMON_NODE_NAME] ?: ""
         }
 
     val adbExecFileModeFlow: Flow<ADBExecFileMode> =
         dataStore.data.map {
-            val code = it[Configs.Key.ADB_EXEC_MODE] ?: Configs.Value.ADB_EXEC_MODE_DEFAULT
+            val code = it[Configs.ADB_EXEC_MODE] ?: ConfigDefaults.ADB_EXEC_MODE
             ADBExecFileMode.fromCode(code)
         }
 
     val adbExecFileOfUser: Flow<File?> =
         dataStore.data.map {
-            val path = it[Configs.Key.ADB_EXEC_PATH_USER]
+            val path = it[Configs.ADB_EXEC_PATH_USER]
             if (path.isNullOrBlank()) null else File(path)
         }
 
     val proxyStartOnInitFlow: Flow<Boolean> =
         dataStore.data.map {
-            it[Configs.Key.PROXY_START_ON_INIT] ?: Configs.Value.PROXY_START_ON_INIT_DEFAULT
+            it[Configs.PROXY_START_ON_INIT] ?: ConfigDefaults.PROXY_START_ON_INIT
         }
 
     val proxyInterfaceFlow: Flow<String> =
         dataStore.data.map {
-            it[Configs.Key.PROXY_INTERFACE] ?: Configs.Value.PROXY_INTERFACE_DEFAULT
+            it[Configs.PROXY_INTERFACE] ?: ConfigDefaults.PROXY_INTERFACE
         }
 
     val proxyPortFlow: Flow<Int> =
         dataStore.data.map {
-            it[Configs.Key.PROXY_PORT] ?: Configs.Value.PROXY_PORT_DEFAULT
+            it[Configs.PROXY_PORT] ?: ConfigDefaults.PROXY_PORT
         }
 
     val proxyTLSFlow: Flow<Boolean> =
         dataStore.data.map {
-            it[Configs.Key.PROXY_TLS] ?: Configs.Value.PROXY_TLS_DEFAULT
+            it[Configs.PROXY_TLS] ?: ConfigDefaults.PROXY_TLS
         }
 
 
@@ -109,14 +110,14 @@ class ConfigManager(
     suspend fun getDarkMode(): DarkMode = darkModeFlow.first()
 
     suspend fun setDarkMode(mode: DarkMode) {
-        dataStore.edit { it[Configs.Key.COMMON_DARK_MODE] = mode.code }
+        dataStore.edit { it[Configs.COMMON_DARK_MODE] = mode.code }
     }
 
     suspend fun getNodeName(): String =
         nodeNameFlow.first()
 
     suspend fun setNodeName(name: String) {
-        dataStore.edit { it[Configs.Key.COMMON_NODE_NAME] = name }
+        dataStore.edit { it[Configs.COMMON_NODE_NAME] = name }
     }
 
     suspend fun getADBExecFileMode(): ADBExecFileMode =
@@ -126,33 +127,33 @@ class ConfigManager(
         adbExecFileOfUser.first()
 
     suspend fun setADBExecMode(mode: ADBExecFileMode) {
-        dataStore.edit { it[Configs.Key.ADB_EXEC_MODE] = mode.code }
+        dataStore.edit { it[Configs.ADB_EXEC_MODE] = mode.code }
     }
 
     suspend fun setADBExecFileOfUser(file: File) {
-        dataStore.edit { it[Configs.Key.ADB_EXEC_PATH_USER] = file.absolutePath }
+        dataStore.edit { it[Configs.ADB_EXEC_PATH_USER] = file.absolutePath }
     }
 
     suspend fun getProxyStartOnInit(): Boolean = proxyStartOnInitFlow.first()
 
     suspend fun setProxyStartOnInit(enabled: Boolean) {
-        dataStore.edit { it[Configs.Key.PROXY_START_ON_INIT] = enabled }
+        dataStore.edit { it[Configs.PROXY_START_ON_INIT] = enabled }
     }
 
     suspend fun getProxyInterface(): String = proxyInterfaceFlow.first()
 
     suspend fun setProxyInterface(address: String) {
-        dataStore.edit { it[Configs.Key.PROXY_INTERFACE] = address }
+        dataStore.edit { it[Configs.PROXY_INTERFACE] = address }
     }
 
     suspend fun getProxyPort(): Int = proxyPortFlow.first()
 
     suspend fun setProxyPort(port: Int) {
-        dataStore.edit { it[Configs.Key.PROXY_PORT] = port }
+        dataStore.edit { it[Configs.PROXY_PORT] = port }
     }
 
     suspend fun setProxyTLS(enable: Boolean) {
-        dataStore.edit { it[Configs.Key.PROXY_TLS] = enable }
+        dataStore.edit { it[Configs.PROXY_TLS] = enable }
     }
 
     suspend fun getProxyTLS(): Boolean = proxyTLSFlow.first()

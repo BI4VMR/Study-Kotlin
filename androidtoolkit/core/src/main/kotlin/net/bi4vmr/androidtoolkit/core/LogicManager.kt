@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
-import net.bi4vmr.androidtoolkit.core.mcp.McpService
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
@@ -299,17 +298,14 @@ object LogicManager {
             /* 设置终端桥接程序文件路径 */
             ShellTransferHelper.setTransferFile(fileManager.getInternalShellTransferFile())
 
-            /* 启动 MCP 服务，环境变量 ANDROIDTOOLKIT_MCP_PORT=0 可禁用 */
-            val mcpPort = System.getenv("ANDROIDTOOLKIT_MCP_PORT")?.toIntOrNull() ?: McpService.PORT_DEFAULT
-            if (mcpPort > 0) {
-                runCatching { McpService.start(mcpPort) }
-                    .onFailure { println("LogicManager init: failed to start MCP service: $it") }
-            }
-
             val proxyStartOnInit = configManager.proxyStartOnInitFlow.first()
             if (proxyStartOnInit) {
                 startProxyServer()
             }
+
+            /* 启动 MCP 服务，环境变量 ANDROIDTOOLKIT_MCP_PORT=0 可禁用 */
+            // runCatching { McpService.start(McpService.PORT_DEFAULT) }
+            //     .onFailure { println("LogicManager init: failed to start MCP service: $it") }
         }
 
         /* 设备列表变化时，优先恢复用户上次选择的设备，找不到则选中第一个 */
