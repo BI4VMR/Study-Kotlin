@@ -11,7 +11,7 @@ import net.bi4vmr.tool.kotlin.common.base.time.toTimestamp
 import net.bi4vmr.tool.kotlin.common.base.time.toZonedDateTime
 
 /**
- * 数据访问类：远程设备。
+ * 数据访问类：远程设备记录。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -23,8 +23,8 @@ class DeviceRecordDAO(
     private val queries: DeviceRecordQueries = database.deviceRecordQueries
 
 
-    fun observeByExecutorID(executorID: String): Flow<List<DeviceRecord>> =
-        queries.queryByExecutorID(executorID, ::entityToModel)
+    fun observeAll(): Flow<List<DeviceRecord>> =
+        queries.queryAll(::entityToModel)
             .asFlow()
             .mapToList(Dispatchers.IO)
 
@@ -34,17 +34,16 @@ class DeviceRecordDAO(
             host = record.host,
             port = record.port.toLong(),
             create_time = record.createTime.toTimestamp(),
-            update_time = record.updateTime.toTimestamp(),
-            executor_id = record.executorID
+            update_time = record.updateTime.toTimestamp()
         )
     }
 
-    // fun deleteByID(host: String, port: Int) {
-    //     queries.deleteByID(host, port.toLong())
-    // }
+    fun deleteByID(id: String) {
+        queries.deleteByID(id)
+    }
 
-    fun checkIfExist(host: String, port: Int, executorID: String): Boolean =
-        queries.checkIfExist(host, port.toLong(), executorID).executeAsOne()
+    fun checkIfExist(host: String, port: Int): Boolean =
+        queries.checkIfExist(host, port.toLong()).executeAsOne()
 
 
     private fun entityToModel(
@@ -52,14 +51,12 @@ class DeviceRecordDAO(
         host: String,
         port: Long,
         createTime: Long,
-        updateTime: Long,
-        executorID: String
+        updateTime: Long
     ): DeviceRecord = DeviceRecord(
         id = id,
         host = host,
         port = port.toInt(),
         createTime = createTime.toZonedDateTime(),
-        updateTime = updateTime.toZonedDateTime(),
-        executorID = executorID
+        updateTime = updateTime.toZonedDateTime()
     )
 }

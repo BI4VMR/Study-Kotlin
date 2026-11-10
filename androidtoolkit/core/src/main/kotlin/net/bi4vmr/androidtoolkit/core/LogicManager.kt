@@ -2,22 +2,9 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.generateCertificate
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import io.ktor.network.tls.certificates.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
 import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
@@ -221,7 +208,13 @@ object LogicManager {
     val devicesFlow: StateFlow<List<ADBDevice>> =
         selectedExecutorFlow
             .flatMapLatest { executor ->
-                executor.getDevicesFlow()
+                val devicesFlow = executor.getDevicesFlow()
+                if (executor is LocalExecutor) {
+                    // combine(executor, deviceRecordDAO.observeAll())
+                    devicesFlow
+                } else {
+                    devicesFlow
+                }
             }
             .stateIn(
                 scope = taskScope,
@@ -427,12 +420,10 @@ object LogicManager {
      * @throws[IllegalStateException] 连接失败。错误信息可通过异常消息读取。
      */
     fun addRemoteDevice(host: String, port: Int, save: Boolean) {
-        val executor = getSelectedExecutor()
-
-        // 如果主机信息已存在，则不进行添加。
-        val exist = deviceRecordDAO.checkIfExist(host, port, executor.getID())
+        // 如果设备信息已存在，则不进行添加。
+        val exist = deviceRecordDAO.checkIfExist(host, port)
         if (exist) {
-            throw IllegalStateException("Remote device [$host:$port] already exist in [$executor]!")
+            throw IllegalStateException("Remote device [$host:$port] already exist!")
         }
 
         ADBController.connectRemoteDevice(host, port)
@@ -441,12 +432,17 @@ object LogicManager {
         if (save) {
             val record = DeviceRecord(
                 host = host,
-                port = port,
-                executorID = executor.getID()
+                port = port
             )
             deviceRecordDAO.replace(record)
         }
     }
+
+    // fun removeRemoteDevice(id: String) {
+    //     ADBController.disconnectRemoteDevice(host, port)
+    //
+    //     deviceRecordDAO.deleteByID(id)
+    // }
 
     fun startCast() {
         val exec = _selectedExecutorFlow.value

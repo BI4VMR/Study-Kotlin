@@ -1,33 +1,24 @@
---
--- `executor_id` : 指明该设备所属的执行器，如果是无效 ID ，表示本地执行器。
---
 CREATE TABLE device_record (
     id TEXT NOT NULL PRIMARY KEY,
     host TEXT NOT NULL,
     port INTEGER NOT NULL,
     create_time INTEGER NOT NULL,
-    update_time INTEGER NOT NULL,
-    executor_id TEXT NOT NULL
+    update_time INTEGER NOT NULL
 );
 
 
-queryByExecutorID:
+queryAll:
 SELECT *
 FROM device_record
-WHERE executor_id = ?
-ORDER BY update_time ASC;
+ORDER BY host AND port ASC;
 
 replace:
-INSERT OR REPLACE INTO device_record(id, host, port, create_time, update_time, executor_id)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO device_record(id, host, port, create_time, update_time)
+VALUES (?, ?, ?, ?, ?);
 
 deleteByID:
 DELETE FROM device_record
 WHERE id = ?;
 
-deleteByExecutorID:
-DELETE FROM device_record
-WHERE executor_id = ?;
-
 checkIfExist:
-SELECT EXISTS(SELECT 1 FROM device_record WHERE host = ? AND port = ? AND executor_id = ?);
+SELECT EXISTS(SELECT 1 FROM device_record WHERE host = ? AND port = ?);

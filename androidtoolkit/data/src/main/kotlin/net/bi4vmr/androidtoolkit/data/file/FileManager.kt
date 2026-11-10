@@ -1,6 +1,8 @@
 package net.bi4vmr.androidtoolkit.data.file
 
 import net.bi4vmr.tool.java.common.base.file.FileUtil
+import net.bi4vmr.tool.java.common.base.system.SystemUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -61,7 +63,7 @@ object FileManager {
     }
 
     fun getInternalADBExecFile(): File {
-        return File(getResourcesDir(), "adb")
+        return File(getResourcesDir(), "adb/${ADBExecutableHelper.getPlatformExecutableName()}")
     }
 
     fun getInternalScrcpyServerFile(): File {
@@ -69,7 +71,7 @@ object FileManager {
     }
 
     fun getInternalShellTransferFile(): File {
-        return File(getResourcesDir(), "shell_transfer.jar")
+        return File(getResourcesDir(), "shellbridge.jar")
     }
 
     fun getUserDataDir(): File {

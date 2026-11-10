@@ -34,10 +34,5 @@ data class DeviceRecord(
     /**
      * 更新时间。
      */
-    val updateTime: ZonedDateTime = createTime,
-
-    /**
-     * 外键：所属执行器。
-     */
-    val executorID: String
+    val updateTime: ZonedDateTime = createTime
 )
