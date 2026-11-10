@@ -176,7 +176,6 @@ object ADBCLIUtil {
         }
     }
 
-
     /**
      * 获取屏幕截图并保存至 PC 存储设备。
      *

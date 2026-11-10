@@ -25,10 +25,10 @@ mcp-sdk = "0.15.0"
 
 
 # ----- 图形界面 -----
-compose-ui = "1.12.1"
+compose-ui = "1.12.2"
 compose-material3 = "1.9.0"
 compose-materialIcons = "1.7.3"
-compose-resources = "1.11.1"
+compose-resources = "1.12.2"
 compose-viewmodel = "2.10.0"
 
 reorderable = "2.4.3"
@@ -45,7 +45,7 @@ mockk = "1.13.17"
 
 # ----- Gradle 插件 -----
 plugin_ksp = "2.2.21-2.0.5"
-plugin_compose = "1.11.1"
+plugin_compose = "1.12.2"
 plugin_agp = "8.13.2"
 plugin_dokka = "2.2.0"
 plugin_kover = "0.9.8"

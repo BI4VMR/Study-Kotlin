@@ -1,7 +1,9 @@
 package net.bi4vmr.study
 
+import net.bi4vmr.tool.java.common.base.file.FilePathUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import java.io.File
 import kotlin.uuid.ExperimentalUuidApi
 
@@ -18,12 +20,13 @@ fun main() {
     //     keep = true
     // )
 
+    ADBExecutableHelper.setExecutablePath("/home/bi4vmr/Software/Android-SDK/platform-tools/adb")
     ADBController.init()
     ADBController.getDevices().firstOrNull()?.let {
         println(it.getSN())
         it.pushFile(
-            File("C:\\Users\\bi4vmr\\Download\\搞机工具箱11.0.0.zip"),
-            "/sdcard/Download/",
+            File("/home/bi4vmr/Downloads/jadx-1.5.2.zip"),
+            "/sdcard/Download/abc/",
             object : ADBFileTransferListener() {
                 override fun onStart(size: Long) {
                     println("onStart size -> $size")
