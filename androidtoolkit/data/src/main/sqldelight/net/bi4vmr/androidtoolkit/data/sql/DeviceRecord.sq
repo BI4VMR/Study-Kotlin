@@ -1,7 +1,7 @@
 --
 -- `executor_id` : 指明该设备所属的执行器，如果是无效 ID ，表示本地执行器。
 --
-CREATE TABLE remote_device (
+CREATE TABLE device_record (
     id TEXT NOT NULL PRIMARY KEY,
     host TEXT NOT NULL,
     port INTEGER NOT NULL,
@@ -13,21 +13,21 @@ CREATE TABLE remote_device (
 
 queryByExecutorID:
 SELECT *
-FROM remote_device
+FROM device_record
 WHERE executor_id = ?
 ORDER BY update_time ASC;
 
 replace:
-INSERT OR REPLACE INTO remote_device(id, host, port, create_time, update_time, executor_id)
+INSERT OR REPLACE INTO device_record(id, host, port, create_time, update_time, executor_id)
 VALUES (?, ?, ?, ?, ?, ?);
 
 deleteByID:
-DELETE FROM remote_device
+DELETE FROM device_record
 WHERE id = ?;
 
 deleteByExecutorID:
-DELETE FROM remote_device
+DELETE FROM device_record
 WHERE executor_id = ?;
 
 checkIfExist:
-SELECT EXISTS(SELECT 1 FROM remote_device WHERE host = ? AND port = ? AND executor_id = ?);
+SELECT EXISTS(SELECT 1 FROM device_record WHERE host = ? AND port = ? AND executor_id = ?);

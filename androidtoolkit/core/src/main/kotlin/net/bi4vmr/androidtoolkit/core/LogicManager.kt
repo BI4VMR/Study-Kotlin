@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
 import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
@@ -27,10 +28,9 @@ import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.androidtoolkit.data.sql.MainDB
+import net.bi4vmr.androidtoolkit.data.sql.dao.DeviceRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.ExecutorRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
-import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteDeviceDAO
-import net.bi4vmr.androidtoolkit.data.sql.model.RemoteDeviceRecord
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -106,8 +106,8 @@ object LogicManager {
     /**
      * 数据访问类：远程设备。
      */
-    private val remoteDeviceDAO: RemoteDeviceDAO by lazy {
-        MainDB.remoteDeviceDAO
+    private val deviceRecordDAO: DeviceRecordDAO by lazy {
+        MainDB.deviceRecordDAO
     }
 
     /**
@@ -430,21 +430,21 @@ object LogicManager {
         val executor = getSelectedExecutor()
 
         // 如果主机信息已存在，则不进行添加。
-        val exist = remoteDeviceDAO.checkIfExist(host, port, executor.getID())
+        val exist = deviceRecordDAO.checkIfExist(host, port, executor.getID())
         if (exist) {
             throw IllegalStateException("Remote device [$host:$port] already exist in [$executor]!")
         }
 
         ADBController.connectRemoteDevice(host, port)
 
-        // 连接成功后，如果需要保存设备信息，在子线程写入数据库。
+        // 连接成功后，如果需要保存设备信息，写入数据库。
         if (save) {
-            val record = RemoteDeviceRecord(
+            val record = DeviceRecord(
                 host = host,
                 port = port,
                 executorID = executor.getID()
             )
-            remoteDeviceDAO.replace(record)
+            deviceRecordDAO.replace(record)
         }
     }
 

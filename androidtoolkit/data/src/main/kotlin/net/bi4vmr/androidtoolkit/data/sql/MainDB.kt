@@ -3,7 +3,7 @@ package net.bi4vmr.androidtoolkit.data.sql
 import app.cash.sqldelight.TransactionWithReturn
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
-import net.bi4vmr.androidtoolkit.data.sql.dao.RemoteDeviceDAO
+import net.bi4vmr.androidtoolkit.data.sql.dao.DeviceRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.ExecutorRecordDAO
 import java.io.File
 
@@ -21,9 +21,9 @@ object MainDB {
     private lateinit var instance: MainDatabase
 
 
-    val remoteDeviceDAO: RemoteDeviceDAO by lazy {
+    val deviceRecordDAO: DeviceRecordDAO by lazy {
         checkInit()
-        RemoteDeviceDAO(instance)
+        DeviceRecordDAO(instance)
     }
 
     val executorRecordDAO: ExecutorRecordDAO by lazy {

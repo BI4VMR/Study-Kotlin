@@ -4,9 +4,9 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
+import net.bi4vmr.androidtoolkit.data.sql.DeviceRecordQueries
 import net.bi4vmr.androidtoolkit.data.sql.MainDatabase
-import net.bi4vmr.androidtoolkit.data.sql.RemoteDeviceQueries
-import net.bi4vmr.androidtoolkit.data.sql.model.RemoteDeviceRecord
 import net.bi4vmr.tool.kotlin.common.base.time.toTimestamp
 import net.bi4vmr.tool.kotlin.common.base.time.toZonedDateTime
 
@@ -16,19 +16,19 @@ import net.bi4vmr.tool.kotlin.common.base.time.toZonedDateTime
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class RemoteDeviceDAO(
+class DeviceRecordDAO(
     database: MainDatabase
 ) {
 
-    private val queries: RemoteDeviceQueries = database.remoteDeviceQueries
+    private val queries: DeviceRecordQueries = database.deviceRecordQueries
 
 
-    fun observeByExecutorID(executorID: String): Flow<List<RemoteDeviceRecord>> =
+    fun observeByExecutorID(executorID: String): Flow<List<DeviceRecord>> =
         queries.queryByExecutorID(executorID, ::entityToModel)
             .asFlow()
             .mapToList(Dispatchers.IO)
 
-    fun replace(record: RemoteDeviceRecord) {
+    fun replace(record: DeviceRecord) {
         queries.replace(
             id = record.id,
             host = record.host,
@@ -54,7 +54,7 @@ class RemoteDeviceDAO(
         createTime: Long,
         updateTime: Long,
         executorID: String
-    ): RemoteDeviceRecord = RemoteDeviceRecord(
+    ): DeviceRecord = DeviceRecord(
         id = id,
         host = host,
         port = port.toInt(),
