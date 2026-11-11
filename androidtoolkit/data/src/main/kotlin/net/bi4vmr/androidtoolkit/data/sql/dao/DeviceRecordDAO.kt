@@ -42,6 +42,10 @@ class DeviceRecordDAO(
         queries.deleteByID(id)
     }
 
+    fun deleteByAddress(host: String, port: Int) {
+        queries.deleteByAddress(host, port.toLong())
+    }
+
     fun checkIfExist(host: String, port: Int): Boolean =
         queries.checkIfExist(host, port.toLong()).executeAsOne()
 

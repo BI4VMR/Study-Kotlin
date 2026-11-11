@@ -31,6 +31,7 @@ dependencies {
     /* 外部组件 */
     api(libJava.slf4j.api)
     api(libJava.ddmlib)
+    implementation(libJava.guava)
 
 
     /* 测试组件 */

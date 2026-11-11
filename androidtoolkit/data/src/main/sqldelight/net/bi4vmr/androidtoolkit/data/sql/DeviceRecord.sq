@@ -20,5 +20,9 @@ deleteByID:
 DELETE FROM device_record
 WHERE id = ?;
 
+deleteByAddress:
+DELETE FROM device_record
+WHERE host = ? AND port = ?;
+
 checkIfExist:
 SELECT EXISTS(SELECT 1 FROM device_record WHERE host = ? AND port = ?);

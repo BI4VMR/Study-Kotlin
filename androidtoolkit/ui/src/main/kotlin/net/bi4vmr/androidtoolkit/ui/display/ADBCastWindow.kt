@@ -16,12 +16,12 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.GlobalWindowManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common_ic_cast
+import net.bi4vmr.androidtoolkit.ui.util.getAvailableSize
 import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBLocalCastView
 import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBRemoteCastView
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.jetbrains.compose.resources.painterResource
-import java.awt.Toolkit
 
 /**
  * 设备投屏窗口。
@@ -55,14 +55,12 @@ fun ADBCastWindow(
                     modifier = Modifier.fillMaxSize(),
                     onVideoSizeChange = { width, height ->
                         println("Video size changed: $width x $height")
-                        windowState.size = DpSize(width.dp, height.dp)
-
-                        window.graphicsConfiguration.let{ gc ->
-                            val b = gc.bounds
-                            val i = Toolkit.getDefaultToolkit().getScreenInsets(gc)
-                            println("Screen bounds: $b, Insets: $i")
-                            DpSize((b.width - i.left - i.right).dp, (b.height - i.top - i.bottom).dp)
-                        }
+                        val maxWinAreaSize = window.getAvailableSize()
+                        println("maxWinAreaSize: $maxWinAreaSize")
+                        val newWidth = width.coerceAtMost(maxWinAreaSize.width.value.toInt())
+                        val newHeight = height.coerceAtMost(maxWinAreaSize.height.value.toInt())
+                        println("new size: $newWidth x $newHeight")
+                        // windowState.size = DpSize(newWidth.dp, newHeight.dp)
                     }
                 )
 

@@ -2,9 +2,23 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import io.ktor.network.tls.certificates.generateCertificate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
 import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
@@ -18,6 +32,7 @@ import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.DeviceRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.ExecutorRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
+import net.bi4vmr.androidtoolkit.ui.model.DummyDevice
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -210,9 +225,25 @@ object LogicManager {
             .flatMapLatest { executor ->
                 val devicesFlow = executor.getDevicesFlow()
                 if (executor is LocalExecutor) {
-                    // combine(executor, deviceRecordDAO.observeAll())
-                    devicesFlow
+                    /* 如果是本地执行器，需要加上用户记住的远程设备。 */
+                    val recordFlow = deviceRecordDAO.observeAll()
+                    devicesFlow.combine(recordFlow) { devices, records ->
+                        val newList = mutableListOf<ADBDevice>()
+                        newList.addAll(devices)
+
+                        // 针对每条记录遍历一次设备列表，如果当前记录未在设备列表中出现，则进行添加，否则忽略。
+                        records.forEach { record ->
+                            val recordSN = "${record.host}:${record.port}"
+                            val exist = devices.any { it.getSN() == recordSN }
+                            if (!exist) {
+                                newList.add(DummyDevice(record))
+                            }
+                        }
+
+                        newList
+                    }
                 } else {
+                    /* 远程执行器不支持记住远程设备，直接返回原列表即可。 */
                     devicesFlow
                 }
             }
@@ -305,7 +336,8 @@ object LogicManager {
         taskScope.launch {
             devicesFlow.collect { devices ->
                 // 仅修改选中状态，不改变用户偏好的序列号。
-                _selectedDeviceFlow.value = devices.firstOrNull { it.getSN() == preferredSN } ?: devices.firstOrNull()
+                _selectedDeviceFlow.value =
+                    devices.firstOrNull { it.getSN() == preferredSN } ?: devices.firstOrNull()
             }
         }
     }
@@ -438,11 +470,11 @@ object LogicManager {
         }
     }
 
-    // fun removeRemoteDevice(id: String) {
-    //     ADBController.disconnectRemoteDevice(host, port)
-    //
-    //     deviceRecordDAO.deleteByID(id)
-    // }
+    fun removeRemoteDevice(host: String, port: Int) {
+        ADBController.disconnectRemoteDevice(host, port)
+
+        deviceRecordDAO.deleteByAddress(host, port)
+    }
 
     fun startCast() {
         val exec = _selectedExecutorFlow.value

@@ -18,6 +18,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -272,7 +273,12 @@ data class LocalDevice(
     @JvmOverloads
     fun getName(default: String = "Unknown"): String {
         if (ddmDevice.isEmulator) {
-            return ddmDevice.avdName
+            val avdName = runCatching {
+                ddmDevice.avdData.get(5, TimeUnit.SECONDS)?.name
+            }.getOrNull()
+            if (!avdName.isNullOrEmpty()) {
+                return avdName
+            }
         }
 
         val name = "${getBrand()} ${getModel()}"

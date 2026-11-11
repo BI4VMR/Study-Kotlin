@@ -1,13 +1,42 @@
 package net.bi4vmr.androidtoolkit.ui.component
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -19,6 +48,7 @@ import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
+import net.bi4vmr.androidtoolkit.ui.model.DummyDevice
 import net.bi4vmr.androidtoolkit.ui.placeholder_device_name
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -178,10 +208,17 @@ private fun DeviceList(
                     items(devices, key = { it.getSN() }) { device ->
                         val isSelected = (device.getSN() == selected?.getSN())
                         DeviceListItem(
+                            globalStateManager = globalStateManager,
                             executor = executor,
                             device = device,
                             selected = isSelected,
-                            onClick = { onSelect(device) }
+                            onClick = {
+                                if (device is DummyDevice) {
+                                    device.connect()
+                                } else {
+                                    onSelect(device)
+                                }
+                            }
                         )
                     }
                 }
@@ -226,6 +263,7 @@ private fun ExecutorStatePanel(
 
 @Composable
 private fun DeviceListItem(
+    globalStateManager: GlobalStateManager,
     executor: ADBExecutor,
     device: ADBDevice,
     selected: Boolean,
@@ -253,6 +291,21 @@ private fun DeviceListItem(
         modifier = Modifier.fillMaxWidth(),
         onClick = { onClick(device) }
     ) {
+        if (device is DummyDevice) {
+            Column {
+                val connecting: Boolean by device.connectStateFlow.collectAsStateWithLifecycle()
+                if (connecting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Text("正在连接 ${device.getSN()} ...", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Text("未连接的远程设备", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                }
+
+                Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            }
+            return@Card
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(Dimens.Layout.ListItemPadding)
@@ -265,10 +318,15 @@ private fun DeviceListItem(
             }
             Spacer(Modifier.weight(1F))
 
-            // 按钮：连接远程执行器
+            // 按钮：断开
             if (type == DeviceType.NETWORK) {
                 IconButton(
-                    onClick = { },
+                    onClick = {
+                        globalStateManager.logicManager.removeRemoteDevice(
+                            sn.substringBefore(":"),
+                            sn.substringAfter(":").toIntOrNull() ?: 5555
+                        )
+                    },
                     modifier = Modifier.size(Dimens.Icon.Small)
                 ) {
                     Icon(Icons.Filled.Delete, null, Modifier.size(Dimens.Icon.Small))
