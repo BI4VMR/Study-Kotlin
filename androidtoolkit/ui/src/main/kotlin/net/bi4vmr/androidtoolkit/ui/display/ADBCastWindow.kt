@@ -6,7 +6,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
@@ -22,6 +24,7 @@ import net.bi4vmr.tool.kotlin.external.adb.cast.compose.ADBRemoteCastView
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.skia.Rect
 
 /**
  * 设备投屏窗口。
@@ -45,6 +48,9 @@ fun ADBCastWindow(
         state = windowState,
         onCloseRequest = { globalStateManager.windowManager.removeWindow(record) }
     ) {
+        val d = LocalDensity.current.density
+        val f = LocalDensity.current.fontScale
+        println("density: $d, fontScale: $f")
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val device = record.device
             val executor = record.executor
@@ -57,10 +63,13 @@ fun ADBCastWindow(
                         println("Video size changed: $width x $height")
                         val maxWinAreaSize = window.getAvailableSize()
                         println("maxWinAreaSize: $maxWinAreaSize")
-                        val newWidth = width.coerceAtMost(maxWinAreaSize.width.value.toInt())
-                        val newHeight = height.coerceAtMost(maxWinAreaSize.height.value.toInt())
+                        val newWidth = (maxWinAreaSize.width.value * d).toInt()
+                        val newHeight = (maxWinAreaSize.height.value * d).toInt()
                         println("new size: $newWidth x $newHeight")
-                        // windowState.size = DpSize(newWidth.dp, newHeight.dp)
+
+                        val r = fitCanvas(IntSize(newWidth, newHeight), IntSize(width, height))
+                        println(r)
+                        windowState.size = DpSize((r.width / d).dp, (r.height / d).dp)
                     }
                 )
 
@@ -86,3 +95,35 @@ class CastRecord(
     val device: ADBDevice,
     val displayID: String
 ) : GlobalWindowManager.Record()
+
+
+fun fitCanvas(canvasSize: IntSize, frameSize: IntSize): Rect {
+    println("fitCanvas: canvasSize=$canvasSize, frameSize=$frameSize")
+    if (canvasSize.width <= 0 || canvasSize.height <= 0 || frameSize.width <= 0 || frameSize.height <= 0) {
+        return Rect(0F, 0F, 0F, 0F)
+    }
+
+    val canvasAspect = canvasSize.width.toFloat() / canvasSize.height
+    val frameAspect = frameSize.width.toFloat() / frameSize.height
+
+    val renderWidth: Float
+    val renderHeight: Float
+    if (canvasAspect > frameAspect) {
+        // Canvas比Frame宽，高度限制为Canvas的高。
+        renderHeight = canvasSize.height.toFloat()
+        renderWidth = renderHeight * frameAspect
+    } else if (canvasAspect < frameAspect) {
+        // Canvas比Frame高，宽度限制为Canvas的宽。
+        renderWidth = canvasSize.width.toFloat()
+        renderHeight = renderWidth / frameAspect
+    } else {
+        // Canvas和Frame等比例，以Canvas尺寸为准。
+        renderWidth = canvasSize.width.toFloat()
+        renderHeight = canvasSize.height.toFloat()
+    }
+
+    val left = (canvasSize.width - renderWidth) / 2F
+    val top = (canvasSize.height - renderHeight) / 2F
+
+    return Rect.makeXYWH(left, top, renderWidth, renderHeight)
+}
