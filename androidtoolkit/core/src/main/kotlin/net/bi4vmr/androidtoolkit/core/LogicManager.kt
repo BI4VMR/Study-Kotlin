@@ -2,26 +2,13 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.generateCertificate
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import io.ktor.network.tls.certificates.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
 import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
+import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
@@ -32,7 +19,6 @@ import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.DeviceRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.ExecutorRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
-import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
@@ -52,6 +38,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
+import kotlin.concurrent.thread
 
 /**
  * 业务逻辑入口。
@@ -188,7 +175,9 @@ object LogicManager {
                 executor.name = record.name
                 executor.client.apply {
                     enableTLS = record.enableTLS
-                    sslConfig = this@LogicManager.sslConfig
+                    if (record.enableTLS) {
+                        sslConfig = this@LogicManager.sslConfig
+                    }
                 }
 
                 list.add(executor)
@@ -202,18 +191,38 @@ object LogicManager {
         )
 
     /**
-     * Flow : 当前选中的执行器。
-     *
-     * 没有远程设备时默认使用本地 ADB 进程。
+     * Flow : 当前选中的执行器（内部）。
      */
     private val _selectedExecutorFlow: MutableStateFlow<ADBExecutor> = MutableStateFlow(LocalExecutor)
 
     /**
      * Flow : 当前选中的执行器。
      *
-     * 没有远程设备时默认使用本地 ADB 进程。
+     * 没有远程执行器时默认使用本地 ADB 进程。
      */
     val selectedExecutorFlow: StateFlow<ADBExecutor> = _selectedExecutorFlow
+
+    /**
+     * Flow : 伪设备正在连接状态。
+     *
+     * 正在连接的设备 ID 将加入列表，连接失败回到未连接状态应当从列表中删除。
+     */
+    private val _dummyDeviceStatesFlow: MutableStateFlow<List<String>> = MutableStateFlow(emptyList())
+
+    /**
+     * Flow : 伪设备列表。
+     *
+     * 已在数据库中记录但未连接的远程设备。
+     */
+    private val dummyDevicesFlow: Flow<List<DummyDevice>> =
+        deviceRecordDAO.observeAll()
+            .combine(_dummyDeviceStatesFlow) { records, states ->
+                records.map { record ->
+                    // 数据库记录与连接状态组合，生成 DummyDevice 实例。
+                    val connecting = record.id in states
+                    DummyDevice(record, connecting)
+                }
+            }
 
     /**
      * Flow : ADB 设备列表。
@@ -226,17 +235,14 @@ object LogicManager {
                 val devicesFlow = executor.getDevicesFlow()
                 if (executor is LocalExecutor) {
                     /* 如果是本地执行器，需要加上用户记住的远程设备。 */
-                    val recordFlow = deviceRecordDAO.observeAll()
-                    devicesFlow.combine(recordFlow) { devices, records ->
+                    devicesFlow.combine(dummyDevicesFlow) { actualDevices, dummyDevices ->
                         val newList = mutableListOf<ADBDevice>()
-                        newList.addAll(devices)
-
-                        // 针对每条记录遍历一次设备列表，如果当前记录未在设备列表中出现，则进行添加，否则忽略。
-                        records.forEach { record ->
-                            val recordSN = "${record.host}:${record.port}"
-                            val exist = devices.any { it.getSN() == recordSN }
+                        newList.addAll(actualDevices)
+                        // 针对每个伪设备遍历一次真实设备列表，如果当前伪设备未在真实设备列表中出现，则进行添加，否则忽略。
+                        dummyDevices.forEach { device ->
+                            val exist = actualDevices.any { it.getSN() == device.getSN() }
                             if (!exist) {
-                                newList.add(DummyDevice(record))
+                                newList.add(device)
                             }
                         }
 
@@ -254,7 +260,7 @@ object LogicManager {
             )
 
     /**
-     * Flow : 当前选中的 ADB 设备。
+     * Flow : 当前选中的 ADB 设备（内部）。
      */
     private val _selectedDeviceFlow: MutableStateFlow<ADBDevice?> = MutableStateFlow(null)
 
@@ -474,6 +480,23 @@ object LogicManager {
         ADBController.disconnectRemoteDevice(host, port)
 
         deviceRecordDAO.deleteByAddress(host, port)
+    }
+
+    fun connectRemoteDevice(host: String, port: Int) = thread {
+        val record = deviceRecordDAO.queryByAddress(host, port)
+        record?.let { _dummyDeviceStatesFlow.update { old -> old + it.id } }
+
+        try {
+            ADBController.connectRemoteDevice(host, port)
+        } catch (e: Exception) {
+            logger.error("Failed to connect remote device [$host:$port]: ${e.message}")
+        } finally {
+            record?.let { r ->
+                _dummyDeviceStatesFlow.update { old ->
+                    old.filterNot { it == r.id }
+                }
+            }
+        }
     }
 
     fun startCast() {

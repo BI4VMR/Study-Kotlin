@@ -28,6 +28,9 @@ class DeviceRecordDAO(
             .asFlow()
             .mapToList(Dispatchers.IO)
 
+    fun queryByAddress(host: String, port: Int): DeviceRecord? =
+        queries.queryByAddress(host, port.toLong(), ::entityToModel).executeAsOneOrNull()
+
     fun replace(record: DeviceRecord) {
         queries.replace(
             id = record.id,

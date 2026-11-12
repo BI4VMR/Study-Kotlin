@@ -12,6 +12,11 @@ SELECT *
 FROM device_record
 ORDER BY host AND port ASC;
 
+queryByAddress:
+SELECT *
+FROM device_record
+WHERE host = ? AND port = ?;
+
 replace:
 INSERT OR REPLACE INTO device_record(id, host, port, create_time, update_time)
 VALUES (?, ?, ?, ?, ?);
