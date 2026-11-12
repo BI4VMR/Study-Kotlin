@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model
 
 import kotlinx.serialization.Serializable
 
@@ -9,10 +9,10 @@ import kotlinx.serialization.Serializable
  * @since 1.0.0
  */
 @Serializable
-data class ServerInfoResponse(
+data class ServerInfo(
 
     /**
-     * 服务端名称。
+     * 节点名称。
      */
     val name: String,
 

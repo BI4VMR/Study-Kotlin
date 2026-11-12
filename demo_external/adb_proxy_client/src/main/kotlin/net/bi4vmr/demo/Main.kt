@@ -47,7 +47,7 @@ fun main() = application {
             Button(onClick = {
                 runBlocking {
                     runCatching {
-                        val list = client.fetchDeviceList()
+                        val list = client.getDeviceList()
                         println("设备列表：$list")
                     }.onFailure {
                         println("获取设备列表失败：${it.message}")
@@ -71,7 +71,7 @@ fun main() = application {
 
             Button(onClick = {
                 runBlocking {
-                    client.fetchDeviceList().firstOrNull()
+                    client.getDeviceList().firstOrNull()
                         ?.let {
                             client.openShell(it)
                         }
@@ -84,7 +84,7 @@ fun main() = application {
 
             Button(onClick = {
                 runBlocking {
-                    client.fetchDeviceList().firstOrNull()
+                    client.getDeviceList().firstOrNull()
                         ?.let {
                             val c = client.runForStatus(it.getSN(), cmd)
                             println("执行命令[$cmd]返回状态码：$c")
@@ -97,7 +97,7 @@ fun main() = application {
 
             Button(onClick = {
                 runBlocking {
-                    client.fetchDeviceList().firstOrNull()
+                    client.getDeviceList().firstOrNull()
                         ?.let {
                             val c = client.runForText(it.sn, cmd)
                             println("执行命令[$cmd]：")

@@ -8,4 +8,4 @@ package net.bi4vmr.tool.kotlin.external.adb.common.exceptions
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-class RPCException : Exception()
+class RPCException(message: String? = null) : Exception(message)

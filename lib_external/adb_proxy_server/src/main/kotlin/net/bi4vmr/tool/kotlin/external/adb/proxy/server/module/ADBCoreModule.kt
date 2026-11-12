@@ -2,13 +2,21 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
 import com.pty4j.PtyProcessBuilder
 import com.pty4j.WinSize
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.server.websocket.*
-import io.ktor.websocket.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
+import io.ktor.server.websocket.DefaultWebSocketServerSession
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -21,7 +29,6 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListen
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
-import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
@@ -54,6 +61,7 @@ class ADBCoreModule : ADBProxyModule {
 
     override fun Application.register(server: ADBProxyServer) {
         service = ADBCoreService(server)
+        service.init()
 
         routing {
             post(APIs.SERVER_INFO) {
@@ -63,8 +71,12 @@ class ADBCoreModule : ADBProxyModule {
             }
 
             post(APIs.ADB_DEVICES) {
-                val result = onFetchDeviceList(server.jsonTool)
-                call.respondText(result, ContentType.Application.Json)
+                val list = service.getDeviceList()
+                val json = server.jsonTool.encodeToString(
+                    ListSerializer(RemoteDevice.serializer()),
+                    list
+                )
+                call.respondText(json, ContentType.Application.Json)
             }
 
             post(APIs.ADB_EXEC_STATUS) {
@@ -206,45 +218,16 @@ class ADBCoreModule : ADBProxyModule {
         }
     }
 
+    override fun unregister() {
+        service.release()
+    }
 
     private fun onFetchDeviceList(jsonTool: Json): String {
-        val list = ADBController.getDevices()
-            .map { device ->
-                RemoteDevice(
-                    device.getSN(),
-                    device.getState()
-                )
-            }
-
+        val list = service.getDeviceList()
         return jsonTool.encodeToString(
             ListSerializer(RemoteDevice.serializer()),
             list
         )
-    }
-
-    /**
-     * 解析请求体并查找本地设备。
-     *
-     * 若参数无效或设备不存在，将直接响应错误并返回空值。
-     */
-    private suspend fun receiveLocalDevice(call: ApplicationCall): LocalDevice? {
-        val params: ADBDeviceRequest = try {
-            call.receive()
-        } catch (e: Exception) {
-            call.respondText("Invalid request body.", status = HttpStatusCode.BadRequest)
-            return null
-        }
-
-        if (params.sn.isBlank()) {
-            call.respondText("Parameter [sn] is required.", status = HttpStatusCode.BadRequest)
-            return null
-        }
-
-        val device = ADBController.getDevice(params.sn)
-        if (device == null) {
-            call.respondText("Device not exist.", status = HttpStatusCode.NotFound)
-        }
-        return device
     }
 
     private suspend fun onADBExecForStatus(params: ADBExecRequest): Int {
@@ -260,6 +243,7 @@ class ADBCoreModule : ADBProxyModule {
     }
 
     private suspend fun onADBEventsWSConnect(session: DefaultWebSocketServerSession, jsonTool: Json) {
+
         // 监听器回调不是挂起函数，因此使用 `trySend()` 将事件投递到发送队列。
         val listener = object : ADBDeviceListener {
             override fun onDeviceListChange(devices: List<ADBDevice>) {
@@ -371,7 +355,12 @@ class ADBCoreModule : ADBProxyModule {
         val name = query["name"]?.let { File(it).name }
         logger.debug("Receive [${APIs.ADB_FILE_PUSH}] request. SN:[$sn] Remote:[$remote] Name:[$name]")
         if (sn.isNullOrBlank() || remote.isNullOrBlank() || name.isNullOrBlank()) {
-            session.close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Parameter [sn], [remote] and [name] are required."))
+            session.close(
+                CloseReason(
+                    CloseReason.Codes.CANNOT_ACCEPT,
+                    "Parameter [sn], [remote] and [name] are required."
+                )
+            )
             return
         }
 

@@ -15,23 +15,28 @@ object GlobalWindowManager {
     private var currentID: Long = 1L
 
     /**
+     * 窗口列表（内部）。
+     */
+    private val _windows = mutableStateListOf<Record>()
+
+    /**
      * 窗口列表。
      */
-    val windows = mutableStateListOf<Record>()
+    val windows: List<Record> = _windows
 
 
     /**
      * 添加窗口。
      */
     fun addWindow(record: Record) {
-        windows.add(record)
+        _windows.add(record)
     }
 
     /**
      * 移除窗口。
      */
     fun removeWindow(record: Record) {
-        windows.remove(record)
+        _windows.remove(record)
     }
 
 

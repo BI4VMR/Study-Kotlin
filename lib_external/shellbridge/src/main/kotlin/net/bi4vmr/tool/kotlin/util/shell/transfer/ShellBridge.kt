@@ -8,9 +8,11 @@ import java.net.Socket
 import kotlin.concurrent.thread
 
 /**
- * 终端桥接程序，用于取代 `stty raw -echo; socat - TCP:127.0.0.1:<port>; stty sane` 。
+ * 终端桥接程序。
  *
- * 运行在外部终端中，将当前终端切换为原始模式，并双向转发终端与本地 Socket 之间的数据。
+ * 与远端主机建立连接，并转发输入/输出到控制台 使用 JLine 处理终端交互指令。
+ *
+ * 用于取代 `socat` 等外部工具，实现跨平台终端转发。
  *
  * 上行（终端 -> Socket）数据按帧发送：`类型(1 字节) + 长度(4 字节) + 内容`，
  * 类型为 [FRAME_DATA] 时内容为按键数据，为 [FRAME_RESIZE] 时内容为 `"<列数> <行数>"` 。

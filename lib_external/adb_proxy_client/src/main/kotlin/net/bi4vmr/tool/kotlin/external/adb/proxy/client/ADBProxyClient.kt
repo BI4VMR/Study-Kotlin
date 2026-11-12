@@ -1,20 +1,41 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.network.tls.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.websocket.wss
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.http.Url
+import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
+import io.ktor.http.isSuccess
+import io.ktor.http.path
+import io.ktor.network.tls.addKeyStore
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
@@ -23,13 +44,21 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListen
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
+import net.bi4vmr.tool.kotlin.external.adb.common.exceptions.RPCException
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.EOFException
@@ -225,43 +254,51 @@ class ADBProxyClient(
         _serviceStateFlow.value = ServiceState.INIT
     }
 
-    fun getRunningConfig(): RunningConfig? = runningConfig
 
-
-    /* ----- 服务端管理 ----- */
+    /* ----- 系统管理 ----- */
 
     /**
      * 获取服务端信息。
      *
      * @return 服务端信息。
      * @throws[ConnectException] 建立连接失败。
+     * @throws[RPCException] 远程调用失败。
      */
-    suspend fun getServerInfo(): ServerInfoResponse {
+    suspend fun getServerInfo(): ServerInfo {
         val url = buildURL(APIs.SERVER_INFO)
         val call = requireClient().post(url)
 
-        check(call.status.isSuccess()) {
-            "GetServerInfo failed. Status:[${call.status}]"
+        if (!call.status.isSuccess()) {
+            throw RPCException("GetServerInfo failed. HTTP Status:[${call.status}]")
         }
 
-        val callResponse: BaseResponse<ServerInfoResponse> = call.body()
-        logger.info("GetServerInfo response: $callResponse")
-        check(callResponse.isSuccess()) {
-            "GetServerInfo failed. Code:[${callResponse.code}] Message:[${callResponse.message}]"
+        val callResponse: BaseResponse<ServerInfo> = call.body()
+        if (callResponse.isFailure()) {
+            throw RPCException("GetServerInfo failed. Code:[${callResponse.code}] Message:[${callResponse.message}]")
         }
 
-        return requireNotNull(callResponse.data) { "GetServerInfo failed. Data is null." }
+        return requireNotNull(callResponse.data) { "GetServerInfo failed, Data is null!" }
     }
+
+
+    /* ----- 基础功能 ----- */
 
     /**
      * 获取设备列表。
      *
      * @return 设备列表。
      * @throws[ConnectException] 建立连接失败。
+     * @throws[RPCException] 远程调用失败。
      */
-    suspend fun fetchDeviceList(): List<RemoteDevice> {
+    suspend fun getDeviceList(): List<RemoteDevice> {
         val url = buildURL(APIs.ADB_DEVICES)
-        return requireClient().post(url).body()
+        val call = requireClient().post(url)
+
+        if (!call.status.isSuccess()) {
+            throw RPCException("GetDeviceList failed. HTTP Status:[${call.status}]")
+        }
+
+        return call.body()
     }
 
 
@@ -410,10 +447,10 @@ class ADBProxyClient(
 
         val total = local.length()
         val path = APIs.ADB_FILE_PUSH +
-            "?sn=${sn.encodeURLParameter()}" +
-            "&remote=${remote.encodeURLParameter()}" +
-            "&name=${local.name.encodeURLParameter()}" +
-            "&size=$total"
+                "?sn=${sn.encodeURLParameter()}" +
+                "&remote=${remote.encodeURLParameter()}" +
+                "&name=${local.name.encodeURLParameter()}" +
+                "&size=$total"
 
         fun notifyProgress(transferred: Long) {
             if (total <= 0) {
@@ -758,16 +795,20 @@ class ADBProxyClient(
     }
 
     /**
-     * 获取客户端。
+     * 获取 HTTP 客户端。
      *
-     * 实例不存在则抛出异常。
-     *
-     * @return 客户端。
+     * @return 客户端实例。
+     * @throws[IllegalStateException] 未初始化。
      */
     private fun requireClient(): HttpClient {
         return client ?: throw IllegalStateException("Client is not initialized! Have you call `init()` at first?")
     }
 
+    /**
+     * 创建 HTTP 客户端实例。
+     *
+     * @return 客户端实例。
+     */
     private fun createClient(): HttpClient {
         return HttpClient(CIO) {
             engine {
@@ -775,8 +816,8 @@ class ADBProxyClient(
                 val ssl = runningConfig?.sslConfig ?: return@engine
 
                 https {
-                    // TODO
-                    trustManager = PinningTrustManager(null)
+                    // 信任所有服务端证书
+                    trustManager = ByPassTrustManager()
                     // 双向认证：向服务端出示客户端证书
                     addKeyStore(
                         store = ssl.getKeyStore(),
@@ -798,7 +839,6 @@ class ADBProxyClient(
     }
 
     private fun connectWebSocket() {
-        println("   ->  $runningConfig")
         // 进入该方法前，客户端状态已在 PREPARING 。
         taskScope.launch {
             try {

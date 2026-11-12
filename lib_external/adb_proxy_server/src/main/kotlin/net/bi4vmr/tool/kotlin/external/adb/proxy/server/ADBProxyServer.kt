@@ -12,7 +12,6 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.websocket.WebSockets
 import io.netty.handler.ssl.ClientAuth
-import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -180,65 +179,14 @@ class ADBProxyServer(
             )
             runningConfig = conf
 
-            server = embeddedServer(Netty, configure = {
-                val ssl = conf.sslConfig
-                if (ssl != null) {
-                    /* 启用 TLS */
-                    sslConnector(
-                        keyStore = ssl.getKeyStore(),
-                        keyStorePassword = { ssl.keyStorePassword.toCharArray() },
-                        keyAlias = ssl.keyAlias,
-                        privateKeyPassword = { ssl.keyPassword.toCharArray() }
-                    ) {
-                        host = conf.address
-                        port = conf.port
-                    }
-
-                    // TODO Ktor 仅在配置 trustStore 时才要求客户端证书，且只信任其中已有的证书，无法满足配对场景。
-                    // 此处替换为自定义的 SslHandler ：可选地索取客户端证书并全部接受，由配对模块按指纹鉴权。
-                    val sslContext = buildServerSSLContext(ssl)
-                    // TODO 启用 HTTP/2 时 Ktor 会在 TLS 握手完成后才调用 channelPipelineConfig ，
-                    // 此时替换 SslHandler 将破坏已建立的会话，因此必须关闭 HTTP/2 。
-                    enableHttp2 = false
-                    channelPipelineConfig = {
-                        if (get("ssl") != null) {
-                            replace("ssl", "ssl", sslContext.newHandler(channel().alloc()))
-                        }
-                    }
-                } else {
-                    /* 禁用 TLS */
-                    connector {
-                        host = conf.address
-                        port = conf.port
-                    }
-                }
-            }) {
-                // 监听服务器就绪状态
-                monitor.subscribe(ServerReady) { _stateFlow.value = ServerState.RUNNING }
-
-                // 注册路由与配置插件
-                configure()
-            }.start(wait = false)
+            server = createServer()
         } catch (e: Exception) {
-            logger.error(
-                "Failed to start server on [{}:{}]! Reason:[{}]",
-                runningConfig?.address,
-                runningConfig?.port,
-                e.message
-            )
+            val conf = runningConfig
+            logger.error("Failed to start server on [{}:{}]! Reason:[{}]", conf?.address, conf?.port, e.message)
 
             _errorFlow.value = e
             _stateFlow.value = ServerState.ERROR
         }
-    }
-
-    private fun buildServerSSLContext(ssl: SSLConfig): SslContext {
-        val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-        keyManagerFactory.init(ssl.getKeyStore(), ssl.keyPassword.toCharArray())
-        return SslContextBuilder.forServer(keyManagerFactory)
-            .trustManager(InsecureTrustManagerFactory.INSTANCE)
-            .clientAuth(ClientAuth.OPTIONAL)
-            .build()
     }
 
     @Synchronized
@@ -271,6 +219,77 @@ class ADBProxyServer(
      */
     fun getRunningConfig(): RunningConfig? = runningConfig
 
+
+    /**
+     * 获取运行时配置。
+     *
+     * 配置不存在则抛出异常。
+     *
+     * @return 配置信息。
+     */
+    private fun requireRunningConfig(): RunningConfig {
+        return runningConfig ?: throw IllegalStateException("Client is not initialized!")
+    }
+
+    /**
+     * 创建 HTTP 服务端实例。
+     *
+     * @return 服务端实例。
+     */
+    private fun createServer(): EmbeddedServer<*, *> {
+        return embeddedServer(
+            factory = Netty,
+            configure = {
+                val conf = requireRunningConfig()
+                val ssl = conf.sslConfig
+                if (ssl != null) {
+                    /* 启用 TLS */
+                    sslConnector(
+                        keyStore = ssl.getKeyStore(),
+                        keyStorePassword = { ssl.keyStorePassword.toCharArray() },
+                        keyAlias = ssl.keyAlias,
+                        privateKeyPassword = { ssl.keyPassword.toCharArray() }
+                    ) {
+                        host = conf.address
+                        port = conf.port
+                    }
+
+                    /*
+                     * Ktor 配置 `trustStore` 后强制要求客户端证书，且仅信任已知证书，无法满足客户端可选证书与配对场景（TLS 建立后才能
+                     * 需要进行通信触发配对流程）。
+                     *
+                     * 此处使用 Netty 引擎并替换默认的 SSLHandler，将客户端证书设为可选并接受所有证书。
+                     */
+                    val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+                    keyManagerFactory.init(ssl.getKeyStore(), ssl.keyPassword.toCharArray())
+                    val sslContext = SslContextBuilder.forServer(keyManagerFactory)
+                        .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                        .clientAuth(ClientAuth.OPTIONAL)
+                        .build()
+
+                    channelPipelineConfig = {
+                        if (get("ssl") != null) {
+                            replace("ssl", "ssl", sslContext.newHandler(channel().alloc()))
+                        }
+                    }
+
+                    // Ktor 启用 HTTP/2 时，需要先完成 TLS 握手才回调 `channelPipelineConfig`，无法实现 SSLHandler 替换，需要禁用。
+                    enableHttp2 = false
+                } else {
+                    /* 禁用 TLS */
+                    connector {
+                        host = conf.address
+                        port = conf.port
+                    }
+                }
+            }) {
+            // 监听服务器就绪状态
+            monitor.subscribe(ServerReady) { _stateFlow.value = ServerState.RUNNING }
+
+            // 注册路由与配置插件
+            configure()
+        }.start(wait = false)
+    }
 
     // 配置服务器
     private fun Application.configure() {

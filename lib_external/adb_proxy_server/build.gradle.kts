@@ -21,6 +21,7 @@ dependencies {
     // 本地调试
     api(project(":lib_external:adb_proxy_common"))
     api(project(":lib_external:adb_core"))
+    api(project(":lib_external:adb_ktx"))
 
     // 依赖传递
     // api(privateLibKotlin.external.adb.proxy.common)

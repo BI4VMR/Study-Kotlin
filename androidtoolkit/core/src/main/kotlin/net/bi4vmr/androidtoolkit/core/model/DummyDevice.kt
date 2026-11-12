@@ -1,4 +1,4 @@
-package net.bi4vmr.androidtoolkit.ui.model
+package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

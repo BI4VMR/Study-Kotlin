@@ -2,7 +2,9 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairRevealRequest
@@ -23,7 +25,9 @@ object APIs {
      *
      * 获取名称、版本等基本信息，无需鉴权。
      *
-     * 请求方式为 HTTP POST ，返回 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse] ，数据载荷为 [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ServerInfoResponse] 。
+     * 请求方式为 HTTP POST，无请求参数。
+     *
+     * 返回 [BaseResponse] JSON 文本，数据载荷为 [ServerInfo] 。
      */
     const val SERVER_INFO: String = "/server/info"
 
@@ -42,7 +46,9 @@ object APIs {
     /**
      * 查询设备列表。
      *
-     * 请求方式为 HTTP POST ，返回 JSON 设备列表。
+     * 请求方式为 HTTP POST，无请求参数。
+     *
+     * 返回设备列表 JSON 文本。
      */
     const val ADB_DEVICES: String = "/adb/devices"
 

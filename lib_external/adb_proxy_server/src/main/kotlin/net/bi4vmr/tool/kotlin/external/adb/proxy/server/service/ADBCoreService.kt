@@ -1,10 +1,12 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.service
 
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
+import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ServerInfoResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
 
@@ -23,12 +25,30 @@ class ADBCoreService(
      */
     private val logger = LoggerFactory.getLogger(ADBCoreService::class.java)
 
+    private val adbObserver: ADBObserver = ADBObserver()
 
-    fun getServerInfo(): ServerInfoResponse {
+
+    fun init() {
+        adbObserver.init()
+    }
+
+    fun release() {
+        adbObserver.terminate()
+    }
+
+    fun getServerInfo(): ServerInfo {
         val conf = server.getRunningConfig()
         requireNotNull(conf) { "Running config not found! have you call `start()` at first?" }
-        return ServerInfoResponse(conf.name, Constants.PROTOCOL_VERSION)
+        return ServerInfo(conf.name, Constants.PROTOCOL_VERSION)
     }
+
+    fun getDeviceList(): List<RemoteDevice> = ADBController.getDevices()
+        .map { device ->
+            RemoteDevice(
+                device.getSN(),
+                device.getState()
+            )
+        }
 
     fun getDeviceName(sn: String): BaseResponse<String> {
         return try {

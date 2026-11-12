@@ -32,7 +32,7 @@ import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.DeviceRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.ExecutorRecordDAO
 import net.bi4vmr.androidtoolkit.data.sql.dao.PairedPeerDAO
-import net.bi4vmr.androidtoolkit.ui.model.DummyDevice
+import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.cast.util.ScrcpyServerHelper
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice

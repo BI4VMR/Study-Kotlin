@@ -48,7 +48,7 @@ import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
-import net.bi4vmr.androidtoolkit.ui.model.DummyDevice
+import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.androidtoolkit.ui.placeholder_device_name
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
