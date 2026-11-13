@@ -1,4 +1,4 @@
-package net.bi4vmr.androidtoolkit.data.config.enums
+package net.bi4vmr.androidtoolkit.base.enums
 
 /**
  * ADB 可执行文件选择模式。

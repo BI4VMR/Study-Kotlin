@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.base.constants.ConfigDefaults
-import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
-import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
+import net.bi4vmr.androidtoolkit.base.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.base.enums.DarkMode
 import net.bi4vmr.tool.java.common.base.net.NetUtil
 import org.slf4j.LoggerFactory
 import java.io.File

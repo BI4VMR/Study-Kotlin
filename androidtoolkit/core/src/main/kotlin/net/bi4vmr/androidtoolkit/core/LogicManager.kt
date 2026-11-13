@@ -2,9 +2,25 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import io.ktor.network.tls.certificates.generateCertificate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import net.bi4vmr.androidtoolkit.base.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.base.enums.DarkMode
 import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
 import net.bi4vmr.androidtoolkit.base.model.ExecutorRecord
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
@@ -12,8 +28,6 @@ import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.data.config.ConfigManager
-import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
-import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
 import net.bi4vmr.androidtoolkit.data.file.FileManager
 import net.bi4vmr.androidtoolkit.data.sql.MainDB
 import net.bi4vmr.androidtoolkit.data.sql.dao.DeviceRecordDAO
@@ -38,7 +52,6 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
-import kotlin.concurrent.thread
 
 /**
  * 业务逻辑入口。
@@ -360,11 +373,13 @@ object LogicManager {
     }
 
 
+    /* ----- 业务方法 ----- */
+
+    fun getSelectedExecutor(): ADBExecutor = _selectedExecutorFlow.value
+
     fun selectExecutor(executor: ADBExecutor) {
         _selectedExecutorFlow.value = executor
     }
-
-    fun getSelectedExecutor(): ADBExecutor = _selectedExecutorFlow.value
 
     fun selectDevice(device: ADBDevice?) {
         if (device != null) {
@@ -372,6 +387,8 @@ object LogicManager {
         }
         _selectedDeviceFlow.value = device
     }
+
+    fun getSelectedDevice(): ADBDevice? = _selectedDeviceFlow.value
 
     /**
      * 添加远程执行器。
@@ -476,24 +493,34 @@ object LogicManager {
         }
     }
 
+    /**
+     * 移除远程设备。
+     *
+     * 断开本地 ADB 进程连接的远程设备，如果有数据库记录也一并删除。
+     *
+     * @param[host] 设备地址。
+     * @param[port] 设备端口。
+     */
     fun removeRemoteDevice(host: String, port: Int) {
-        ADBController.disconnectRemoteDevice(host, port)
+        taskScope.launch {
+            ADBController.disconnectRemoteDevice(host, port)
 
-        deviceRecordDAO.deleteByAddress(host, port)
+            deviceRecordDAO.deleteByAddress(host, port)
+        }
     }
 
-    fun connectRemoteDevice(host: String, port: Int) = thread {
+    fun connectRemoteDevice(host: String, port: Int) = taskScope.launch {
         val record = deviceRecordDAO.queryByAddress(host, port)
         record?.let { _dummyDeviceStatesFlow.update { old -> old + it.id } }
 
         try {
             ADBController.connectRemoteDevice(host, port)
         } catch (e: Exception) {
-            logger.error("Failed to connect remote device [$host:$port]: ${e.message}")
+            logger.error("Failed to connect remote device [$host:$port], Reason:[${e.message}]")
         } finally {
-            record?.let { r ->
+            record?.let {
                 _dummyDeviceStatesFlow.update { old ->
-                    old.filterNot { it == r.id }
+                    old.filterNot { it == record.id }
                 }
             }
         }

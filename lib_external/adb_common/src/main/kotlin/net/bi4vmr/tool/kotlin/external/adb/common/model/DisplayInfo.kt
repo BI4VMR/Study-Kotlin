@@ -61,5 +61,5 @@ data class DisplayInfo(
      *
      * @return 索引编号。
      */
-    fun getUniqueIndex(): String = ADBOutputParser.parseUniqueIndex(uniqueID)
+    fun getUniqueIndex(): String = ADBOutputParser.parseDisplayUniqueIndex(uniqueID)
 }

@@ -23,7 +23,7 @@ object Dimens {
         val DialogCorner = 8.dp
 
         // 表项边距
-        val ListItemPadding = 6.dp
+        val ListItemPadding = 4.dp
     }
 
     object Text {

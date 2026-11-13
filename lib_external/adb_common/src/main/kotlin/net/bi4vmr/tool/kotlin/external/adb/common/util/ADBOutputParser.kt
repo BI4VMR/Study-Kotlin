@@ -1,5 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 
 /**
@@ -13,7 +14,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 object ADBOutputParser {
 
     /**
-     * 正则表达式：成功连接远程设备的命令输出语句。
+     * 正则表达式：`adb connect` 成功连接设备的输出语句。
      */
     private val deviceConnectedRegex = """^(?:already )?connected to .+?:\d+$""".toRegex()
 
@@ -29,6 +30,30 @@ object ADBOutputParser {
     // 正则表达式：屏幕分辨率。
     private val sizeRegex = """real (\d+) x (\d+)""".toRegex()
 
+
+    /**
+     * 获取远程设备地址。
+     *
+     * 如果不是远程设备，则返回原序列号，调用者可以通过 [ConnectionType] 提前判断连接类型。
+     *
+     * @param[sn] 设备序列号。
+     * @return 地址。
+     */
+    fun getRemoteDeviceHost(sn: String): String {
+        return sn.substringBefore(':')
+    }
+
+    /**
+     * 获取远程设备端口。
+     *
+     * 如果不是远程设备，则返回默认值 `5555` ，调用者可以通过 [ConnectionType] 提前判断连接类型。
+     *
+     * @param[sn] 设备序列号。
+     * @return 地址。
+     */
+    fun getRemoteDevicePort(sn: String): Int {
+        return sn.substringAfter(':').toIntOrNull() ?: 5555
+    }
 
     /**
      * 判断是否成功连接远程设备。
@@ -222,7 +247,7 @@ object ADBOutputParser {
                 return@forEach
             }
 
-            val uniqueIndex = parseUniqueIndex(uniqueID)
+            val uniqueIndex = parseDisplayUniqueIndex(uniqueID)
             val width = sizeRegex.find(line)?.groupValues?.get(1)
             val height = sizeRegex.find(line)?.groupValues?.get(2)
             displays.add(
@@ -246,7 +271,26 @@ object ADBOutputParser {
      * @param[uniqueID] 物理 ID 。
      * @return 索引编号。
      */
-    fun parseUniqueIndex(uniqueID: String): String {
+    fun parseDisplayUniqueIndex(uniqueID: String): String {
         return uniqueID.substringAfter(":")
+    }
+
+    /**
+     * 解析 `pm list packages` 命令输出。
+     *
+     * @return 包名列表。
+     */
+    fun parsePMListPackageOutput(input: List<String>): List<String> {
+        val list = mutableListOf<String>()
+        input.forEach { line ->
+            // 将 `package:com.android.music` 转换为 `com.android.music`
+            val trimmedLine = line.trim()
+            if (trimmedLine.startsWith("package:")) {
+                val packageName = trimmedLine.removePrefix("package:")
+                list.add(packageName)
+            }
+        }
+
+        return list.sorted()
     }
 }

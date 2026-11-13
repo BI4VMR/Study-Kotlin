@@ -1,6 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants
 
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
@@ -97,7 +97,7 @@ object APIs {
     /**
      * 获取设备类型。
      *
-     * 请求方式为 HTTP POST ，请求体为 [ADBDeviceRequest] ；返回纯文本，内容为 [DeviceType] 枚举名称。
+     * 请求方式为 HTTP POST ，请求体为 [ADBDeviceRequest] ；返回纯文本，内容为 [ConnectionType] 枚举名称。
      */
     const val ADB_DEVICE_TYPE: String = "/adb/device-type"
 

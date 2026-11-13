@@ -2,7 +2,8 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -76,9 +77,17 @@ class RemoteExecutor(
 
     override suspend fun getName(sn: String, fallback: String): String = client.getName(sn, fallback)
 
-    override suspend fun getDeviceType(sn: String): DeviceType? = runCatching { client.getType(sn) }.getOrNull()
+    override suspend fun getDeviceType(sn: String): ConnectionType? = runCatching { client.getType(sn) }.getOrNull()
 
     override fun openShell(sn: String) {
         client.openShell(sn)
     }
+
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    override suspend fun listPackages(sn: String, type: PackageType): List<String> =
+        client.listPackages(sn, type)
 }

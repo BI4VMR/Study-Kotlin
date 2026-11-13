@@ -27,7 +27,8 @@ dependencies {
 
 
     /* 外部组件 */
-    api(libKotlin.ktx.coroutines.core)
+    implementation(libJava.slf4j.api)
+    implementation(libKotlin.ktx.coroutines.core)
 
 
     /* 测试组件 */

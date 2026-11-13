@@ -34,4 +34,5 @@
 
     <!-- 组件 -->
     <string name="deviceselector_title">设备管理</string>
+    <string name="deviceselector_remote">远程设备</string>
 </resources>

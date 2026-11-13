@@ -7,7 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
+import net.bi4vmr.androidtoolkit.base.enums.DarkMode
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 

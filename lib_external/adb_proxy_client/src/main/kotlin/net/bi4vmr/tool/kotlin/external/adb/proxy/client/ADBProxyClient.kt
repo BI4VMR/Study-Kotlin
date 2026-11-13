@@ -42,10 +42,12 @@ import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.exceptions.RPCException
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
@@ -58,7 +60,6 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
-import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.EOFException
@@ -418,6 +419,8 @@ class ADBProxyClient(
             emptyList()
         }
     }
+
+
     /*
      * ----- 文件系统 -----
      */
@@ -708,7 +711,7 @@ class ADBProxyClient(
      * @return 设备类型。
      * @throws[IllegalStateException] 请求失败。
      */
-    suspend fun getType(sn: String): DeviceType {
+    suspend fun getType(sn: String): ConnectionType {
         logger.debug("GetType. SN:[$sn]")
         /* 发起 HTTP 请求 */
         val httpResponse = requireClient().post(buildURL(APIs.ADB_DEVICE_TYPE)) {
@@ -728,9 +731,32 @@ class ADBProxyClient(
         }
 
         val enumName = response.requireData()
-        return DeviceType.entries.firstOrNull { it.name == enumName }
+        return ConnectionType.entries.firstOrNull { it.name == enumName }
             ?: throw IllegalStateException("Invalid device type name from server. Type:[$enumName]")
     }
+
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    /**
+     * 获取软件包列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[type] 类型筛选条件。默认值为 [PackageType.ALL]，不设筛选条件。
+     * @return 包名列表。永不为空值，命令执行异常时返回空列表。
+     */
+    @JvmOverloads
+    suspend fun listPackages(sn: String, type: PackageType = PackageType.ALL): List<String> {
+        val lines = runForLines(sn, "pm list package ${type.cmdArgs}") ?: return emptyList()
+        return ADBOutputParser.parsePMListPackageOutput(lines)
+    }
+
+
+    /*
+     * ----- 远程控制 -----
+     */
 
     /**
      * 请求服务端为指定设备启动投屏转发。
@@ -782,6 +808,10 @@ class ADBProxyClient(
             ?: throw IllegalStateException("Invalid cast port returned by server.")
     }
 
+
+    /*
+     * ----- 内部方法 -----
+     */
 
     /**
      * 获取运行时配置。

@@ -20,7 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.androidtoolkit.base.constants.ConfigDefaults
-import net.bi4vmr.androidtoolkit.data.config.enums.DarkMode
+import net.bi4vmr.androidtoolkit.base.enums.DarkMode
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.button_save

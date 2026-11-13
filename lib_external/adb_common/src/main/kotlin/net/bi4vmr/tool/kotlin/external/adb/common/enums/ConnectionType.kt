@@ -1,12 +1,12 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.enums
 
 /**
- * ADB 设备类型。
+ * ADB 设备连接类型。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
  */
-enum class DeviceType {
+enum class ConnectionType {
 
     /**
      * USB 连接。

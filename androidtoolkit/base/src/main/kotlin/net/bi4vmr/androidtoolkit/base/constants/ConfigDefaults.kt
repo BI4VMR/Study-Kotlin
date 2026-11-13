@@ -1,6 +1,6 @@
 package net.bi4vmr.androidtoolkit.base.constants
 
-import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.base.enums.ADBExecFileMode
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 
 /**

@@ -1,5 +1,6 @@
 package net.bi4vmr.tool.kotlin.external.adb.model
 
+import com.android.ddmlib.FileListingService
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.SyncException
 import com.android.ddmlib.SyncService
@@ -8,7 +9,7 @@ import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFolderTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
@@ -214,7 +215,6 @@ data class LocalDevice(
      */
     fun getProperty(key: String): String? = ADBCLIUtil.getProperty(getSN(), key)
 
-
     /**
      * 获取设备属性。
      *
@@ -290,9 +290,9 @@ data class LocalDevice(
      *
      * @return 设备类型。
      */
-    fun getType(): DeviceType {
+    fun getType(): ConnectionType {
         if (ddmDevice.isEmulator) {
-            return DeviceType.EMULATOR
+            return ConnectionType.EMULATOR
         }
 
         val sn = getSN()
@@ -302,9 +302,9 @@ data class LocalDevice(
             // Android 11 开始新增扫码配对方式连接的设备
             sn.contains("._adb-tls-connect.")
         ) {
-            DeviceType.NETWORK
+            ConnectionType.NETWORK
         } else {
-            DeviceType.USB
+            ConnectionType.USB
         }
     }
 
@@ -312,6 +312,26 @@ data class LocalDevice(
     /*
      * ----- 文件系统 -----
      */
+
+    /**
+     * 获取根文件节点。
+     *
+     * @return 根节点。
+     */
+    fun getFilesRoot(): FileListingService.FileEntry = ddmDevice.fileListingService.root
+
+    /**
+     * 获取子文件节点。
+     *
+     * @param[dir] 父节点。若为空值表示使用根节点。
+     * @return 文件节点数组。
+     */
+    @JvmOverloads
+    fun listFiles(dir: FileListingService.FileEntry? = null): Array<FileListingService.FileEntry> {
+        val fService = ddmDevice.fileListingService
+        val target = dir ?: fService.root
+        return fService.getChildrenSync(target)
+    }
 
     /**
      * 推送文件到设备。
@@ -753,6 +773,22 @@ data class LocalDevice(
      */
     fun cleanForward(): Boolean = ADBCLIUtil.cleanForward(getSN())
 
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    /**
+     * 获取软件包列表。
+     *
+     * @return 包名列表。永不为空值，命令执行异常时返回空列表。
+     */
+    fun listPackages(): List<String> = ADBCLIUtil.listPackages(getSN())
+
+
+    /*
+     * ----- 内部方法 -----
+     */
 
     /**
      * 将 UTF-8 路径转为 ISO-8859-1 路径。

@@ -5,6 +5,7 @@ import net.bi4vmr.tool.java.common.base.io.FileIOUtil
 import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
@@ -501,6 +502,24 @@ object ADBCLIUtil {
         val cmd = String.format("${getExecutableName()} -s %s forward --remove-all", sn)
         val status = CLIUtil.runForStatus(cmd)
         return CLIUtil.isSuccess(status)
+    }
+
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    /**
+     * 获取软件包列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[type] 类型筛选条件。默认值为 [PackageType.ALL]，不设筛选条件。
+     * @return 包名列表。永不为空值，命令执行异常时返回空列表。
+     */
+    @JvmOverloads
+    fun listPackages(sn: String, type: PackageType = PackageType.ALL): List<String> {
+        val lines = runForLines(sn, "pm list package ${type.cmdArgs}") ?: emptyList()
+        return ADBOutputParser.parsePMListPackageOutput(lines)
     }
 
 

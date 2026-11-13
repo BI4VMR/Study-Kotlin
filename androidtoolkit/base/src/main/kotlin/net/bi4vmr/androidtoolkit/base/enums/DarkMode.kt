@@ -1,4 +1,4 @@
-package net.bi4vmr.androidtoolkit.data.config.enums
+package net.bi4vmr.androidtoolkit.base.enums
 
 /**
  * 深色模式。
@@ -35,7 +35,7 @@ enum class DarkMode(
         /**
          * 根据编码获取枚举。
          *
-         * @param[code] 编码。
+         * @param[input] 编码。
          * @return 枚举，若无匹配项则返回 [AUTO] 。
          */
         fun fromCode(input: Int): DarkMode {

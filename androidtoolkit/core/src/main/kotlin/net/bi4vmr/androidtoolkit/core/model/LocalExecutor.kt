@@ -1,11 +1,16 @@
 package net.bi4vmr.androidtoolkit.core.model
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.java.common.base.id.IDUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -49,7 +54,7 @@ object LocalExecutor : ADBExecutor {
 
     override fun getStateFlow(): StateFlow<ServiceState> = adbObserver.serviceStateFlow
 
-    override fun getExceptionFlow(): StateFlow<Exception?> = adbObserver.initErrorStateFlow
+    override fun getExceptionFlow(): StateFlow<Exception?> = adbObserver.serviceErrorStateFlow
 
     override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = adbObserver.devicesFlow
 
@@ -85,9 +90,17 @@ object LocalExecutor : ADBExecutor {
         ADBController.getDevice(sn)?.getName(fallback) ?: fallback
     }
 
-    override suspend fun getDeviceType(sn: String): DeviceType? = ADBController.getDevice(sn)?.getType()
+    override suspend fun getDeviceType(sn: String): ConnectionType? = ADBController.getDevice(sn)?.getType()
 
     override fun openShell(sn: String) {
         ADBCLIUtil.openShell(sn)
     }
+
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    override suspend fun listPackages(sn: String, type: PackageType): List<String> =
+        ADBCLIUtil.listPackages(sn, type)
 }

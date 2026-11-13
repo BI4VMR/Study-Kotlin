@@ -1,30 +1,73 @@
 package net.bi4vmr.androidtoolkit.ui.component
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.DummyDevice
+import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
+import net.bi4vmr.androidtoolkit.ui.deviceselector_remote
+import net.bi4vmr.androidtoolkit.ui.deviceselector_title
 import net.bi4vmr.androidtoolkit.ui.placeholder_device_name
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.androidtoolkit.ui.placeholder_loading
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * ADB 执行器与设备列表。
@@ -49,7 +92,7 @@ fun DeviceSelector(
         modifier = modifier.padding(Dimens.Layout.Padding)
     ) {
         Text(
-            text = "设备管理",
+            text = stringResource(Res.string.deviceselector_title),
             style = MaterialTheme.typography.titleSmall
         )
 
@@ -108,6 +151,8 @@ fun DeviceSelector(
     }
 }
 
+
+// 设备列表
 @Composable
 private fun DeviceList(
     globalStateManager: GlobalStateManager,
@@ -174,12 +219,11 @@ private fun DeviceList(
                 LazyColumn(
                     modifier = Modifier.weight(1F),
                     contentPadding = PaddingValues(vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(devices, key = { it.getSN() }) { device ->
                         val isSelected = (device.getSN() == selected?.getSN())
                         DeviceListItem(
-                            globalStateManager = globalStateManager,
                             executor = executor,
                             device = device,
                             selected = isSelected,
@@ -189,6 +233,11 @@ private fun DeviceList(
                                 } else {
                                     onSelect(device)
                                 }
+                            },
+                            onRemove = {
+                                val host = ADBOutputParser.getRemoteDeviceHost(it.getSN())
+                                val port = ADBOutputParser.getRemoteDevicePort(it.getSN())
+                                globalStateManager.logicManager.removeRemoteDevice(host, port)
                             }
                         )
                     }
@@ -232,23 +281,32 @@ private fun ExecutorStatePanel(
     }
 }
 
+
+// 设备列表项
 @Composable
 private fun DeviceListItem(
-    globalStateManager: GlobalStateManager,
     executor: ADBExecutor,
     device: ADBDevice,
     selected: Boolean,
-    onClick: (device: ADBDevice) -> Unit
+    onClick: (device: ADBDevice) -> Unit,
+    onRemove: (device: ADBDevice) -> Unit
 ) {
     val sn = device.getSN()
     val state = device.getState()
 
-    val name: String by produceState(initialValue = "-", executor, sn, state) {
+    val name: String by produceState(
+        initialValue = stringResource(Res.string.placeholder_device_name),
+        executor,
+        sn,
+        state
+    ) {
         value = executor.getName(sn, getString(Res.string.placeholder_device_name))
     }
-    val type: DeviceType? by produceState(initialValue = null, executor, sn, state) {
+
+    val type: ConnectionType? by produceState(initialValue = null, executor, sn, state) {
         value = executor.getDeviceType(sn)
     }
+
 
     Card(
         colors = CardDefaults.cardColors(
@@ -262,46 +320,104 @@ private fun DeviceListItem(
         modifier = Modifier.fillMaxWidth(),
         onClick = { onClick(device) }
     ) {
-        if (device is DummyDevice) {
-            Column {
-                if (device.connecting) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    Text("正在连接 ${device.getSN()} ...", style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    Text("未连接的远程设备", style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                }
-
-                Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-            }
-            return@Card
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(Dimens.Layout.ListItemPadding)
         ) {
-            Icon(Icons.Filled.Devices, null)
-            Spacer(Modifier.width(Dimens.Layout.Space))
-            Column {
-                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                Text(sn, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-            }
-            Spacer(Modifier.weight(1F))
-
-            // 按钮：断开
-            if (type == DeviceType.NETWORK) {
-                IconButton(
-                    onClick = {
-                        globalStateManager.logicManager.removeRemoteDevice(
-                            sn.substringBefore(":"),
-                            sn.substringAfter(":").toIntOrNull() ?: 5555
+            Box {
+                // 伪设备需显示加载中动画或特殊图标
+                if (device is DummyDevice) {
+                    if (device.connecting) {
+                        CircularProgressIndicator(modifier = Modifier.size(Dimens.Icon.Small))
+                    } else {
+                        Icon(
+                            Icons.Outlined.Star,
+                            null,
+                            modifier = Modifier.size(Dimens.Icon.Small)
                         )
-                    },
+                    }
+                    return@Box
+                }
+
+                // 设备图标
+                Icon(
+                    Icons.Filled.Devices,
+                    null,
                     modifier = Modifier.size(Dimens.Icon.Small)
+                )
+            }
+
+            Spacer(Modifier.width(Dimens.Layout.ListItemPadding))
+
+            Column(modifier = Modifier.weight(1F)) {
+                // 设备名称
+                val nameText = if (device is DummyDevice) {
+                    if (device.connecting) stringResource(Res.string.placeholder_loading)
+                    else stringResource(Res.string.deviceselector_remote)
+                } else {
+                    name
+                }
+
+                Text(
+                    text = nameText,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 状态图标
+                    StatusIndicator(state, modifier = Modifier.size(8.dp))
+
+                    Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
+
+                    // 序列号
+                    Text(
+                        text = sn,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // 按钮：删除远程设备（仅本地 ADB 的远程设备支持）
+            if (executor is LocalExecutor && type == ConnectionType.NETWORK) {
+                IconButton(
+                    modifier = Modifier.size(Dimens.Icon.Small),
+                    onClick = { onRemove(device) }
                 ) {
                     Icon(Icons.Filled.Delete, null, Modifier.size(Dimens.Icon.Small))
                 }
             }
         }
     }
+}
+
+
+// 设备状态指示器
+@Composable
+fun StatusIndicator(
+    deviceState: DeviceState,
+    modifier: Modifier = Modifier
+) {
+    val color: Color = when (deviceState) {
+        DeviceState.ONLINE -> Color(0xFF4CAF50)
+        DeviceState.OFFLINE -> Color(0xFF9E9E9E)
+        DeviceState.UNAUTHORIZED -> Color(0xFFFFC107)
+        DeviceState.BOOTLOADER -> Color(0xFF2196F3)
+        DeviceState.RECOVERY -> Color(0xFFFF5722)
+        else -> Color(0xFF9E9E9E)
+    }
+
+    val indicatorColor by animateColorAsState(
+        targetValue = color,
+        label = "indicatorColor"
+    )
+
+    Box(
+        modifier = modifier
+            .defaultMinSize(8.dp, 8.dp)
+            .background(color = indicatorColor, shape = CircleShape)
+    )
 }

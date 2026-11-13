@@ -2,7 +2,8 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -124,7 +125,21 @@ interface ADBExecutor {
      * @param[sn] 设备序列号。
      * @return 设备类型。若设备不存在或出现异常则返回空值。
      */
-    suspend fun getDeviceType(sn: String): DeviceType?
+    suspend fun getDeviceType(sn: String): ConnectionType?
 
     fun openShell(sn: String)
+
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    /**
+     * 获取软件包列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[type] 类型筛选条件。
+     * @return 包名列表。永不为空值，命令执行异常时返回空列表。
+     */
+    suspend fun listPackages(sn: String, type: PackageType): List<String>
 }

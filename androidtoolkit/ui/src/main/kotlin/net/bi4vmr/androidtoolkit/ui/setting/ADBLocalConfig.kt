@@ -11,7 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import net.bi4vmr.androidtoolkit.data.config.enums.ADBExecFileMode
+import net.bi4vmr.androidtoolkit.base.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 
 /**
