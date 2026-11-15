@@ -2,6 +2,11 @@ plugins {
     alias(libKotlin.plugins.core)
 }
 
+tasks.withType<Test> {
+    // 连接 Gradle 测试任务与 JUnit 工具
+    useJUnitPlatform()
+}
+
 dependencies {
     /* 工程组件 */
     api(project(":androidtoolkit:base"))
@@ -27,4 +32,13 @@ dependencies {
     api(libKotlin.ktx.coroutines.core)
     implementation(libKotlin.mcp.server)
     implementation(libKotlin.ktor.server.cio)
+
+
+    /* 测试组件 */
+    // JUnit5 BOM 版本配置文件
+    testImplementation(platform(libJava.junit5.bom))
+    // JUnit5 平台启动器
+    testImplementation(libJava.junit5.launcher)
+    // Jupiter（JUnit5 引擎的实现）
+    testImplementation(libJava.junit5.jupiter)
 }

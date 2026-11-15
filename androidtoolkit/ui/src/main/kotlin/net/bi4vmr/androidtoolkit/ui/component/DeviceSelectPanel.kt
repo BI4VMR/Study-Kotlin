@@ -3,45 +3,16 @@ package net.bi4vmr.androidtoolkit.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,13 +25,9 @@ import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
-import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.androidtoolkit.ui.Res
+import net.bi4vmr.androidtoolkit.ui.*
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
-import net.bi4vmr.androidtoolkit.ui.deviceselector_remote
-import net.bi4vmr.androidtoolkit.ui.deviceselector_title
-import net.bi4vmr.androidtoolkit.ui.placeholder_device_name
-import net.bi4vmr.androidtoolkit.ui.placeholder_loading
+import net.bi4vmr.androidtoolkit.ui.common.icon.IIcons
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -70,12 +37,12 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * ADB 执行器与设备列表。
+ * ADB 执行器与设备面板。
  *
  * 选中状态由 [GlobalStateManager] 管理，全局可复用。
  */
 @Composable
-fun DeviceSelector(
+fun DeviceSelectPanel(
     globalStateManager: GlobalStateManager,
     modifier: Modifier = Modifier
 ) {
@@ -92,13 +59,13 @@ fun DeviceSelector(
         modifier = modifier.padding(Dimens.Layout.Padding)
     ) {
         Text(
-            text = stringResource(Res.string.deviceselector_title),
+            text = stringResource(Res.string.deviceselectpanel_title),
             style = MaterialTheme.typography.titleSmall
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             // 执行器列表
-            SegmentedTabRow {
+            SegmentedTabRow(Modifier.weight(1F)) {
                 executors.forEach { executor ->
                     SegmentedTab(
                         selected = executor == selectedExecutor,
@@ -112,14 +79,12 @@ fun DeviceSelector(
                                 onClick = { logicManager.removeRemoteExecutor(executor.id) },
                                 modifier = Modifier.size(Dimens.Icon.Small)
                             ) {
-                                Icon(Icons.Filled.Close, null)
+                                Icon(IIcons.Close, null)
                             }
                         }
                     }
                 }
             }
-
-            Spacer(Modifier.weight(1F))
 
             Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
 
@@ -128,7 +93,7 @@ fun DeviceSelector(
                 onClick = { connectProxyDialogState = true },
                 modifier = Modifier.size(Dimens.Icon.Normal)
             ) {
-                Icon(Icons.Filled.Add, null, Modifier.size(Dimens.Icon.Normal))
+                Icon(IIcons.Add, null, Modifier.size(Dimens.Icon.Normal))
             }
         }
 
@@ -295,16 +260,20 @@ private fun DeviceListItem(
     val state = device.getState()
 
     val name: String by produceState(
-        initialValue = stringResource(Res.string.placeholder_device_name),
+        initialValue = stringResource(Res.string.deviceselectpanel_unknown),
         executor,
         sn,
         state
     ) {
-        value = executor.getName(sn, getString(Res.string.placeholder_device_name))
+        value = executor.getName(sn, getString(Res.string.deviceselectpanel_unknown))
     }
 
     val type: ConnectionType? by produceState(initialValue = null, executor, sn, state) {
-        value = executor.getDeviceType(sn)
+        value = if (device is DummyDevice) {
+            ConnectionType.NETWORK
+        } else {
+            executor.getDeviceType(sn)
+        }
     }
 
 
@@ -331,7 +300,7 @@ private fun DeviceListItem(
                         CircularProgressIndicator(modifier = Modifier.size(Dimens.Icon.Small))
                     } else {
                         Icon(
-                            Icons.Outlined.Star,
+                            IIcons.LinkOff,
                             null,
                             modifier = Modifier.size(Dimens.Icon.Small)
                         )
@@ -341,7 +310,7 @@ private fun DeviceListItem(
 
                 // 设备图标
                 Icon(
-                    Icons.Filled.Devices,
+                    IIcons.Phone,
                     null,
                     modifier = Modifier.size(Dimens.Icon.Small)
                 )
@@ -352,8 +321,8 @@ private fun DeviceListItem(
             Column(modifier = Modifier.weight(1F)) {
                 // 设备名称
                 val nameText = if (device is DummyDevice) {
-                    if (device.connecting) stringResource(Res.string.placeholder_loading)
-                    else stringResource(Res.string.deviceselector_remote)
+                    if (device.connecting) stringResource(Res.string.state_connecting)
+                    else stringResource(Res.string.deviceselectpanel_remote)
                 } else {
                     name
                 }
@@ -366,8 +335,8 @@ private fun DeviceListItem(
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 状态图标
-                    StatusIndicator(state, modifier = Modifier.size(8.dp))
+                    // 状态指示器
+                    StatusIndicator(state)
 
                     Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
 
@@ -387,7 +356,7 @@ private fun DeviceListItem(
                     modifier = Modifier.size(Dimens.Icon.Small),
                     onClick = { onRemove(device) }
                 ) {
-                    Icon(Icons.Filled.Delete, null, Modifier.size(Dimens.Icon.Small))
+                    Icon(IIcons.Delete, null, Modifier.size(Dimens.Icon.Small))
                 }
             }
         }
@@ -403,7 +372,6 @@ fun StatusIndicator(
 ) {
     val color: Color = when (deviceState) {
         DeviceState.ONLINE -> Color(0xFF4CAF50)
-        DeviceState.OFFLINE -> Color(0xFF9E9E9E)
         DeviceState.UNAUTHORIZED -> Color(0xFFFFC107)
         DeviceState.BOOTLOADER -> Color(0xFF2196F3)
         DeviceState.RECOVERY -> Color(0xFFFF5722)

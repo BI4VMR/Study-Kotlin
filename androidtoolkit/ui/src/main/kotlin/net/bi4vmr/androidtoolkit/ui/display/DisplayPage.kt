@@ -34,7 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
-import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
+import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 
@@ -53,7 +53,7 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
     // 根容器
     Row(modifier = Modifier.fillMaxSize()) {
         Column(Modifier.width(280.dp)) {
-            DeviceSelector(
+            DeviceSelectPanel(
                 globalStateManager = globalStateManager,
                 modifier = Modifier.width(280.dp).weight(0.5F)
             )

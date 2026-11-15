@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.androidtoolkit.ui.component.DeviceSelector
+import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
 import net.bi4vmr.androidtoolkit.ui.component.ToastManager
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
@@ -23,7 +23,7 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
     val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
 
     Row(modifier = Modifier.fillMaxSize()) {
-        DeviceSelector(
+        DeviceSelectPanel(
             globalStateManager = globalStateManager,
             modifier = Modifier.weight(0.4F).fillMaxHeight()
         )
