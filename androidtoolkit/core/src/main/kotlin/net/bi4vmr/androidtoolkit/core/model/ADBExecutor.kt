@@ -142,4 +142,18 @@ interface ADBExecutor {
      * @return 包名列表。永不为空值，命令执行异常时返回空列表。
      */
     suspend fun listPackages(sn: String, type: PackageType): List<String>
+
+
+    /*
+     * ----- 文件管理 -----
+     */
+
+    /**
+     * 获取目录下的文件列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[path] 目录的绝对路径。
+     * @return 文件列表。若路径不存在或不是目录则返回空值。
+     */
+    suspend fun listFiles(sn: String, path: String): List<DeviceFile>?
 }

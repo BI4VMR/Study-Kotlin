@@ -1,5 +1,6 @@
 package net.bi4vmr.androidtoolkit.core.model
 
+import com.android.ddmlib.FileListingService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -103,4 +104,44 @@ object LocalExecutor : ADBExecutor {
 
     override suspend fun listPackages(sn: String, type: PackageType): List<String> =
         ADBCLIUtil.listPackages(sn, type)
+
+
+    /*
+     * ----- 文件管理 -----
+     */
+
+    override suspend fun listFiles(sn: String, path: String): List<DeviceFile>? = withContext(Dispatchers.IO) {
+        val device = ADBController.getDevice(sn) ?: return@withContext null
+        runCatching {
+            // 从根节点逐级向下查找目标目录
+            var current: FileListingService.FileEntry = device.getFilesRoot()
+            path.split("/")
+                .filter { it.isNotEmpty() }
+                .forEach { segment ->
+                    val child = device.listFiles(current).find { it.name == segment }
+                    if (child == null || !child.isDirectory) {
+                        return@withContext null
+                    }
+                    current = child
+                }
+
+            device.listFiles(current)
+                .map { it.toDeviceFile() }
+                .sortedWith(compareByDescending<DeviceFile> { it.isDirectory }.thenBy { it.name.lowercase() })
+        }.getOrNull()
+    }
+
+    private fun FileListingService.FileEntry.toDeviceFile(): DeviceFile {
+        val isLink = (type == FileListingService.TYPE_LINK) || (type == FileListingService.TYPE_DIRECTORY_LINK)
+        return DeviceFile(
+            name = name,
+            path = fullPath,
+            isDirectory = isDirectory,
+            isLink = isLink,
+            size = sizeValue.toLong(),
+            modifyTime = listOfNotNull(date, time).joinToString(" "),
+            permissions = permissions ?: "",
+            linkTarget = if (isLink) info?.removePrefix("-> ")?.trim() else null
+        )
+    }
 }

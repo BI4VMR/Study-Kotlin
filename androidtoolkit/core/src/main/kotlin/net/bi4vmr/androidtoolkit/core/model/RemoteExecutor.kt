@@ -90,4 +90,12 @@ class RemoteExecutor(
 
     override suspend fun listPackages(sn: String, type: PackageType): List<String> =
         client.listPackages(sn, type)
+
+
+    /*
+     * ----- 文件管理 -----
+     */
+
+    // TODO 远程执行器暂未实现文件管理。
+    override suspend fun listFiles(sn: String, path: String): List<DeviceFile>? = null
 }
