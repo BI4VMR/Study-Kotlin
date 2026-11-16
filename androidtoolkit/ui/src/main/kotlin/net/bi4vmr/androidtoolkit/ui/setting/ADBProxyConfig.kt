@@ -92,7 +92,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                     onCheckedChange = { new ->
                         globalStateManager.logicManager.setProxyStartOnInit(new)
                     })
-                Text("自动启动转发器")
+                Text("自动启动")
             }
 
             serverError?.let { Text("转发器启动失败：${it.message}", color = Color.Red) }

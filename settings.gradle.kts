@@ -130,7 +130,6 @@ include(":lib_external:adb_proxy_client")
 include(":lib_external:adb_proxy_server")
 include(":lib_external:adb_proxy_server_pair")
 include(":lib_external:adb_proxy_server_cast")
-include(":lib_external:shellbridge")
 
 include(":lib_gui:interaction")
 
@@ -144,3 +143,4 @@ include(":androidtoolkit:ui")
 include(":androidtoolkit:core")
 include(":androidtoolkit:data")
 include(":androidtoolkit:base")
+include(":androidtoolkit:tool:shellbridge")

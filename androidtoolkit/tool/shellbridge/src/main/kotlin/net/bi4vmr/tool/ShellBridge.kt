@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.util.shell.transfer
+package net.bi4vmr.tool
 
 import org.jline.terminal.Attributes
 import org.jline.terminal.Terminal
@@ -23,10 +23,13 @@ import kotlin.concurrent.thread
 object ShellBridge {
 
     const val FRAME_DATA: Int = 0
+
     const val FRAME_RESIZE: Int = 1
 
     @JvmStatic
     fun main(args: Array<String>) {
+        val host = args.firstOrNull()?.toIntOrNull()
+            ?: error("Usage: ShellBridge <port>")
         val port = args.firstOrNull()?.toIntOrNull()
             ?: error("Usage: ShellBridge <port>")
 
@@ -60,7 +63,9 @@ object ShellBridge {
                     }
                 }
 
-                // 同步终端尺寸：连接时发送一次，窗口大小变化时再次发送。
+                /*
+                 * 初始化和检测到窗口大小变化时，发送终端尺寸信息给 PTY，确保 `top` 等程序缩放正常。
+                 */
                 sendSize()
                 terminal.handle(Terminal.Signal.WINCH) { sendSize() }
 

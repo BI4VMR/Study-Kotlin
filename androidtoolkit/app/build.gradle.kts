@@ -48,10 +48,6 @@ val copyShellTransferJar by tasks.registering(Copy::class) {
     into(rootProject.layout.projectDirectory.dir("androidtoolkit/resources/common"))
 }
 
-tasks.named("compileKotlin") {
-    dependsOn(copyShellTransferJar)
-}
-
 tasks.matching { it.name == "prepareAppResources" }.configureEach {
     dependsOn(copyShellTransferJar)
 }

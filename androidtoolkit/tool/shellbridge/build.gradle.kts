@@ -18,11 +18,11 @@ javaVersionConfig {
 val executableJar by tasks.registering(Jar::class) {
     group = "build"
     description = "Assembles an executable fat jar."
-
     archiveFileName.set("shellbridge.jar")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     manifest {
-        attributes("Main-Class" to "net.bi4vmr.tool.kotlin.util.shell.transfer.ShellBridge")
+        attributes("Main-Class" to "net.bi4vmr.tool.ShellBridge")
     }
 
     from(sourceSets.main.get().output)
