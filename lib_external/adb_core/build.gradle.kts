@@ -25,11 +25,11 @@ dependencies {
 
 
     /* 私有组件 */
-    api(privateLibJava.common.base)
+    implementation(privateLibJava.common.base)
 
 
     /* 外部组件 */
-    api(libJava.slf4j.api)
+    implementation(libJava.slf4j.api)
     api(libJava.ddmlib)
     implementation(libJava.guava)
 

@@ -431,7 +431,7 @@ class ADBCoreModule : ADBProxyModule {
             }
 
             try {
-                withContext(Dispatchers.IO) { device.pushFile(tempFile, remote, listener) }
+                withContext(Dispatchers.IO) { device.pushFile(tempFile.absolutePath, remote, listener) }
                 sendEvent(FilePushEvent(FilePushEvent.TYPE_END, size = tempFile.length(), total = tempFile.length()))
             } catch (e: Exception) {
                 if (listener.isCancelled()) {

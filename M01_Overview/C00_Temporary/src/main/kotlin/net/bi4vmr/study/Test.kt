@@ -24,7 +24,7 @@ fun main() {
         ADBController.getDevices().firstOrNull()?.let {
             println(it.getSN())
             it.pushFile(
-                File("C:\\Users\\bi4vmr\\Download\\殷正洋 - 05.东南苦行山.flac"),
+                "C:\\Users\\bi4vmr\\Download\\殷正洋 - 05.东南苦行山.flac",
                 "/sdcard/Download/",
                 object : ADBFileTransferListener() {
                     override fun onStart(size: Long) {

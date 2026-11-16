@@ -105,107 +105,6 @@ object ADBCLIUtil {
     }
 
     /**
-     * 获取显示屏列表。
-     *
-     * @param[sn] 设备序列号。
-     * @return 显示屏列表。
-     */
-    @JvmStatic
-    fun getDisplays(sn: String): List<DisplayInfo> {
-        // 部分 Android 11 设备也不支持新版命令，因此直接尝试调用新版命令，若未获取内容则回退到旧版命令。
-        var lines: List<String> = runForLines(sn, "cmd display get-displays") ?: emptyList()
-        var displays: List<DisplayInfo> = ADBOutputParser.parseDisplayInfoV11U(lines)
-        if (displays.isEmpty()) {
-            lines = runForLines(sn, "dumpsys display | grep 'mBaseDisplayInfo=DisplayInfo'") ?: emptyList()
-            displays = ADBOutputParser.parseDisplayInfoV10(lines)
-
-            // 如果这个方法也没解析到内容，继续回退到旧版本对应的方法。
-            if (displays.isEmpty()) {
-                displays = ADBOutputParser.parseDisplayInfoV9L(lines)
-            }
-        }
-
-        // 填充设备序号并返回
-        return displays.map { it.copy(sn = sn) }
-    }
-
-    /**
-     * 获取显示屏物理 ID 索引。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 逻辑 ID 。
-     * @return 索引序号。无法获取时返回 `0` 。
-     */
-    @JvmStatic
-    fun getDisplayUniqueIndex(sn: String, displayID: String): String {
-        // 对于 Android 9 及更低版本可能解析不到数据，此时默认返回 `0` 。
-        return getDisplays(sn)
-            .find { it.id == displayID }
-            ?.uniqueID
-            ?: "0"
-    }
-
-    /**
-     * 获取屏幕截图。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
-     * @return 二进制数据。若出现错误则返回空值。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun screenshotAsPNG(sn: String, displayID: String? = null): ByteArray? {
-        try {
-            val cmd = if (displayID == null) {
-                String.format("${getExecutableName()} -s %s exec-out screencap -p", sn)
-            } else {
-                val physicalID = getDisplayUniqueIndex(sn, displayID)
-                String.format("${getExecutableName()} -s %s exec-out screencap -d %s -p", sn, physicalID)
-            }
-
-            val process = CLIUtil.run(cmd, false)
-            // 丢弃错误输出，防止阻塞其他线程。
-            BaseIOUtil.readAndDrop(process.errorStream)
-            return BaseIOUtil.readAsBytes(
-                process.inputStream,
-                0,
-                Int.MAX_VALUE,
-                IOUtil.BUFFER_SIZE_8MB
-            )
-        } catch (_: Exception) {
-            return null
-        }
-    }
-
-    /**
-     * 获取屏幕截图并保存至 PC 存储设备。
-     *
-     * @param[sn] 设备序列号。
-     * @param[file] 目标文件。
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun screenshotAsPNG(sn: String, file: File, displayID: String? = null): Boolean {
-        try {
-            val cmd = if (displayID == null) {
-                String.format("${getExecutableName()} -s %s exec-out screencap -p", sn)
-            } else {
-                val physicalID = getDisplayUniqueIndex(sn, displayID)
-                String.format("${getExecutableName()} -s %s exec-out screencap -d %s -p", sn, physicalID)
-            }
-
-            val process = CLIUtil.run(cmd, false)
-            // 丢弃错误输出，防止阻塞其他线程。
-            BaseIOUtil.readAndDrop(process.errorStream)
-            return FileIOUtil.saveToFile(process.inputStream, file, IOUtil.BUFFER_SIZE_8MB)
-        } catch (_: Exception) {
-            return false
-        }
-    }
-
-    /**
      * 打开交互式 Shell 。
      *
      * @param[sn] 设备序列号。
@@ -338,6 +237,112 @@ object ADBCLIUtil {
     @JvmStatic
     fun getAPILevel(sn: String): String =
         getProperty(sn, Propertys.Key.API_LEVEL, "")
+
+
+    /*
+     * ----- 图形界面 -----
+     */
+
+    /**
+     * 获取显示屏列表。
+     *
+     * @param[sn] 设备序列号。
+     * @return 显示屏列表。
+     */
+    @JvmStatic
+    fun getDisplays(sn: String): List<DisplayInfo> {
+        // 部分 Android 11 设备也不支持新版命令，因此直接尝试调用新版命令，若未获取内容则回退到旧版命令。
+        var lines: List<String> = runForLines(sn, "cmd display get-displays") ?: emptyList()
+        var displays: List<DisplayInfo> = ADBOutputParser.parseDisplayInfoV11U(lines)
+        if (displays.isEmpty()) {
+            lines = runForLines(sn, "dumpsys display | grep 'mBaseDisplayInfo=DisplayInfo'") ?: emptyList()
+            displays = ADBOutputParser.parseDisplayInfoV10(lines)
+
+            // 如果这个方法也没解析到内容，继续回退到旧版本对应的方法。
+            if (displays.isEmpty()) {
+                displays = ADBOutputParser.parseDisplayInfoV9L(lines)
+            }
+        }
+
+        // 填充设备序号并返回
+        return displays.map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取显示屏物理 ID 索引。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 逻辑 ID 。
+     * @return 索引序号。无法获取时返回 `0` 。
+     */
+    @JvmStatic
+    fun getDisplayUniqueIndex(sn: String, displayID: String): String {
+        // 对于 Android 9 及更低版本可能解析不到数据，此时默认返回 `0` 。
+        return getDisplays(sn)
+            .find { it.id == displayID }
+            ?.uniqueID
+            ?: "0"
+    }
+
+    /**
+     * 获取屏幕截图。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
+     * @return 二进制数据。若出现错误则返回空值。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun screenshotAsPNG(sn: String, displayID: String? = null): ByteArray? {
+        try {
+            val cmd = if (displayID == null) {
+                String.format("${getExecutableName()} -s %s exec-out screencap -p", sn)
+            } else {
+                val physicalID = getDisplayUniqueIndex(sn, displayID)
+                String.format("${getExecutableName()} -s %s exec-out screencap -d %s -p", sn, physicalID)
+            }
+
+            val process = CLIUtil.run(cmd, false)
+            // 丢弃错误输出，防止阻塞其他线程。
+            BaseIOUtil.readAndDrop(process.errorStream)
+            return BaseIOUtil.readAsBytes(
+                process.inputStream,
+                0,
+                Int.MAX_VALUE,
+                IOUtil.BUFFER_SIZE_8MB
+            )
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    /**
+     * 获取屏幕截图并保存至 PC 存储设备。
+     *
+     * @param[sn] 设备序列号。
+     * @param[file] 目标文件。
+     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun screenshotAsPNG(sn: String, file: File, displayID: String? = null): Boolean {
+        try {
+            val cmd = if (displayID == null) {
+                String.format("${getExecutableName()} -s %s exec-out screencap -p", sn)
+            } else {
+                val physicalID = getDisplayUniqueIndex(sn, displayID)
+                String.format("${getExecutableName()} -s %s exec-out screencap -d %s -p", sn, physicalID)
+            }
+
+            val process = CLIUtil.run(cmd, false)
+            // 丢弃错误输出，防止阻塞其他线程。
+            BaseIOUtil.readAndDrop(process.errorStream)
+            return FileIOUtil.saveToFile(process.inputStream, file, IOUtil.BUFFER_SIZE_8MB)
+        } catch (_: Exception) {
+            return false
+        }
+    }
 
 
     /*

@@ -5,11 +5,12 @@ import com.android.ddmlib.IDevice
 import com.android.ddmlib.SyncException
 import com.android.ddmlib.SyncService
 import net.bi4vmr.tool.java.common.base.file.FilePathUtil
+import net.bi4vmr.tool.java.common.base.file.FileUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFolderTransferListener
-import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
@@ -132,42 +133,6 @@ data class LocalDevice(
     @JvmOverloads
     fun runForText(command: String, redirectError: Boolean = true, charset: String? = null): String? =
         ADBCLIUtil.runForText(getSN(), command, redirectError, charset)
-
-    /**
-     * 获取显示屏列表。
-     *
-     * @return 显示屏列表。
-     */
-    fun getDisplays(): List<DisplayInfo> = ADBCLIUtil.getDisplays(getSN())
-
-    /**
-     * 获取显示屏物理 ID 索引。
-     *
-     * @param[displayID] 逻辑 ID 。
-     * @return 索引序号。无法获取时返回 `0` 。
-     */
-    fun getDisplayUniqueIndex(displayID: String): String = ADBCLIUtil.getDisplayUniqueIndex(getSN(), displayID)
-
-    /**
-     * 获取屏幕截图。
-     *
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
-     * @return 二进制数据。若出现错误则返回空值。
-     */
-    @JvmOverloads
-    fun screenshotAsPNG(displayID: String? = null): ByteArray? =
-        ADBCLIUtil.screenshotAsPNG(getSN(), displayID)
-
-    /**
-     * 获取屏幕截图并保存至 PC 存储设备。
-     *
-     * @param[file] 目标文件。
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    @JvmOverloads
-    fun screenshotAsPNG(file: File, displayID: String? = null): Boolean =
-        ADBCLIUtil.screenshotAsPNG(getSN(), file, displayID)
 
     /**
      * 打开交互式 Shell 。
@@ -310,6 +275,47 @@ data class LocalDevice(
 
 
     /*
+     * ----- 图形界面 -----
+     */
+
+    /**
+     * 获取显示屏列表。
+     *
+     * @return 显示屏列表。
+     */
+    fun getDisplays(): List<DisplayInfo> = ADBCLIUtil.getDisplays(getSN())
+
+    /**
+     * 获取显示屏物理 ID 索引。
+     *
+     * @param[displayID] 逻辑 ID 。
+     * @return 索引序号。无法获取时返回 `0` 。
+     */
+    fun getDisplayUniqueIndex(displayID: String): String = ADBCLIUtil.getDisplayUniqueIndex(getSN(), displayID)
+
+    /**
+     * 获取屏幕截图。
+     *
+     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
+     * @return 二进制数据。若出现错误则返回空值。
+     */
+    @JvmOverloads
+    fun screenshotAsPNG(displayID: String? = null): ByteArray? =
+        ADBCLIUtil.screenshotAsPNG(getSN(), displayID)
+
+    /**
+     * 获取屏幕截图并保存至 PC 存储设备。
+     *
+     * @param[file] 目标文件。
+     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    @JvmOverloads
+    fun screenshotAsPNG(file: File, displayID: String? = null): Boolean =
+        ADBCLIUtil.screenshotAsPNG(getSN(), file, displayID)
+
+
+    /*
      * ----- 文件系统 -----
      */
 
@@ -326,7 +332,6 @@ data class LocalDevice(
      * @param[dir] 父节点。若为空值表示使用根节点。
      * @return 文件节点数组。
      */
-    @JvmOverloads
     fun listFiles(dir: FileListingService.FileEntry? = null): Array<FileListingService.FileEntry> {
         val fService = ddmDevice.fileListingService
         val target = dir ?: fService.root
@@ -339,32 +344,37 @@ data class LocalDevice(
      * DDMLib 封装，适用于需要获取进度或随时取消的场景。
      *
      * @param[local] 源文件（PC 端）。
-     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾表示将文件写入该目录并保持原名，否则表示使用路径指定的文件名称。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾表示将文件写入目标目录并保持原名，否则表示使用目标路径指定的文件名称。
      * @throws[FileNotFoundException] 源文件不存在或不可读。
      * @throws[IllegalStateException] 源文件指向目录。
      * @throws[IllegalArgumentException] 未指明目标路径。
      * @throws[IOException] 目标路径不可写入。
      * @throws[SyncException] 传输失败或用户取消任务。具体错误类型可通过 [SyncException.SyncError] 获取。
      */
-    fun pushFile(local: File, remote: String, listener: ADBFileTransferListener? = null) {
+    fun pushFile(local: String, remote: String, listener: ADBFileTransferListener) {
         /* 参数校验 */
+        if (local.isBlank()) {
+            throw IllegalArgumentException("Local path is empty!")
+        }
+
         if (remote.isBlank()) {
             throw IllegalArgumentException("Remote path is empty!")
         }
 
-        if (!local.canRead()) {
+        val localFile = File(local)
+        if (!localFile.canRead()) {
             throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
         }
 
-        if (!local.isFile) {
+        if (!localFile.isFile) {
             throw IllegalStateException("Input is not file! Path:[${local}]")
         }
 
 
         /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
-        val remoteIsDir = (remote.length > 1) && (remote.last() == '/')
+        val remoteIsDir = FilePathUtil.isDirectory(remote)
         val remotePath = if (remoteIsDir) {
-            "$remote${local.name}"
+            "$remote${FilePathUtil.getFileName(local)}"
         } else {
             remote
         }
@@ -382,7 +392,7 @@ data class LocalDevice(
         // DDMLib 进度回调实现
         val monitor = object : SyncService.ISyncProgressMonitor {
 
-            val totalSize: Long = local.length()
+            val totalSize: Long = localFile.length()
 
             var transferredSize: Long = 0L
 
@@ -390,7 +400,7 @@ data class LocalDevice(
 
             init {
                 // 监听用户发出的取消指令
-                listener?.setCancelNotifier {
+                listener.setCancelNotifier {
                     cancelled.set(true)
                 }
             }
@@ -402,7 +412,7 @@ data class LocalDevice(
              * 获取文件大小。
              */
             override fun start(totalWork: Int) {
-                listener?.onStart(totalSize)
+                listener.onStart(totalSize)
             }
 
             /**
@@ -411,7 +421,7 @@ data class LocalDevice(
              * 如果中途被取消则不会回调该方法。
              */
             override fun stop() {
-                listener?.onEnd()
+                listener.onEnd()
             }
 
             /**
@@ -433,10 +443,10 @@ data class LocalDevice(
 
                 // 文件为空或无法获取长度时，以 `NaN` 通告进度。
                 if (totalSize <= 0) {
-                    listener?.onProgress(transferredSize, Double.NaN)
+                    listener.onProgress(transferredSize, Double.NaN)
                 } else {
                     val progress = transferredSize.toDouble() / totalSize.toDouble()
-                    listener?.onProgress(transferredSize, progress)
+                    listener.onProgress(transferredSize, progress)
                 }
             }
 
@@ -454,7 +464,7 @@ data class LocalDevice(
             ?: throw IllegalStateException("Cannot get SyncService for device [${getSN()}]!")
 
         syncService.use { syncService ->
-            syncService.pushFile(local.absolutePath, remotePath, monitor)
+            syncService.pushFile(localFile.absolutePath, remotePath, monitor)
         }
     }
 
@@ -472,25 +482,30 @@ data class LocalDevice(
      * @throws[IOException] 目标目录无法创建或不可写入。
      * @throws[SyncException] 传输失败或用户取消推送。
      */
-    fun pushFolder(local: File, remote: String, listener: ADBFolderTransferListener? = null) {
+    fun pushFolder(local: String, remote: String, listener: ADBFolderTransferListener) {
         /* 参数校验 */
+        if (local.isBlank()) {
+            throw IllegalArgumentException("Local path is empty!")
+        }
+
         if (remote.isBlank()) {
             throw IllegalArgumentException("Remote path is empty!")
         }
 
-        if (!local.canRead()) {
+        val localFile = File(local)
+        if (!localFile.canRead()) {
             throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
         }
 
-        if (!local.isDirectory) {
+        if (!localFile.isDirectory) {
             throw IllegalStateException("Input is not directory! Path:[${local}]")
         }
 
 
         /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
-        val remoteIsDir = (remote.length > 1) && (remote.last() == '/')
+        val remoteIsDir = FilePathUtil.isDirectory(remote)
         val remotePath = if (remoteIsDir) {
-            "$remote${local.name}"
+            "$remote${localFile.name}"
         } else {
             remote
         }
@@ -498,13 +513,13 @@ data class LocalDevice(
 
         /* 计算文件总数 */
         var totalCount = 0
-        local.walkTopDown().forEach {
+        localFile.walkTopDown().forEach {
             if (it.isFile) totalCount++
         }
-        listener?.onStart(totalCount)
+        listener.onStart(totalCount)
 
         var currentIndex = 0
-        var currentPath = ""
+        var currentPath = FileUtil.PATH_INVALID
         val cancelled = AtomicBoolean(false)
         // 单个文件传输任务监听器
         val fileListener: ADBFileTransferListener = object : ADBFileTransferListener() {
@@ -514,41 +529,54 @@ data class LocalDevice(
 
                 // 只有目录时，以 `NaN` 通告进度。
                 if (totalCount <= 0) {
-                    listener?.onProgress(currentIndex, Double.NaN)
+                    listener.onProgress(currentIndex, Double.NaN)
                 } else {
                     val progress = currentIndex.toDouble() / totalCount.toDouble()
-                    listener?.onProgress(currentIndex, progress)
+                    listener.onProgress(currentIndex, progress)
                 }
 
-                listener?.onFileStart(currentPath, size)
+                listener.onFileStart(currentPath, size)
             }
 
             override fun onProgress(size: Long, progress: Double) {
-                listener?.onFileProgress(size, progress)
+                listener.onFileProgress(size, progress)
             }
 
             override fun onEnd() {
-                listener?.onFileEnd()
+                listener.onFileEnd()
             }
         }
 
         // 收到取消指令时，通知正在传输的任务。
-        listener?.setCancelNotifier {
+        listener.setCancelNotifier {
             cancelled.set(true)
             fileListener.notifyCancel()
         }
 
 
         /* 深度优先遍历源目录，处理每个元素。 */
-        local.walkTopDown().forEach {
-            // 创建文件时将会自动创建父目录，因此无需处理目录。
+        localFile.walkTopDown().forEach {
+            if (cancelled.get()) {
+                throw SyncException(SyncException.SyncError.CANCELED)
+            }
+
+            // 计算相对于源目录的路径，并转换为 Android 端的路径格式。
+            val relative = it.relativeTo(localFile).invariantSeparatorsPath
+            val target = if (relative.isEmpty()) remotePath else "${remotePath.trimEnd('/')}/$relative"
+
+            if (it.isDirectory) {
+                // 创建目录（包括空目录）
+                runForStatus("mkdir -p \"$target\"")
+                return@forEach
+            }
+
             if (!it.isFile) return@forEach
 
             currentPath = it.absolutePath
-            pushFile(it, remotePath, fileListener)
+            pushFile(it.absolutePath, target, fileListener)
         }
 
-        listener?.onEnd()
+        listener.onEnd()
     }
 
     /**
@@ -568,41 +596,52 @@ data class LocalDevice(
      * DDMLib 封装，适用于需要获取进度或随时取消的场景。
      *
      * @param[remote] 源路径（Android 端）。
-     * @param[local] 目标文件（PC 端）。如果以 `/` 结尾表示将文件写入该目录并保持原名，否则表示使用路径指定的文件名称。
+     * @param[local] 目标路径（PC 端）。如果以 `/` 结尾表示将文件写入该目录并保持原名，否则表示使用路径指定的文件名称。
      * @throws[FileNotFoundException] 目标目录不可写。
      * @throws[IllegalStateException] 源文件指向目录。
-     * @throws[IllegalArgumentException] 未指明目标路径。
+     * @throws[IllegalArgumentException] 未指明源路径或目标路径。
      * @throws[IOException] 目标路径不可写入。
      * @throws[SyncException] 传输失败或用户取消任务。具体错误类型可通过 [SyncException.SyncError] 获取。
      */
-    fun pullFile(remote: String, local: File, listener: ADBFileTransferListener? = null) {
+    fun pullFile(remote: String, local: String, listener: ADBFileTransferListener) {
         /* 参数校验 */
         if (remote.isBlank()) {
             throw IllegalArgumentException("Remote path is empty!")
         }
 
-
-        /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
-        val remoteFileName = FilePathUtil.getFileName(remote)
-        val localPath = if (local.isDirectory) {
-            if (!local.canWrite()) {
-                throw FileNotFoundException("Local path not exist or writeable! Path:[${local}]")
-            }
-
-            "${local.absolutePath}${File.separator}${remoteFileName}"
-        } else {
-            val parent = local.parentFile
-            if (!parent.canWrite()) {
-                throw FileNotFoundException("Local path not exist or writeable! Path:[${parent}]")
-            }
-
-            local.absolutePath
+        if (local.isBlank()) {
+            throw IllegalArgumentException("Local path is empty!")
         }
 
         // 检查设备上是否存在该文件
         val isFile: Boolean = CLIUtil.isSuccess(runForStatus("test -f \"$remote\""))
         if (!isFile) {
             throw FileNotFoundException("Remote file not exist or is directory! Path:[$remote]")
+        }
+
+
+        /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
+        val remoteFileName = FilePathUtil.getFileName(remote)
+        val localFile = File(local)
+        val localPath = if (FilePathUtil.isDirectory(local)) {
+            /* 本地路径指向目录 */
+            localFile.mkdirs()
+            // 检查目录是否创建成功
+            if (!localFile.canWrite()) {
+                throw FileNotFoundException("Local path not exist or writeable! Path:[${local}]")
+            }
+            // 返回 `<本地目录>/<远程文件名称>`
+            "${localFile.absolutePath}${File.separator}${remoteFileName}"
+        } else {
+            /* 本地路径指向文件 */
+            val parent = localFile.absoluteFile.parentFile
+            // 创建父目录
+            parent.mkdirs()
+            if (!parent.canWrite()) {
+                throw FileNotFoundException("Local path not exist or writeable! Path:[${parent}]")
+            }
+            // 返回本地文件路径
+            localFile.absolutePath
         }
 
         // 读取文件大小（DDMLib 输入路径时不会回调文件大小，需要通过命令读取。）
@@ -617,7 +656,7 @@ data class LocalDevice(
 
             init {
                 // 监听用户发出的取消指令
-                listener?.setCancelNotifier {
+                listener.setCancelNotifier {
                     cancelled.set(true)
                 }
             }
@@ -630,7 +669,7 @@ data class LocalDevice(
              * 获取文件大小。
              */
             override fun start(totalWork: Int) {
-                listener?.onStart(fileSize)
+                listener.onStart(fileSize)
             }
 
             /**
@@ -639,7 +678,7 @@ data class LocalDevice(
              * 如果中途被取消则不会回调该方法。
              */
             override fun stop() {
-                listener?.onEnd()
+                listener.onEnd()
             }
 
             /**
@@ -661,10 +700,10 @@ data class LocalDevice(
 
                 // 文件为空或无法获取长度时，以 `NaN` 通告进度。
                 if (fileSize <= 0) {
-                    listener?.onProgress(transferredSize, Double.NaN)
+                    listener.onProgress(transferredSize, Double.NaN)
                 } else {
                     val progress = transferredSize.toDouble() / fileSize.toDouble()
-                    listener?.onProgress(transferredSize, progress)
+                    listener.onProgress(transferredSize, progress)
                 }
             }
 
@@ -684,6 +723,120 @@ data class LocalDevice(
         syncService.use { syncService ->
             syncService.pullFile(remote, localPath, monitor)
         }
+    }
+
+    /**
+     * 从设备下载目录。
+     *
+     * DDMLib 封装，递归传输目录内的所有文件（包括空目录），支持获取每个文件的状态、总体进度以及随时取消。
+     *
+     * @param[remote] 源目录（Android 端）。
+     * @param[local] 目标路径（PC 端）。如果以 `/` 结尾则表示将源目录写入该目录并保持原名，否则表示源目录的内容写入路径指定
+     * 的目录。
+     * @throws[FileNotFoundException] 源目录不存在或目标目录不可写。
+     * @throws[IllegalArgumentException] 未指明源路径或目标路径。
+     * @throws[IOException] 无法获取源目录的文件列表。
+     * @throws[SyncException] 传输失败或用户取消任务。
+     */
+    fun pullFolder(remote: String, local: String, listener: ADBFolderTransferListener) {
+        /* 参数校验 */
+        if (remote.isBlank()) {
+            throw IllegalArgumentException("Remote path is empty!")
+        }
+
+        if (local.isBlank()) {
+            throw IllegalArgumentException("Local path is empty!")
+        }
+
+        // 检查设备上是否存在该目录
+        val isDir: Boolean = CLIUtil.isSuccess(runForStatus("test -d \"$remote\""))
+        if (!isDir) {
+            throw FileNotFoundException("Remote directory not exist or is file! Path:[$remote]")
+        }
+
+        // 去除末尾的 `/` ，便于计算相对路径。
+        val remoteRoot = remote.trimEnd('/').ifEmpty { "/" }
+
+
+        /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
+        val localRoot = if (FilePathUtil.isDirectory(local)) {
+            File(local, FilePathUtil.getFileName(remoteRoot))
+        } else {
+            File(local)
+        }
+
+        localRoot.mkdirs()
+        if (!localRoot.canWrite()) {
+            throw FileNotFoundException("Local path not exist or writeable! Path:[${localRoot}]")
+        }
+
+
+        /* 获取源目录中的所有目录与文件 */
+        val dirs: List<String> = runForLines("find \"$remoteRoot\" -type d", false)
+            ?: throw IOException("Cannot list remote directory! Path:[$remoteRoot]")
+        val files: List<String> = runForLines("find \"$remoteRoot\" -type f", false)
+            ?: throw IOException("Cannot list remote directory! Path:[$remoteRoot]")
+
+        // 计算相对于源目录的路径
+        fun relativeOf(path: String): String =
+            path.removePrefix(remoteRoot).trimStart('/')
+
+        /* 在本地创建目录结构（包括空目录） */
+        dirs.filter { it.isNotBlank() }.forEach {
+            File(localRoot, relativeOf(it)).mkdirs()
+        }
+
+        val totalCount = files.count { it.isNotBlank() }
+        listener.onStart(totalCount)
+
+        var currentIndex = 0
+        var currentPath = FileUtil.PATH_INVALID
+        val cancelled = AtomicBoolean(false)
+        // 单个文件传输任务监听器
+        val fileListener: ADBFileTransferListener = object : ADBFileTransferListener() {
+
+            override fun onStart(size: Long) {
+                currentIndex++
+
+                // 只有目录时，以 `NaN` 通告进度。
+                if (totalCount <= 0) {
+                    listener.onProgress(currentIndex, Double.NaN)
+                } else {
+                    val progress = currentIndex.toDouble() / totalCount.toDouble()
+                    listener.onProgress(currentIndex, progress)
+                }
+
+                listener.onFileStart(currentPath, size)
+            }
+
+            override fun onProgress(size: Long, progress: Double) {
+                listener.onFileProgress(size, progress)
+            }
+
+            override fun onEnd() {
+                listener.onFileEnd()
+            }
+        }
+
+        // 收到取消指令时，通知正在传输的任务。
+        listener.setCancelNotifier {
+            cancelled.set(true)
+            fileListener.notifyCancel()
+        }
+
+
+        /* 依次下载每个文件，保持相对路径。 */
+        files.forEach {
+            if (it.isBlank()) return@forEach
+            if (cancelled.get()) {
+                throw SyncException(SyncException.SyncError.CANCELED)
+            }
+
+            currentPath = it
+            pullFile(it, File(localRoot, relativeOf(it)).absolutePath, fileListener)
+        }
+
+        listener.onEnd()
     }
 
     /**
