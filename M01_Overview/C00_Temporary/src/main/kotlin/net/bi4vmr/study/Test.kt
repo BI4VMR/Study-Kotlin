@@ -1,9 +1,9 @@
 package net.bi4vmr.study
 
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
-import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import java.io.File
-import kotlin.concurrent.thread
 import kotlin.uuid.ExperimentalUuidApi
 
 @OptIn(ExperimentalUuidApi::class)
@@ -19,28 +19,33 @@ fun main() {
     //     keep = true
     // )
 
-    thread {
-        ADBController.init()
-        ADBController.getDevices().firstOrNull()?.let {
-            println(it.getSN())
-            it.pushFile(
-                "C:\\Users\\bi4vmr\\Download\\殷正洋 - 05.东南苦行山.flac",
-                "/sdcard/Download/",
-                object : ADBFileTransferListener() {
-                    override fun onStart(size: Long) {
-                        println("onStart size -> $size")
-                    }
-
-                    override fun onProgress(size: Long, progress: Double) {
-                        println("onProgress size -> $size, progress -> $progress")
-                    }
-
-                    override fun onEnd() {
-                        println("onEnd")
-                    }
-                }
-            )
-        }
+    ADBExecutableHelper.setExecutablePath("/home/bi4vmr/Software/Android-SDK/platform-tools/adb")
+    ADBController.init()
+    ADBController.getDevices().firstOrNull()?.let {
+        println(it.getSN())
+        // it.pushFile(
+        //     "C:\\Users\\bi4vmr\\Download\\殷正洋 - 05.东南苦行山.flac",
+        //     "/sdcard/Download/",
+        //     object : ADBFileTransferListener() {
+        //         override fun onStart(size: Long) {
+        //             println("onStart size -> $size")
+        //         }
+        //
+        //         override fun onProgress(size: Long, progress: Double) {
+        //             println("onProgress size -> $size, progress -> $progress")
+        //         }
+        //
+        //         override fun onEnd() {
+        //             println("onEnd")
+        //         }
+        //     }
+        // )
+        ADBCLIUtil.installPackage(
+            it.getSN(),
+            File("/mnt/data/Tool/04.Android软件/General_AIDA64_v1.90.apk")
+        )
+        ADBCLIUtil.enablePackage(it.getSN(), "com.finalwire.aida64")
+        ADBController.terminate()
     }
 
     // embeddedServer(CIO, port = 8080) {

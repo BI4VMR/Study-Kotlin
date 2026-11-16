@@ -527,6 +527,102 @@ object ADBCLIUtil {
         return ADBOutputParser.parsePMListPackageOutput(lines)
     }
 
+    /**
+     * 安装 PC 端软件包。
+     *
+     * @param[sn] 设备序列号。
+     * @param[file] APK 文件。
+     * @throws[Exception] 安装失败。消息为 ADB 命令输出的错误信息。
+     */
+    fun installPackage(sn: String, file: File) {
+        val cmd = String.format("${getExecutableName()} -s %s install -r -t \"%s\"", sn, file.canonicalPath)
+        val process = CLIUtil.run(cmd, false)
+        BaseIOUtil.readAndDrop(process.inputStream)
+        val errorInfo = BaseIOUtil.readAsText(process.errorStream)
+        if (errorInfo.isNotBlank()) {
+            throw Exception(errorInfo.removePrefix("adb: "))
+        }
+
+        CLIUtil.stopProcess(process)
+    }
+
+    /**
+     * 卸载软件包。
+     *
+     * @param[sn] 设备序列号。
+     * @param[packageName] 包名。
+     * @param[userID] 用户 ID。对于预装应用等组件无法直接卸载，可以尝试在特定用户空间将其标记为伪卸载。默认为空值，表示全局卸载。
+     * @param[keepData] 是否保留数据。默认不保留数据。
+     * @throws[Exception] 卸载失败。消息为 ADB 命令输出的错误信息。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun uninstallPackage(sn: String, packageName: String, userID: String? = null, keepData: Boolean = false) {
+        val builder = StringBuilder(getExecutableName())
+            .append(" -s $sn")
+            .append(" uninstall")
+        if (keepData) {
+            builder.append(" -k")
+        }
+        if (userID != null) {
+            builder.append(" --user $userID")
+        }
+        builder.append(" \'$packageName\'")
+
+        runForError(sn, builder.toString())
+    }
+
+    /**
+     * 启用软件包。
+     *
+     * @param[sn] 设备序列号。
+     * @param[packageName] 包名。
+     * @param[userID] 用户 ID。默认为空值，表示不指定用户。
+     * @throws[Exception] 启用失败。消息为 PM 命令输出的错误信息。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun enablePackage(sn: String, packageName: String, userID: String? = null) {
+        val builder = StringBuilder("pm enable")
+        if (userID != null) {
+            builder.append(" --user $userID")
+        }
+        builder.append(" \'$packageName\'")
+
+        runForError(sn, builder.toString())
+    }
+
+    /**
+     * 禁用软件包。
+     *
+     * 优先使用 `pm disable` 命令；若执行失败（例如非 Root 环境下 Shell 无权修改组件状态），则回退至 `pm disable-user` 命令。
+     *
+     * @param[sn] 设备序列号。
+     * @param[packageName] 包名。
+     * @param[userID] 用户 ID。默认为空值，表示不指定用户。
+     * @throws[Exception] 禁用失败。消息为 PM 命令输出的错误信息。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun disablePackage(sn: String, packageName: String, userID: String? = null) {
+        try {
+            val builder = StringBuilder("pm disable")
+            if (userID != null) {
+                builder.append(" --user $userID")
+            }
+            builder.append(" \'$packageName\'")
+            runForError(sn, builder.toString())
+        } catch (_: Exception) {
+            // `disable-user` 是较新版本提供的命令，对于多用户系统如果 `disable` 命令执行失败，则尝试使用该命令。
+            val builder = StringBuilder("pm disable-user")
+            if (userID != null) {
+                builder.append(" --user $userID")
+            }
+            builder.append(" \'$packageName\'")
+            runForError(sn, builder.toString())
+        }
+    }
+
 
     /*
      * ----- 工具方法 -----
@@ -598,5 +694,31 @@ object ADBCLIUtil {
     @JvmStatic
     fun isADBShellCommand(command: String): Boolean {
         return adbCMDRegex.matches(command)
+    }
+
+
+    /*
+     * ----- 内部方法 -----
+     */
+
+    /**
+     * 执行命令并检查是否有错误。
+     *
+     * 忽略标准输出，若读取到错误输出则抛出异常。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句。
+     * @throws[Exception] 执行失败。消息为 ADB 命令输出的错误信息。
+     */
+    private fun runForError(sn: String, command: String) {
+        val process = run(sn, command)
+        BaseIOUtil.readAndDrop(process.inputStream)
+        val errorInfo = BaseIOUtil.readAsText(process.errorStream)
+        process.waitFor()
+        CLIUtil.stopProcess(process)
+
+        if (errorInfo.isNotBlank()) {
+            throw Exception(errorInfo)
+        }
     }
 }
