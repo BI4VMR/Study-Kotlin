@@ -44,7 +44,7 @@ compose.desktop {
 
 // 编译前先构建终端桥接程序，并将其放入 Compose 资源目录 `resources/common` 中。
 val copyShellTransferJar by tasks.registering(Copy::class) {
-    from(project(":lib_external:shellbridge").tasks.named("executableJar"))
+    from(project(":androidtoolkit:tool:shellbridge").tasks.named("executableJar"))
     into(rootProject.layout.projectDirectory.dir("androidtoolkit/resources/common"))
 }
 
