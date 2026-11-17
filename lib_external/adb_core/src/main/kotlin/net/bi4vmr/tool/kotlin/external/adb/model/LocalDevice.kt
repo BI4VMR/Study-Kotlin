@@ -11,6 +11,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListen
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFolderTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
@@ -938,7 +939,16 @@ data class LocalDevice(
      *
      * @return 包名列表。永不为空值，命令执行异常时返回空列表。
      */
-    fun listPackages(): List<String> = ADBCLIUtil.listPackages(getSN())
+    @JvmOverloads
+    fun listPackages(type: PackageType = PackageType.ALL): List<String> = ADBCLIUtil.listPackages(getSN(), type)
+
+    /**
+     * 安装 PC 端软件包。
+     *
+     * @param[file] APK 文件。
+     * @throws[Exception] 安装失败。消息为 ADB 命令输出的错误信息。
+     */
+    fun installPackage(file: File) = ADBCLIUtil.installPackage(getSN(), file)
 
 
     /*

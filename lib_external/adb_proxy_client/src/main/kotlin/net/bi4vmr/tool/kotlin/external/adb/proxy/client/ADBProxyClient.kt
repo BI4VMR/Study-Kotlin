@@ -38,6 +38,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import net.bi4vmr.tool.java.common.base.file.FileUtil
+import net.bi4vmr.tool.java.common.base.system.CLIUtil
+import net.bi4vmr.tool.java.common.base.system.SystemUtil
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
@@ -60,6 +63,9 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
+import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.EOFException
@@ -112,6 +118,14 @@ class ADBProxyClient(
         // 编码时对于未指明的字段填入默认值
         encodeDefaults = true
     }
+
+    /**
+     * 终端桥接程序 JAR 文件。
+     *
+     * 用于转发远程设备终端到本地终端程序。
+     */
+    @Volatile
+    var shellBridgeProgram: File = FileUtil.FILE_INVALID
 
     /**
      * 显示名称。
@@ -393,166 +407,44 @@ class ADBProxyClient(
     }
 
     /**
-     * 获取远程设备的显示屏信息列表。
+     * 打开交互式 ADB Shell。
+     *
+     * 使用前需先通过 [shellBridgeProgram] 设置终端桥接程序路径，并确保当前系统已安装至少一款受 [TerminalUtil] 支持的终端程序。
      *
      * @param[sn] 设备序列号。
-     * @return 显示屏信息列表。若出现异常则返回空列表。
+     * @param[terminal] 终端程序，可以传入 [Terminals] 内置枚举，也可以传入 [Terminal] 接口自定义实现。默认值为空，此时使用默认终端。
+     * @param[newWindow] 是否在新窗口中打开。默认值为是。部分终端程序不支持标签页，即使该参数设为否也会在新窗口中打开。
+     * @param[keep] 初始命令执行完毕是否保持窗口。本工具用于打开 GUI 终端模拟器，通常都应当设为 `true` 以便用户查看结果；如果只需要执行
+     * 命令并在程序内部获取结果，应当使用无界面的 [CLIUtil.run] 系列方法。初始命令不存在时通常会进入交互式环境，窗口保持开启，此时该参数无效。
+     * @throws[IllegalArgumentException] [shellBridgeProgram] 无效。
+     * @throws[IllegalStateException] [TerminalUtil] 自动侦测终端程序失败，没有可用的终端程序。
+     * @throws[IOException] 指定的终端程序不存在。
      */
-    suspend fun getDisplays(sn: String): List<DisplayInfo> {
-        return try {
-            val response = requireClient().post(buildURL(APIs.ADB_DISPLAYS)) {
-                contentType(ContentType.Application.Json)
-                setBody(ADBExecRequest(sn = sn))
-            }
-
-            if (response.status.isSuccess()) {
-                jsonTool.decodeFromString(
-                    ListSerializer(DisplayInfoSerializer),
-                    response.bodyAsText()
-                )
-            } else {
-                logger.warn("Failed to get displays. Reason:[${response.bodyAsText()}]")
-                emptyList()
-            }
-        } catch (e: Exception) {
-            logger.warn("Failed to get displays. Reason:[${e.message}]")
-            emptyList()
-        }
-    }
-
-
-    /*
-     * ----- 文件系统 -----
-     */
-
-    /**
-     * 推送文件到远程设备。
-     *
-     * 文件先由本机上传至服务端，再由服务端推送至设备。监听器回调的进度为整体进度，上传与设备推送两个阶段各占一半。
-     *
-     * @param[sn] 设备序列号。
-     * @param[local] 源文件（本机）。
-     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
-     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
-     * @throws[FileNotFoundException] 源文件不存在或不可读。
-     * @throws[IllegalStateException] 源文件指向目录。
-     * @throws[IllegalArgumentException] 未指明目标路径。
-     * @throws[IOException] 传输失败或用户取消推送。
-     */
-    suspend fun pushFile(sn: String, local: File, remote: String, listener: ADBFileTransferListener? = null) {
-        /* 参数校验 */
-        require(sn.isNotBlank()) { "Device SN is required!" }
-        if (!local.canRead()) {
-            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
-        }
-        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
-        require(remote.isNotBlank()) { "Remote path is empty!" }
-
-        val total = local.length()
-        val path = APIs.ADB_FILE_PUSH +
-                "?sn=${sn.encodeURLParameter()}" +
-                "&remote=${remote.encodeURLParameter()}" +
-                "&name=${local.name.encodeURLParameter()}" +
-                "&size=$total"
-
-        fun notifyProgress(transferred: Long) {
-            if (total <= 0) {
-                listener?.onProgress(transferred / 2, Double.NaN)
-            } else {
-                listener?.onProgress(transferred / 2, transferred.toDouble() / (total * 2).toDouble())
-            }
-        }
-
-        var result: FilePushEvent? = null
-        openWebSocket(path) {
-            listener?.setCancelNotifier {
-                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
-            }
-            listener?.onStart(total)
-
-            /* 上传文件数据 */
-            val uploadJob = launch(Dispatchers.IO) {
-                local.inputStream().use { input ->
-                    val buffer = ByteArray(64 * 1024)
-                    var uploaded = 0L
-                    while (listener?.isCancelled() != true) {
-                        val count = input.read(buffer)
-                        if (count < 0) {
-                            send(Frame.Text(FilePushEvent.CMD_EOF))
-                            break
-                        }
-                        send(Frame.Binary(true, buffer.copyOf(count)))
-                        uploaded += count
-                        notifyProgress(uploaded)
-                    }
-                }
-            }
-
-            /* 接收服务端事件 */
-            for (frame in incoming) {
-                if (frame !is Frame.Text) {
-                    continue
-                }
-
-                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
-                when (event.type) {
-                    FilePushEvent.TYPE_PROGRESS -> notifyProgress(total + event.size)
-                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
-                        result = event
-                        break
-                    }
-                }
-            }
-            uploadJob.cancel()
-        }
-
-        val event = result ?: throw IOException("Connection closed before push completed!")
-        when {
-            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
-            event.cancel -> {
-                listener?.onEnd()
-                throw IOException("Push cancelled by user!")
-            }
-
-            else -> listener?.onEnd()
-        }
-    }
-
-
-    /**
-     * 打开远程设备的交互式 Shell 。
-     *
-     * 需要先通过 [ShellTransferHelper.setTransferFile] 设置终端桥接程序路径。
-     *
-     * @param[sn] 设备序列号。
-     */
-    fun openShell(sn: String) {
-        val bridgeJar = ShellTransferHelper.getTransferFile()
-        if (bridgeJar == null || !bridgeJar.canRead()) {
-            logger.warn("Failed to open shell: shell transfer file is invalid. Path:[${bridgeJar?.absolutePath}]")
-            return
+    fun openShell(
+        sn: String,
+        terminal: Terminal? = null,
+        newWindow: Boolean = true
+    ) {
+        val bridgeJAR = shellBridgeProgram
+        if (!bridgeJAR.canRead()) {
+            throw IllegalArgumentException("Shell bridge program is invalid! Path:[${bridgeJAR.absolutePath}]")
         }
 
         taskScope.launch {
             var localServer: ServerSocket? = null
             try {
                 openWebSocket("${APIs.ADB_SHELL}?sn=${sn}") {
+                    /*
+                     * `shellBridge` 直连服务端 WebSocket 需要处理 TLS 与认证，比较麻烦，因此开启本地临时端口，Ktor 将解密后的裸数据
+                     * 传入该端口，`shellBridge` 与临时端口通信即可。
+                     */
                     localServer = ServerSocket(0)
 
-                    val javaBin = ProcessHandle.current().info().command()
-                        .orElse(File(System.getProperty("java.home"), "bin/java").path)
-                    val bridgeCommand = listOf(
-                        javaBin,
-                        "-jar",
-                        bridgeJar.absolutePath,
-                        localServer.localPort.toString()
-                    )
-                    // ProcessBuilder(listOf("konsole", "-e") + bridgeCommand)
-                    //     .inheritIO()
-                    //     .start()
-                    ProcessBuilder(listOf("wt") + bridgeCommand)
-                        .inheritIO()
-                        .start()
+                    // 复用当前进程的 JRE 环境启动桥接程序
+                    val javaExec = "${SystemUtil.getJREPath()}${File.separator}bin/java"
+                    val bridgeCommand =
+                        "\"$javaExec\" -jar \"${bridgeJAR.absolutePath}\" 127.0.0.1 ${localServer.localPort}"
+                    TerminalUtil.launch(terminal, bridgeCommand, newWindow, true)
 
                     localServer.accept().use { localSocket ->
                         val upstream = launch {
@@ -592,6 +484,7 @@ class ADBProxyClient(
             }
         }
     }
+
 
     /*
      * ----- 设备信息 -----
@@ -733,6 +626,137 @@ class ADBProxyClient(
         val enumName = response.requireData()
         return ConnectionType.entries.firstOrNull { it.name == enumName }
             ?: throw IllegalStateException("Invalid device type name from server. Type:[$enumName]")
+    }
+
+
+    /*
+     * ----- 图形界面 -----
+     */
+
+    /**
+     * 获取远程设备的显示屏信息列表。
+     *
+     * @param[sn] 设备序列号。
+     * @return 显示屏信息列表。若出现异常则返回空列表。
+     */
+    suspend fun getDisplays(sn: String): List<DisplayInfo> {
+        return try {
+            val response = requireClient().post(buildURL(APIs.ADB_DISPLAYS)) {
+                contentType(ContentType.Application.Json)
+                setBody(ADBExecRequest(sn = sn))
+            }
+
+            if (response.status.isSuccess()) {
+                jsonTool.decodeFromString(
+                    ListSerializer(DisplayInfoSerializer),
+                    response.bodyAsText()
+                )
+            } else {
+                logger.warn("Failed to get displays. Reason:[${response.bodyAsText()}]")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to get displays. Reason:[${e.message}]")
+            emptyList()
+        }
+    }
+
+
+    /*
+     * ----- 文件系统 -----
+     */
+
+    /**
+     * 推送文件到远程设备。
+     *
+     * 文件先由本机上传至服务端，再由服务端推送至设备。监听器回调的进度为整体进度，上传与设备推送两个阶段各占一半。
+     *
+     * @param[sn] 设备序列号。
+     * @param[local] 源文件（本机）。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
+     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
+     * @throws[FileNotFoundException] 源文件不存在或不可读。
+     * @throws[IllegalStateException] 源文件指向目录。
+     * @throws[IllegalArgumentException] 未指明目标路径。
+     * @throws[IOException] 传输失败或用户取消推送。
+     */
+    suspend fun pushFile(sn: String, local: File, remote: String, listener: ADBFileTransferListener? = null) {
+        /* 参数校验 */
+        require(sn.isNotBlank()) { "Device SN is required!" }
+        if (!local.canRead()) {
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
+        }
+        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
+        require(remote.isNotBlank()) { "Remote path is empty!" }
+
+        val total = local.length()
+        val path = APIs.ADB_FILE_PUSH +
+                "?sn=${sn.encodeURLParameter()}" +
+                "&remote=${remote.encodeURLParameter()}" +
+                "&name=${local.name.encodeURLParameter()}" +
+                "&size=$total"
+
+        fun notifyProgress(transferred: Long) {
+            if (total <= 0) {
+                listener?.onProgress(transferred / 2, Double.NaN)
+            } else {
+                listener?.onProgress(transferred / 2, transferred.toDouble() / (total * 2).toDouble())
+            }
+        }
+
+        var result: FilePushEvent? = null
+        openWebSocket(path) {
+            listener?.setCancelNotifier {
+                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
+            }
+            listener?.onStart(total)
+
+            /* 上传文件数据 */
+            val uploadJob = launch(Dispatchers.IO) {
+                local.inputStream().use { input ->
+                    val buffer = ByteArray(64 * 1024)
+                    var uploaded = 0L
+                    while (listener?.isCancelled() != true) {
+                        val count = input.read(buffer)
+                        if (count < 0) {
+                            send(Frame.Text(FilePushEvent.CMD_EOF))
+                            break
+                        }
+                        send(Frame.Binary(true, buffer.copyOf(count)))
+                        uploaded += count
+                        notifyProgress(uploaded)
+                    }
+                }
+            }
+
+            /* 接收服务端事件 */
+            for (frame in incoming) {
+                if (frame !is Frame.Text) {
+                    continue
+                }
+
+                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
+                when (event.type) {
+                    FilePushEvent.TYPE_PROGRESS -> notifyProgress(total + event.size)
+                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
+                        result = event
+                        break
+                    }
+                }
+            }
+            uploadJob.cancel()
+        }
+
+        val event = result ?: throw IOException("Connection closed before push completed!")
+        when {
+            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
+            event.cancel -> {
+                listener?.onEnd()
+                throw IOException("Push cancelled by user!")
+            }
+
+            else -> listener?.onEnd()
+        }
     }
 
 

@@ -82,7 +82,7 @@ fun SegmentedTabRowScope.SegmentedTab(
                 else MaterialTheme.colorScheme.surface
             )
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         CompositionLocalProvider(
             LocalContentColor provides contentColor,

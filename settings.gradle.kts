@@ -131,6 +131,7 @@ include(":lib_external:adb_proxy_server")
 include(":lib_external:adb_proxy_server_pair")
 include(":lib_external:adb_proxy_server_cast")
 
+include(":lib_math:geometry")
 include(":lib_gui:interaction")
 
 include(":demo_external:adb_cast_compose_local")

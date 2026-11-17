@@ -80,6 +80,7 @@ fun ADBCastView(
         val width = frameSize.width
         val height = frameSize.height
         if (width > 0 && height > 0) {
+            // use rememberUpdatedState
             onVideoSizeChange?.invoke(width, height)
         }
     }
@@ -108,8 +109,8 @@ fun ADBCastView(
 
                 if (allowInput) {
                     val scale = LocalDensity.current.density
-                    val widthDP = (renderRect.width * scale).dp
-                    val heightDP = (renderRect.height * scale).dp
+                    val widthDP = (renderRect.width / scale).dp
+                    val heightDP = (renderRect.height / scale).dp
 
                     // 触控叠加层
                     InputEffectLayer(

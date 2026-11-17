@@ -63,13 +63,17 @@ fun ADBCastWindow(
                         println("Video size changed: $width x $height")
                         val maxWinAreaSize = window.getAvailableSize()
                         println("maxWinAreaSize: $maxWinAreaSize")
-                        val newWidth = (maxWinAreaSize.width.value * d).toInt()
-                        val newHeight = (maxWinAreaSize.height.value * d).toInt()
+                        val newWidth = (maxWinAreaSize.width.value).toInt()
+                        val newHeight = (maxWinAreaSize.height.value).toInt()
                         println("new size: $newWidth x $newHeight")
 
                         val r = fitCanvas(IntSize(newWidth, newHeight), IntSize(width, height))
                         println(r)
-                        windowState.size = DpSize((r.width / d).dp, (r.height / d).dp)
+                        val insets = window.insets
+                        windowState.size = DpSize(
+                            (r.width + insets.left + insets.right).dp,
+                            (r.height + insets.top + insets.bottom).dp
+                        )
                     }
                 )
 

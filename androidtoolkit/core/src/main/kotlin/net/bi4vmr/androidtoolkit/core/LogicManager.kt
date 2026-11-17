@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -51,6 +52,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.net.ConnectException
 
 /**
@@ -579,6 +581,14 @@ object LogicManager {
     fun setADBExecMode(mode: ADBExecFileMode) {
         taskScope.launch {
             configManager.setADBExecMode(mode)
+        }
+    }
+
+    suspend fun getADBExecFileOfUser(): File? = configManager.adbExecFileOfUser.firstOrNull()
+
+    fun setADBExecFileOfUser(file: File) {
+        taskScope.launch {
+            configManager.setADBExecFileOfUser(file)
         }
     }
 
