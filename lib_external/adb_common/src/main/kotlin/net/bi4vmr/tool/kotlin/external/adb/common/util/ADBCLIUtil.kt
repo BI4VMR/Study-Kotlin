@@ -6,7 +6,11 @@ import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -344,6 +348,165 @@ object ADBCLIUtil {
         }
     }
 
+    /**
+     * 获取显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @return 分辨率信息。若出现异常或显示屏不存在则返回空值。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getDisplaySize(sn: String, displayID: String? = null): DisplaySize? {
+        val lines = runForLines(sn, "wm size${displayArg(displayID)}") ?: return null
+        return ADBOutputParser.parseWMSize(lines)
+    }
+
+    /**
+     * 设置显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[width] 宽度。
+     * @param[height] 高度。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String? = null): Boolean {
+        val status = runForStatus(sn, "wm size ${width}x$height${displayArg(displayID)}")
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 还原显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun resetDisplaySize(sn: String, displayID: String? = null): Boolean {
+        val status = runForStatus(sn, "wm size reset${displayArg(displayID)}")
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 获取显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @return 密度信息。若出现异常则返回空值。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getDisplayDensity(sn: String, displayID: String? = null): DisplayDensity? {
+        val lines = runForLines(sn, "wm density${displayArg(displayID)}") ?: return null
+        return ADBOutputParser.parseWMDensity(lines)
+    }
+
+    /**
+     * 设置显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[density] 密度。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun setDisplayDensity(sn: String, density: Int, displayID: String? = null): Boolean {
+        val status = runForStatus(sn, "wm density $density${displayArg(displayID)}")
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 还原显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun resetDisplayDensity(sn: String, displayID: String? = null): Boolean {
+        val status = runForStatus(sn, "wm density reset${displayArg(displayID)}")
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 获取 Activity 列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的 Activity 。
+     * @return Activity 列表，每个显示屏内按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
+        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
+        return ADBOutputParser.parseActivities(lines)
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取前台 Activity 。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的前台 Activity 。
+     * @return 前台 Activity 列表，每个显示屏最多一项。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getForegroundActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
+        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
+        return ADBOutputParser.parseResumedActivities(lines)
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取窗口列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的窗口。
+     * @return 窗口列表，按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
+        val lines = runForLines(sn, "dumpsys window windows") ?: emptyList()
+        return ADBOutputParser.parseWindows(lines)
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取前台（焦点）窗口。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的焦点窗口。
+     * @return 焦点窗口列表，每个显示屏最多一项。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getForegroundWindows(sn: String, displayID: String? = null): List<WindowInfo> {
+        // Android 10 及更高版本在各屏幕分组中记录焦点窗口；旧版本仅有全局焦点窗口，需要回退到 `dumpsys window windows` 获取。
+        var focused = ADBOutputParser.parseFocusedWindows(
+            runForLines(sn, "dumpsys window displays") ?: emptyList()
+        )
+        if (focused.isEmpty()) {
+            focused = ADBOutputParser.parseFocusedWindows(
+                runForLines(sn, "dumpsys window windows") ?: emptyList()
+            )
+        }
+
+        return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
 
     /*
      * ----- 文件系统 -----
@@ -721,4 +884,12 @@ object ADBCLIUtil {
             throw Exception(errorInfo)
         }
     }
+
+    /**
+     * 构建 `wm` 命令的显示屏参数。
+     *
+     * @param[displayID] 显示屏逻辑 ID 。
+     * @return 参数文本。若未指定显示屏则返回空字符串。
+     */
+    private fun displayArg(displayID: String?): String = if (displayID == null) "" else " -d $displayID"
 }

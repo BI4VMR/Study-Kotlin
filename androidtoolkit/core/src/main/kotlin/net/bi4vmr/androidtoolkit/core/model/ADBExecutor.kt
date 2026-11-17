@@ -6,7 +6,11 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 
 /**
  * ADB 执行器公共能力接口。
@@ -128,6 +132,105 @@ interface ADBExecutor {
     suspend fun getDeviceType(sn: String): ConnectionType?
 
     fun openShell(sn: String)
+
+
+    /*
+     * ----- 图形界面 -----
+     */
+
+    /**
+     * 获取 Activity 列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时列出所有显示屏的 Activity 。
+     * @return Activity 列表，若出现异常则返回空列表。
+     */
+    suspend fun getActivities(sn: String, displayID: String?): List<ActivityInfo>
+
+    /**
+     * 获取前台 Activity 。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时列出所有显示屏的前台 Activity 。
+     * @return 前台 Activity 列表，每个显示屏最多一项。若出现异常则返回空列表。
+     */
+    suspend fun getForegroundActivities(sn: String, displayID: String?): List<ActivityInfo>
+
+    /**
+     * 获取窗口列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时列出所有显示屏的窗口。
+     * @return 窗口列表，若出现异常则返回空列表。
+     */
+    suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo>
+
+    /**
+     * 获取前台（焦点）窗口。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时列出所有显示屏的焦点窗口。
+     * @return 焦点窗口列表，每个显示屏最多一项。若出现异常则返回空列表。
+     */
+    suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo>
+
+
+    /**
+     * 获取显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return 分辨率信息。若出现异常或显示屏不存在则返回空值。
+     */
+    suspend fun getDisplaySize(sn: String, displayID: String?): DisplaySize?
+
+    /**
+     * 设置显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[width] 宽度。
+     * @param[height] 高度。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String?): Boolean
+
+    /**
+     * 还原显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun resetDisplaySize(sn: String, displayID: String?): Boolean
+
+    /**
+     * 获取显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return 密度信息。若出现异常则返回空值。
+     */
+    suspend fun getDisplayDensity(sn: String, displayID: String?): DisplayDensity?
+
+    /**
+     * 设置显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[density] 密度。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun setDisplayDensity(sn: String, density: Int, displayID: String?): Boolean
+
+    /**
+     * 还原显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun resetDisplayDensity(sn: String, displayID: String?): Boolean
 
 
     /*

@@ -6,7 +6,11 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
 
 /**
@@ -82,6 +86,42 @@ class RemoteExecutor(
     override fun openShell(sn: String) {
         client.openShell(sn)
     }
+
+
+    /*
+     * ----- 图形界面 -----
+     */
+
+    override suspend fun getActivities(sn: String, displayID: String?): List<ActivityInfo> =
+        client.getActivities(sn, displayID)
+
+    override suspend fun getForegroundActivities(sn: String, displayID: String?): List<ActivityInfo> =
+        client.getForegroundActivities(sn, displayID)
+
+    override suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo> =
+        client.getWindows(sn, displayID)
+
+    override suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo> =
+        client.getForegroundWindows(sn, displayID)
+
+
+    override suspend fun getDisplaySize(sn: String, displayID: String?): DisplaySize? =
+        client.getDisplaySize(sn, displayID)
+
+    override suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String?): Boolean =
+        client.setDisplaySize(sn, width, height, displayID)
+
+    override suspend fun resetDisplaySize(sn: String, displayID: String?): Boolean =
+        client.resetDisplaySize(sn, displayID)
+
+    override suspend fun getDisplayDensity(sn: String, displayID: String?): DisplayDensity? =
+        client.getDisplayDensity(sn, displayID)
+
+    override suspend fun setDisplayDensity(sn: String, density: Int, displayID: String?): Boolean =
+        client.setDisplayDensity(sn, density, displayID)
+
+    override suspend fun resetDisplayDensity(sn: String, displayID: String?): Boolean =
+        client.resetDisplayDensity(sn, displayID)
 
 
     /*

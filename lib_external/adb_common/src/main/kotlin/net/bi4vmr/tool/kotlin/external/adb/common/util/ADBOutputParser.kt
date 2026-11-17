@@ -1,7 +1,11 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 
 /**
  * ADB 输出解析器。
@@ -29,6 +33,49 @@ object ADBOutputParser {
 
     // 正则表达式：屏幕分辨率。
     private val sizeRegex = """real (\d+) x (\d+)""".toRegex()
+
+    // 正则表达式：Activity 列表中的屏幕分组，例如 `Display #0 (activities from top to bottom):` 。
+    private val activityDisplayRegex = """^\s*Display #(\d+)""".toRegex()
+
+    // 正则表达式：Activity 历史记录行，例如 `* Hist  #0: ActivityRecord{...}` 。
+    private val activityHistRegex = """^\s*\*?\s*Hist\s+#\d+:""".toRegex()
+
+    // 正则表达式：屏幕内的前台 Activity 行，例如 `Resumed: ActivityRecord{...}` （Android 12 及更高版本）、
+    // `topResumedActivity=ActivityRecord{...}` 或 `mResumedActivity: ActivityRecord{...}` （旧版本）。
+    // 注意：不匹配位于所有屏幕之后的全局 `ResumedActivity:` 行，它仅表示全局焦点所在的 Activity 。
+    private val resumedActivityRegex = """^\s*(?:Resumed:|topResumedActivity=|mResumedActivity:)""".toRegex()
+
+    // 正则表达式：`ActivityRecord{hash u0 com.example/.MainActivity t12}` 。
+    private val activityRecordRegex = """ActivityRecord\{\S+\s+u(\d+)\s+([^/\s]+)/([^\s}]+)\}?\s+t(-?\d+)""".toRegex()
+
+    // 正则表达式：窗口列表中的窗口标题行，例如 `Window #0 Window{hash u0 NavigationBar0}:` 。
+    private val windowHeaderRegex = """^\s*Window #\d+ Window\{(\S+) u(\d+) (.*)\}:\s*$""".toRegex()
+
+    // 正则表达式：窗口所在屏幕 ID 。
+    private val windowDisplayIDRegex = """\bmDisplayId=(\d+)""".toRegex()
+
+    // 正则表达式：窗口所属包名。
+    private val windowPackageRegex = """\bpackage=(\S+)""".toRegex()
+
+    // 正则表达式：窗口可见状态。
+    private val windowVisibleRegex = """\b(?:isVisible|isOnScreen)=true\b""".toRegex()
+
+    // 正则表达式：窗口信息结束行（无缩进或缩进 2 个空格的非空行）。
+    private val windowEndRegex = """^(?: {2})?\S""".toRegex()
+
+    // 正则表达式：`dumpsys window displays` 中的屏幕分组，例如 `Display: mDisplayId=0 ...` 。
+    private val windowDisplaySectionRegex = """^\s*Display: mDisplayId=(\d+)""".toRegex()
+
+    // 正则表达式：焦点窗口，例如 `mCurrentFocus=Window{hash u0 com.example/com.example.MainActivity}` 。
+    // 正则表达式： `wm size` 命令输出。
+    private val wmPhysicalSizeRegex = """Physical size:\s*(\d+)x(\d+)""".toRegex()
+    private val wmOverrideSizeRegex = """Override size:\s*(\d+)x(\d+)""".toRegex()
+
+    // 正则表达式： `wm density` 命令输出。
+    private val wmPhysicalDensityRegex = """Physical density:\s*(\d+)""".toRegex()
+    private val wmOverrideDensityRegex = """Override density:\s*(\d+)""".toRegex()
+
+    private val focusedWindowRegex = """\bmCurrentFocus=Window\{(\S+) u(\d+) (.*)\}""".toRegex()
 
 
     /**
@@ -292,5 +339,236 @@ object ADBOutputParser {
         }
 
         return list.sorted()
+    }
+
+    /**
+     * 解析 `dumpsys activity activities` 命令输出中的 Activity 列表。
+     *
+     * 每个屏幕内的 Activity 按照从顶层到底层的顺序排列。
+     *
+     * @param[input] 命令输出。
+     * @return Activity 列表。
+     */
+    fun parseActivities(input: List<String>): List<ActivityInfo> {
+        val list = mutableListOf<ActivityInfo>()
+        var displayID: String? = null
+        input.forEach { line ->
+            activityDisplayRegex.find(line)?.let {
+                displayID = it.groupValues[1]
+                return@forEach
+            }
+            // 无缩进的非空行表示屏幕分组已结束
+            if (line.isNotBlank() && !line.first().isWhitespace()) {
+                displayID = null
+                return@forEach
+            }
+
+            val currentDisplay = displayID ?: return@forEach
+            if (!activityHistRegex.containsMatchIn(line)) return@forEach
+            parseActivityRecord(line, currentDisplay)?.let { list.add(it) }
+        }
+
+        return list
+    }
+
+    /**
+     * 解析 `dumpsys activity activities` 命令输出中的前台 Activity 。
+     *
+     * @param[input] 命令输出。
+     * @return 各屏幕的前台 Activity 列表，每个屏幕最多一项。
+     */
+    fun parseResumedActivities(input: List<String>): List<ActivityInfo> {
+        val map = linkedMapOf<String, ActivityInfo>()
+        var displayID: String? = null
+        input.forEach { line ->
+            activityDisplayRegex.find(line)?.let {
+                displayID = it.groupValues[1]
+                return@forEach
+            }
+            // 无缩进的非空行表示屏幕分组已结束
+            if (line.isNotBlank() && !line.first().isWhitespace()) {
+                displayID = null
+                return@forEach
+            }
+
+            val currentDisplay = displayID ?: return@forEach
+            if (map.containsKey(currentDisplay)) return@forEach
+            if (!resumedActivityRegex.containsMatchIn(line)) return@forEach
+            parseActivityRecord(line, currentDisplay)?.let { map[currentDisplay] = it }
+        }
+
+        return map.values.toList()
+    }
+
+    /**
+     * 解析 `dumpsys window windows` 命令输出中的窗口列表。
+     *
+     * 窗口按照从顶层到底层的顺序排列。
+     *
+     * @param[input] 命令输出。
+     * @return 窗口列表。
+     */
+    fun parseWindows(input: List<String>): List<WindowInfo> {
+        val list = mutableListOf<WindowInfo>()
+        var current: WindowInfo? = null
+
+        input.forEach { line ->
+            val header = windowHeaderRegex.find(line)
+            if (header != null) {
+                current?.let { list.add(it) }
+                current = WindowInfo(
+                    hash = header.groupValues[1],
+                    userID = header.groupValues[2].toIntOrNull() ?: -1,
+                    title = header.groupValues[3].trim()
+                )
+                return@forEach
+            }
+
+            val window = current ?: return@forEach
+            // 窗口属性行缩进至少为 4 个空格（折行内容可能仅缩进 1 个空格），缩进为 0 或 2 个空格的非空行表示当前窗口的信息已结束。
+            if (windowEndRegex.containsMatchIn(line)) {
+                list.add(window)
+                current = null
+                return@forEach
+            }
+
+            var updated = window
+            if (updated.displayID.isEmpty()) {
+                windowDisplayIDRegex.find(line)?.let { updated = updated.copy(displayID = it.groupValues[1]) }
+            }
+            if (updated.packageName.isEmpty()) {
+                windowPackageRegex.find(line)?.let { updated = updated.copy(packageName = it.groupValues[1]) }
+            }
+            if (!updated.visible && windowVisibleRegex.containsMatchIn(line)) {
+                updated = updated.copy(visible = true)
+            }
+            current = updated
+        }
+        current?.let { list.add(it) }
+
+        // 部分窗口没有 `package=` 字段，尝试从 `包名/类名` 格式的标题中提取包名。
+        return list.map {
+            if (it.packageName.isEmpty() && it.title.contains('/')) {
+                it.copy(packageName = it.title.substringBefore('/').substringAfterLast(' '))
+            } else {
+                it
+            }
+        }
+    }
+
+    /**
+     * 解析 `dumpsys window` 命令输出中的焦点窗口。
+     *
+     * @param[input] 命令输出。
+     * @return 焦点窗口列表。键为屏幕 ID （未知时为空字符串），值为窗口信息（仅包含哈希值、用户 ID 与标题）。
+     */
+    fun parseFocusedWindows(input: List<String>): Map<String, WindowInfo> {
+        val map = linkedMapOf<String, WindowInfo>()
+        var displayID = ""
+        input.forEach { line ->
+            windowDisplaySectionRegex.find(line)?.let {
+                displayID = it.groupValues[1]
+                return@forEach
+            }
+
+            val match = focusedWindowRegex.find(line) ?: return@forEach
+            if (map.containsKey(displayID)) return@forEach
+            map[displayID] = WindowInfo(
+                hash = match.groupValues[1],
+                userID = match.groupValues[2].toIntOrNull() ?: -1,
+                title = match.groupValues[3].trim(),
+                displayID = displayID
+            )
+        }
+
+        return map
+    }
+
+    /**
+     * 合并焦点窗口与窗口列表。
+     *
+     * 通过哈希值关联窗口列表，补全焦点窗口的屏幕 ID 、包名等信息。
+     *
+     * @param[focused] [parseFocusedWindows] 的解析结果。
+     * @param[windows] [parseWindows] 的解析结果。
+     * @return 焦点窗口列表。
+     */
+    fun mergeFocusedWindows(focused: Map<String, WindowInfo>, windows: List<WindowInfo>): List<WindowInfo> {
+        val windowMap = windows.associateBy { it.hash }
+        return focused.values
+            .map { focus ->
+                windowMap[focus.hash] ?: run {
+                    val packageName = if (focus.title.contains('/')) focus.title.substringBefore('/') else ""
+                    focus.copy(packageName = packageName, visible = true)
+                }
+            }
+            .distinctBy { it.hash }
+    }
+
+    /**
+     * 解析 `wm size` 命令输出。
+     *
+     * @param[input] 命令输出。
+     * @return 分辨率信息。若解析失败或显示屏不存在（输出为 `0x0` ）则返回空值。
+     */
+    fun parseWMSize(input: List<String>): DisplaySize? {
+        var physical: MatchResult? = null
+        var override: MatchResult? = null
+        input.forEach { line ->
+            physical = physical ?: wmPhysicalSizeRegex.find(line)
+            override = override ?: wmOverrideSizeRegex.find(line)
+        }
+
+        val width = physical?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        val height = physical?.groupValues?.get(2)?.toIntOrNull() ?: return null
+        if (width <= 0 || height <= 0) return null
+
+        return DisplaySize(
+            physicalWidth = width,
+            physicalHeight = height,
+            overrideWidth = override?.groupValues?.get(1)?.toIntOrNull() ?: -1,
+            overrideHeight = override?.groupValues?.get(2)?.toIntOrNull() ?: -1
+        )
+    }
+
+    /**
+     * 解析 `wm density` 命令输出。
+     *
+     * @param[input] 命令输出。
+     * @return 密度信息。若解析失败则返回空值。
+     */
+    fun parseWMDensity(input: List<String>): DisplayDensity? {
+        var physical: Int? = null
+        var override: Int? = null
+        input.forEach { line ->
+            physical = physical ?: wmPhysicalDensityRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
+            override = override ?: wmOverrideDensityRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
+        }
+
+        val value = physical ?: return null
+        if (value <= 0) return null
+        return DisplayDensity(physical = value, override = override ?: -1)
+    }
+
+    /**
+     * 解析 `ActivityRecord{...}` 文本。
+     *
+     * @param[line] 包含 `ActivityRecord{...}` 的文本。
+     * @param[displayID] 屏幕 ID 。
+     * @return Activity 信息。若格式不符合预期则返回空值。
+     */
+    private fun parseActivityRecord(line: String, displayID: String): ActivityInfo? {
+        val match = activityRecordRegex.find(line) ?: return null
+        val packageName = match.groupValues[2]
+        val shortClass = match.groupValues[3]
+        // 将 `.MainActivity` 简写形式补全为完整类名
+        val className = if (shortClass.startsWith(".")) "$packageName$shortClass" else shortClass
+        return ActivityInfo(
+            displayID = displayID,
+            packageName = packageName,
+            className = className,
+            taskID = match.groupValues[4].toIntOrNull() ?: -1,
+            userID = match.groupValues[1].toIntOrNull() ?: -1
+        )
     }
 }
