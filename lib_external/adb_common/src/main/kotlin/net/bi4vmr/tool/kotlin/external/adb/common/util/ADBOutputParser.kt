@@ -1,11 +1,9 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseFocusedWindows
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseWindows
 
 /**
  * ADB 输出解析器。
@@ -22,17 +20,45 @@ object ADBOutputParser {
      */
     private val deviceConnectedRegex = """^(?:already )?connected to .+?:\d+$""".toRegex()
 
-    // 正则表达式：屏幕 ID （Android 11 及更高版本）。
+    /**
+     * 正则表达式：屏幕 ID （Android 11 及更高版本）。
+     */
     private val displayIDRegex_V11U = """Display id (\d+):""".toRegex()
 
-    // 正则表达式：屏幕 ID （Android 10）。
+    /**
+     * 正则表达式：屏幕 ID （Android 10）。
+     */
     private val displayIDRegex_V10 = """displayId (\d+)""".toRegex()
 
-    // 正则表达式：屏幕物理 ID 。
+    /**
+     * 正则表达式：屏幕物理 ID 。
+     */
     private val uniqueIDRegex = """uniqueId "([^:]+:[^"]+)"""".toRegex()
 
-    // 正则表达式：屏幕分辨率。
+    /**
+     * 正则表达式：屏幕分辨率。
+     */
     private val sizeRegex = """real (\d+) x (\d+)""".toRegex()
+
+    /**
+     * 正则表达式：`wm size` 命令输出（物理尺寸）。
+     */
+    private val wmPhysicalSizeRegex = """Physical size:\s*(\d+)x(\d+)""".toRegex()
+
+    /**
+     * 正则表达式：`wm size` 命令输出（用户改写尺寸）。
+     */
+    private val wmOverrideSizeRegex = """Override size:\s*(\d+)x(\d+)""".toRegex()
+
+    /**
+     * 正则表达式： `wm density` 命令输出（物理尺寸）。
+     */
+    private val wmPhysicalDensityRegex = """Physical density:\s*(\d+)""".toRegex()
+
+    /**
+     * 正则表达式： `wm density` 命令输出（用户改写尺寸）。
+     */
+    private val wmOverrideDensityRegex = """Override density:\s*(\d+)""".toRegex()
 
     // 正则表达式：Activity 列表中的屏幕分组，例如 `Display #0 (activities from top to bottom):` 。
     private val activityDisplayRegex = """^\s*Display #(\d+)""".toRegex()
@@ -67,14 +93,6 @@ object ADBOutputParser {
     private val windowDisplaySectionRegex = """^\s*Display: mDisplayId=(\d+)""".toRegex()
 
     // 正则表达式：焦点窗口，例如 `mCurrentFocus=Window{hash u0 com.example/com.example.MainActivity}` 。
-    // 正则表达式： `wm size` 命令输出。
-    private val wmPhysicalSizeRegex = """Physical size:\s*(\d+)x(\d+)""".toRegex()
-    private val wmOverrideSizeRegex = """Override size:\s*(\d+)x(\d+)""".toRegex()
-
-    // 正则表达式： `wm density` 命令输出。
-    private val wmPhysicalDensityRegex = """Physical density:\s*(\d+)""".toRegex()
-    private val wmOverrideDensityRegex = """Override density:\s*(\d+)""".toRegex()
-
     private val focusedWindowRegex = """\bmCurrentFocus=Window\{(\S+) u(\d+) (.*)\}""".toRegex()
 
 
@@ -323,22 +341,82 @@ object ADBOutputParser {
     }
 
     /**
-     * 解析 `pm list packages` 命令输出。
+     * 解析 `wm size` 命令输出。
      *
-     * @return 包名列表。
+     * 命令输出示例：
+     *
+     * ```text
+     * Physical size: 1080x2160
+     * Override size: 1080x1920
+     * ```
+     *
+     * @param[input] 命令输出。
+     * @return 分辨率信息。若解析失败则返回空值。
      */
-    fun parsePMListPackageOutput(input: List<String>): List<String> {
-        val list = mutableListOf<String>()
+    fun parseWMSize(input: List<String>): DisplaySize? {
+        var physical: MatchResult? = null
+        var override: MatchResult? = null
         input.forEach { line ->
-            // 将 `package:com.android.music` 转换为 `com.android.music`
-            val trimmedLine = line.trim()
-            if (trimmedLine.startsWith("package:")) {
-                val packageName = trimmedLine.removePrefix("package:")
-                list.add(packageName)
-            }
+            physical = physical ?: wmPhysicalSizeRegex.find(line)
+            override = override ?: wmOverrideSizeRegex.find(line)
         }
 
-        return list.sorted()
+        /* 物理尺寸为必要信息，若未获取到则返回空值。 */
+        var width = -1
+        var height = -1
+        physical?.let {
+            width = it.groupValues[1].toIntOrNull() ?: return null
+            height = it.groupValues[2].toIntOrNull() ?: return null
+        }
+        if (width <= 0 || height <= 0) return null
+
+        /* 解析用户覆写尺寸 */
+        var overrideWidth = -1
+        var overrideHeight = -1
+        override?.let {
+            overrideWidth = it.groupValues[1].toIntOrNull() ?: -1
+            overrideHeight = it.groupValues[2].toIntOrNull() ?: -1
+        }
+
+        return DisplaySize(
+            physicalWidth = width,
+            physicalHeight = height,
+            overrideWidth = overrideWidth,
+            overrideHeight = overrideHeight
+        )
+    }
+
+    /**
+     * 解析 `wm density` 命令输出。
+     *
+     * 命令输出示例：
+     *
+     * ```text
+     * Physical density: 480
+     * Override density: 160
+     * ```
+     *
+     * @param[input] 命令输出。
+     * @return 像素密度信息。若解析失败则返回空值。
+     */
+    fun parseWMDensity(input: List<String>): DisplayDensity? {
+        var physical: MatchResult? = null
+        var override: MatchResult? = null
+        input.forEach { line ->
+            physical = physical ?: wmPhysicalDensityRegex.find(line)
+            override = override ?: wmOverrideDensityRegex.find(line)
+        }
+
+        /* 物理像素密度为必要信息，若未获取到则返回空值。 */
+        var physicalDensity = 0
+        physical?.let {
+            physicalDensity = it.groupValues[1].toIntOrNull() ?: 0
+        }
+        if (physicalDensity <= 0) return null
+
+        val overrideDensity = override?.groupValues?.get(1)?.toIntOrNull() ?: 0
+
+        return DisplayDensity(physicalDensity, overrideDensity)
     }
 
     /**
@@ -446,7 +524,7 @@ object ADBOutputParser {
         }
         current?.let { list.add(it) }
 
-        // 部分窗口没有 `package=` 字段，尝试从 `包名/类名` 格式的标题中提取包名。
+// 部分窗口没有 `package=` 字段，尝试从 `包名/类名` 格式的标题中提取包名。
         return list.map {
             if (it.packageName.isEmpty() && it.title.contains('/')) {
                 it.copy(packageName = it.title.substringBefore('/').substringAfterLast(' '))
@@ -506,48 +584,22 @@ object ADBOutputParser {
     }
 
     /**
-     * 解析 `wm size` 命令输出。
+     * 解析 `pm list packages` 命令输出。
      *
-     * @param[input] 命令输出。
-     * @return 分辨率信息。若解析失败或显示屏不存在（输出为 `0x0` ）则返回空值。
+     * @return 包名列表。
      */
-    fun parseWMSize(input: List<String>): DisplaySize? {
-        var physical: MatchResult? = null
-        var override: MatchResult? = null
+    fun parsePMListPackageOutput(input: List<String>): List<String> {
+        val list = mutableListOf<String>()
         input.forEach { line ->
-            physical = physical ?: wmPhysicalSizeRegex.find(line)
-            override = override ?: wmOverrideSizeRegex.find(line)
+            // 将 `package:com.android.music` 转换为 `com.android.music`
+            val trimmedLine = line.trim()
+            if (trimmedLine.startsWith("package:")) {
+                val packageName = trimmedLine.removePrefix("package:")
+                list.add(packageName)
+            }
         }
 
-        val width = physical?.groupValues?.get(1)?.toIntOrNull() ?: return null
-        val height = physical?.groupValues?.get(2)?.toIntOrNull() ?: return null
-        if (width <= 0 || height <= 0) return null
-
-        return DisplaySize(
-            physicalWidth = width,
-            physicalHeight = height,
-            overrideWidth = override?.groupValues?.get(1)?.toIntOrNull() ?: -1,
-            overrideHeight = override?.groupValues?.get(2)?.toIntOrNull() ?: -1
-        )
-    }
-
-    /**
-     * 解析 `wm density` 命令输出。
-     *
-     * @param[input] 命令输出。
-     * @return 密度信息。若解析失败则返回空值。
-     */
-    fun parseWMDensity(input: List<String>): DisplayDensity? {
-        var physical: Int? = null
-        var override: Int? = null
-        input.forEach { line ->
-            physical = physical ?: wmPhysicalDensityRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
-            override = override ?: wmOverrideDensityRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
-        }
-
-        val value = physical ?: return null
-        if (value <= 0) return null
-        return DisplayDensity(physical = value, override = override ?: -1)
+        return list.sorted()
     }
 
     /**
@@ -561,7 +613,7 @@ object ADBOutputParser {
         val match = activityRecordRegex.find(line) ?: return null
         val packageName = match.groupValues[2]
         val shortClass = match.groupValues[3]
-        // 将 `.MainActivity` 简写形式补全为完整类名
+// 将 `.MainActivity` 简写形式补全为完整类名
         val className = if (shortClass.startsWith(".")) "$packageName$shortClass" else shortClass
         return ActivityInfo(
             displayID = displayID,

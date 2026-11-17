@@ -271,7 +271,7 @@ private fun DisplayMetricsEditor(
             "逻辑分辨率",
             when {
                 size == null -> "-"
-                size.isOverridden() -> "${size.overrideWidth} x ${size.overrideHeight}" +
+                size.hasOverride() -> "${size.overrideWidth} x ${size.overrideHeight}" +
                         "（物理 ${size.physicalWidth} x ${size.physicalHeight}）"
 
                 else -> "${size.physicalWidth} x ${size.physicalHeight}"
@@ -311,7 +311,7 @@ private fun DisplayMetricsEditor(
             "像素密度",
             when {
                 density == null -> "-"
-                density.isOverridden() -> "${density.override} dpi（物理 ${density.physical} dpi）"
+                density.hasOverride() -> "${density.override} dpi（物理 ${density.physical} dpi）"
                 else -> "${density.physical} dpi"
             }
         )

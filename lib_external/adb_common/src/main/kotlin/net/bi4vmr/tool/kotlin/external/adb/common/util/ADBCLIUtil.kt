@@ -6,11 +6,7 @@ import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -29,7 +25,7 @@ import java.io.IOException
 object ADBCLIUtil {
 
     /**
-     * 正则表达式： ADB 命令。
+     * 正则表达式：ADB 命令。
      */
     private val adbCMDRegex: Regex = """^adb\s+(?:-s\s+\S+\s+)?(shell|exec-out)\s*""".toRegex()
 
@@ -43,7 +39,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @param[redirectError] 是否重定向错误输出流。默认值为 `true` 。
+     * @param[redirectError] 是否重定向错误输出流。默认值为 `true`。
      * @return [Process] 实例，永不为空，进程启动失败时抛出异常。
      * @throws[IOException] 进程启动失败。
      */
@@ -59,7 +55,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun runForStatus(sn: String, command: String): Int {
@@ -74,7 +70,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
+     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
      * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
@@ -97,7 +93,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
+     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
      * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
@@ -109,7 +105,7 @@ object ADBCLIUtil {
     }
 
     /**
-     * 打开交互式 Shell 。
+     * 打开交互式 Shell。
      *
      * @param[sn] 设备序列号。
      * @param[terminal] 终端程序，可以传入 [Terminals] 内置枚举，也可以传入 [Terminal] 接口自定义实现。默认值为空，此时使用默认终端。
@@ -138,7 +134,7 @@ object ADBCLIUtil {
      * 切换为 Root 权限。
      *
      * @param[sn] 设备序列号。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun root(sn: String): Int = runForStatus(sn, "root")
@@ -147,8 +143,8 @@ object ADBCLIUtil {
      * 重启。
      *
      * @param[sn] 设备序列号。
-     * @param[option] 附加命令，可以携带 `recovery` 、 `fastboot` 、 `bootloader` 等选项，默认为空。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @param[option] 附加命令，可以携带 `recovery`、`fastboot`、`bootloader` 等选项，默认为空。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     @JvmOverloads
@@ -233,10 +229,10 @@ object ADBCLIUtil {
         getProperty(sn, Propertys.Key.OS_VERSION, "")
 
     /**
-     * 获取设备 Android API Level 。
+     * 获取设备 Android API Level。
      *
      * @param[sn] 设备序列号。
-     * @return Android API Level 。若设备未声明则为空字符串。
+     * @return Android API Level。若设备未声明则为空字符串。
      */
     @JvmStatic
     fun getAPILevel(sn: String): String =
@@ -276,12 +272,12 @@ object ADBCLIUtil {
      * 获取显示屏物理 ID 索引。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 逻辑 ID 。
-     * @return 索引序号。无法获取时返回 `0` 。
+     * @param[displayID] 逻辑 ID。
+     * @return 索引序号。无法获取时返回 `0`。
      */
     @JvmStatic
     fun getDisplayUniqueIndex(sn: String, displayID: String): String {
-        // 对于 Android 9 及更低版本可能解析不到数据，此时默认返回 `0` 。
+        // 对于 Android 9 及更低版本可能解析不到数据，此时默认返回 `0`。
         return getDisplays(sn)
             .find { it.id == displayID }
             ?.uniqueID
@@ -289,10 +285,206 @@ object ADBCLIUtil {
     }
 
     /**
+     * 获取显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
+     * 的分辨率，只能以空值调用该方法。
+     * @return 分辨率信息。若显示屏不存在则返回空值。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getDisplaySize(sn: String, displayID: String? = null): DisplaySize? {
+        val cmd = if (displayID == null) {
+            "wm size"
+        } else {
+            "wm size -d $displayID"
+        }
+        val lines = runForLines(sn, cmd) ?: return null
+        return ADBOutputParser.parseWMSize(lines)
+    }
+
+    /**
+     * 设置显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[width] 宽度。
+     * @param[height] 高度。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
+     * 的分辨率，只能以空值调用该方法。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String? = null): Boolean {
+        val cmd = if (displayID == null) {
+            "wm size ${width}x$height"
+        } else {
+            "wm size ${width}x$height -d $displayID"
+        }
+        val status = runForStatus(sn, cmd)
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 还原显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
+     * 的分辨率，只能以空值调用该方法。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun resetDisplaySize(sn: String, displayID: String? = null): Boolean {
+        val cmd = if (displayID == null) {
+            "wm size reset"
+        } else {
+            "wm size reset -d $displayID"
+        }
+        val status = runForStatus(sn, cmd)
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 获取显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
+     * 的分辨率，只能以空值调用该方法。
+     * @return 密度信息。若出现异常则返回空值。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getDisplayDensity(sn: String, displayID: String? = null): DisplayDensity? {
+        val cmd = if (displayID == null) {
+            "wm density"
+        } else {
+            "wm density -d $displayID"
+        }
+        val lines = runForLines(sn, cmd) ?: return null
+        return ADBOutputParser.parseWMDensity(lines)
+    }
+
+    /**
+     * 设置显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[density] 密度。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
+     * 的分辨率，只能以空值调用该方法。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun setDisplayDensity(sn: String, density: Int, displayID: String? = null): Boolean {
+        val cmd = if (displayID == null) {
+            "wm density $density"
+        } else {
+            "wm density $density -d $displayID"
+        }
+        val status = runForStatus(sn, cmd)
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 还原显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
+     * 的分辨率，只能以空值调用该方法。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun resetDisplayDensity(sn: String, displayID: String? = null): Boolean {
+        val cmd = if (displayID == null) {
+            "wm density reset"
+        } else {
+            "wm density reset -d $displayID"
+        }
+        val status = runForStatus(sn, cmd)
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 获取 Activity 列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的 Activity。
+     * @return Activity 列表，每个显示屏内按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
+        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
+        return ADBOutputParser.parseActivities(lines)
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取前台 Activity 。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的前台 Activity。
+     * @return 前台 Activity 列表，每个显示屏最多一项。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getForegroundActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
+        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
+        return ADBOutputParser.parseResumedActivities(lines)
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取窗口列表。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的窗口。
+     * @return 窗口列表，按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
+        val lines = runForLines(sn, "dumpsys window windows") ?: emptyList()
+        return ADBOutputParser.parseWindows(lines)
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取前台（焦点）窗口。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的焦点窗口。
+     * @return 焦点窗口列表，每个显示屏最多一项。命令执行异常时返回空列表。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getForegroundWindows(sn: String, displayID: String? = null): List<WindowInfo> {
+        // Android 10 及更高版本在各屏幕分组中记录焦点窗口；旧版本仅有全局焦点窗口，需要回退到 `dumpsys window windows` 获取。
+        var focused = ADBOutputParser.parseFocusedWindows(
+            runForLines(sn, "dumpsys window displays") ?: emptyList()
+        )
+        if (focused.isEmpty()) {
+            focused = ADBOutputParser.parseFocusedWindows(
+                runForLines(sn, "dumpsys window windows") ?: emptyList()
+            )
+        }
+
+        return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
+            .filter { displayID == null || it.displayID == displayID }
+            .map { it.copy(sn = sn) }
+    }
+
+    /**
      * 获取屏幕截图。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
+     * @param[displayID] 显示屏 ID。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID。
      * @return 二进制数据。若出现错误则返回空值。
      */
     @JvmStatic
@@ -325,8 +517,8 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[file] 目标文件。
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @param[displayID] 显示屏 ID。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
     @JvmOverloads
@@ -348,165 +540,6 @@ object ADBCLIUtil {
         }
     }
 
-    /**
-     * 获取显示屏分辨率。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return 分辨率信息。若出现异常或显示屏不存在则返回空值。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getDisplaySize(sn: String, displayID: String? = null): DisplaySize? {
-        val lines = runForLines(sn, "wm size${displayArg(displayID)}") ?: return null
-        return ADBOutputParser.parseWMSize(lines)
-    }
-
-    /**
-     * 设置显示屏分辨率。
-     *
-     * @param[sn] 设备序列号。
-     * @param[width] 宽度。
-     * @param[height] 高度。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm size ${width}x$height${displayArg(displayID)}")
-        return CLIUtil.isSuccess(status)
-    }
-
-    /**
-     * 还原显示屏分辨率。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun resetDisplaySize(sn: String, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm size reset${displayArg(displayID)}")
-        return CLIUtil.isSuccess(status)
-    }
-
-    /**
-     * 获取显示屏像素密度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return 密度信息。若出现异常则返回空值。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getDisplayDensity(sn: String, displayID: String? = null): DisplayDensity? {
-        val lines = runForLines(sn, "wm density${displayArg(displayID)}") ?: return null
-        return ADBOutputParser.parseWMDensity(lines)
-    }
-
-    /**
-     * 设置显示屏像素密度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[density] 密度。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun setDisplayDensity(sn: String, density: Int, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm density $density${displayArg(displayID)}")
-        return CLIUtil.isSuccess(status)
-    }
-
-    /**
-     * 还原显示屏像素密度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun resetDisplayDensity(sn: String, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm density reset${displayArg(displayID)}")
-        return CLIUtil.isSuccess(status)
-    }
-
-    /**
-     * 获取 Activity 列表。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的 Activity 。
-     * @return Activity 列表，每个显示屏内按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
-        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
-        return ADBOutputParser.parseActivities(lines)
-            .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
-    }
-
-    /**
-     * 获取前台 Activity 。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的前台 Activity 。
-     * @return 前台 Activity 列表，每个显示屏最多一项。命令执行异常时返回空列表。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getForegroundActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
-        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
-        return ADBOutputParser.parseResumedActivities(lines)
-            .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
-    }
-
-    /**
-     * 获取窗口列表。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的窗口。
-     * @return 窗口列表，按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
-        val lines = runForLines(sn, "dumpsys window windows") ?: emptyList()
-        return ADBOutputParser.parseWindows(lines)
-            .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
-    }
-
-    /**
-     * 获取前台（焦点）窗口。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的焦点窗口。
-     * @return 焦点窗口列表，每个显示屏最多一项。命令执行异常时返回空列表。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getForegroundWindows(sn: String, displayID: String? = null): List<WindowInfo> {
-        // Android 10 及更高版本在各屏幕分组中记录焦点窗口；旧版本仅有全局焦点窗口，需要回退到 `dumpsys window windows` 获取。
-        var focused = ADBOutputParser.parseFocusedWindows(
-            runForLines(sn, "dumpsys window displays") ?: emptyList()
-        )
-        if (focused.isEmpty()) {
-            focused = ADBOutputParser.parseFocusedWindows(
-                runForLines(sn, "dumpsys window windows") ?: emptyList()
-            )
-        }
-
-        return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
-            .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
-    }
 
     /*
      * ----- 文件系统 -----
@@ -562,7 +595,7 @@ object ADBCLIUtil {
      * 重新挂载文件系统。
      *
      * @param[sn] 设备序列号。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
     fun remount(sn: String): Boolean {
@@ -579,7 +612,7 @@ object ADBCLIUtil {
      * 开启 TCP/IP 远程控制。
      *
      * @param[sn] 设备序列号。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun startRemoteControl(sn: String): Boolean {
@@ -592,7 +625,7 @@ object ADBCLIUtil {
      * 关闭 TCP/IP 远程控制。
      *
      * @param[sn] 设备序列号。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun stopRemoteControl(sn: String): Boolean {
@@ -607,7 +640,7 @@ object ADBCLIUtil {
      * @param[sn] 设备序列号。
      * @param[pcPort] PC 端口。
      * @param[devicePort] Android 端口。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun startForward(sn: String, pcPort: Int, devicePort: Int): Boolean {
@@ -621,7 +654,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[pcPort] PC 端口。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun stopForward(sn: String, pcPort: Int): Boolean {
@@ -636,7 +669,7 @@ object ADBCLIUtil {
      * @param[sn] 设备序列号。
      * @param[pcEndPoint] PC 端口。
      * @param[deviceEndPoint] Android 端口。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun startForward(sn: String, pcEndPoint: String, deviceEndPoint: String): Boolean {
@@ -650,7 +683,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[pcEndPoint] PC 端口。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun stopForward(sn: String, pcEndPoint: String): Boolean {
@@ -663,7 +696,7 @@ object ADBCLIUtil {
      * 清除所有 ADB 端口转发。
      *
      * @param[sn] 设备序列号。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
     fun cleanForward(sn: String): Boolean {
@@ -741,7 +774,7 @@ object ADBCLIUtil {
      * @param[sn] 设备序列号。
      * @param[packageName] 包名。
      * @param[userID] 用户 ID。默认为空值，表示不指定用户。
-     * @throws[Exception] 启用失败。消息为 PM 命令输出的错误信息。
+     * @throws[Exception] 启用失败。消息为 `pm` 命令输出的错误信息。
      */
     @JvmStatic
     @JvmOverloads
@@ -758,12 +791,12 @@ object ADBCLIUtil {
     /**
      * 禁用软件包。
      *
-     * 优先使用 `pm disable` 命令；若执行失败（例如非 Root 环境下 Shell 无权修改组件状态），则回退至 `pm disable-user` 命令。
+     * 优先使用 `pm disable` 命令；若执行失败则回退至 `pm disable-user` 命令。
      *
      * @param[sn] 设备序列号。
      * @param[packageName] 包名。
      * @param[userID] 用户 ID。默认为空值，表示不指定用户。
-     * @throws[Exception] 禁用失败。消息为 PM 命令输出的错误信息。
+     * @throws[Exception] 禁用失败。消息为 `pm` 命令输出的错误信息。
      */
     @JvmStatic
     @JvmOverloads
@@ -798,7 +831,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @return 命令语句。如果输入语句为空，则返回空命令 `:` 。
+     * @return 命令语句。如果输入语句为空，则返回空命令 `:`。
      */
     @JvmStatic
     fun buildCommand(sn: String, command: String): String {
@@ -888,7 +921,7 @@ object ADBCLIUtil {
     /**
      * 构建 `wm` 命令的显示屏参数。
      *
-     * @param[displayID] 显示屏逻辑 ID 。
+     * @param[displayID] 显示屏逻辑 ID。
      * @return 参数文本。若未指定显示屏则返回空字符串。
      */
     private fun displayArg(displayID: String?): String = if (displayID == null) "" else " -d $displayID"
