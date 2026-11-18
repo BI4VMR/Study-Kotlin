@@ -848,9 +848,8 @@ class ADBProxyClient(
      */
     suspend fun getActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
         val lines = runForLines(sn, "dumpsys activity activities") ?: return emptyList()
-        return ADBOutputParser.parseActivities(lines)
+        return ADBOutputParser.parseDumpActivities(lines)
             .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
     }
 
     /**
@@ -864,7 +863,6 @@ class ADBProxyClient(
         val lines = runForLines(sn, "dumpsys activity activities") ?: return emptyList()
         return ADBOutputParser.parseResumedActivities(lines)
             .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
     }
 
     /**
@@ -878,7 +876,6 @@ class ADBProxyClient(
         val lines = runForLines(sn, "dumpsys window windows") ?: return emptyList()
         return ADBOutputParser.parseWindows(lines)
             .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
     }
 
     /**

@@ -1,9 +1,11 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseFocusedWindows
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseWindows
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 
 /**
  * ADB 输出解析器。
@@ -21,17 +23,17 @@ object ADBOutputParser {
     private val deviceConnectedRegex = """^(?:already )?connected to .+?:\d+$""".toRegex()
 
     /**
-     * 正则表达式：屏幕 ID （Android 11 及更高版本）。
+     * 正则表达式：屏幕 ID（Android 11 及更高版本）。
      */
     private val displayIDRegex_V11U = """Display id (\d+):""".toRegex()
 
     /**
-     * 正则表达式：屏幕 ID （Android 10）。
+     * 正则表达式：屏幕 ID（Android 10）。
      */
     private val displayIDRegex_V10 = """displayId (\d+)""".toRegex()
 
     /**
-     * 正则表达式：屏幕物理 ID 。
+     * 正则表达式：屏幕物理 ID。
      */
     private val uniqueIDRegex = """uniqueId "([^:]+:[^"]+)"""".toRegex()
 
@@ -51,28 +53,67 @@ object ADBOutputParser {
     private val wmOverrideSizeRegex = """Override size:\s*(\d+)x(\d+)""".toRegex()
 
     /**
-     * 正则表达式： `wm density` 命令输出（物理尺寸）。
+     * 正则表达式：`wm density` 命令输出（物理尺寸）。
      */
     private val wmPhysicalDensityRegex = """Physical density:\s*(\d+)""".toRegex()
 
     /**
-     * 正则表达式： `wm density` 命令输出（用户改写尺寸）。
+     * 正则表达式：`wm density` 命令输出（用户改写尺寸）。
      */
     private val wmOverrideDensityRegex = """Override density:\s*(\d+)""".toRegex()
 
-    // 正则表达式：Activity 列表中的屏幕分组，例如 `Display #0 (activities from top to bottom):` 。
+    /**
+     * 正则表达式：Activity 列表中的屏幕分组。
+     *
+     * 例如：`Display #0 (activities from top to bottom)`。
+     */
     private val activityDisplayRegex = """^\s*Display #(\d+)""".toRegex()
 
-    // 正则表达式：Activity 历史记录行，例如 `* Hist  #0: ActivityRecord{...}` 。
+    /**
+     * 正则表达式：Activity 历史记录行。
+     *
+     * 例如：`* Hist  #0: ActivityRecord`。
+     */
     private val activityHistRegex = """^\s*\*?\s*Hist\s+#\d+:""".toRegex()
+
+    /**
+     * 正则表达式：ActivityRecord。
+     *
+     * 格式：`ActivityRecord{<对象 Hash> u<用户 ID> <Activity 完整名称> t<任务 ID>}`。
+     */
+    private val activityRecordRegex = """ActivityRecord\{\S+\s+u(\d+)\s+([^/\s]+)/([^\s}]+)\}?\s+t(-?\d+)""".toRegex()
+
+    /**
+     * 正则表达式： Activity 详情中的进程信息。
+     *
+     * 格式：`app=ProcessRecord{<对象 Hash> <进程 ID>:<进程名称>/u0a100}`。
+     */
+    private val activityProcessRecordRegex = """app=ProcessRecord\{\S+\s+(\d+):([^/\s}]+)""".toRegex()
+
+    /**
+     * 正则表达式：Activity 详情中的启动者 UID。
+     */
+    private val activityLaunchedFromUIDRegex = """\blaunchedFromUid=(-?\d+)""".toRegex()
+
+    /**
+     * 正则表达式：Activity 详情中的启动者包名。
+     */
+    private val activityLaunchedFromPackageRegex = """\blaunchedFromPackage=(\S+)""".toRegex()
+
+    /**
+     * 正则表达式：Activity 详情中的启动 Intent 信息。
+     */
+    private val activityIntentRegex = """^\s*(?:Intent\s*|intent=)\{\s*(.*?)\s*\}\s*$""".toRegex()
+
+    /**
+     * 正则表达式：Activity 详情中的 TaskAffinity。
+     */
+    private val activityTaskAffinityRegex = """\btaskAffinity=(?:\d+:)?(\S+)""".toRegex()
 
     // 正则表达式：屏幕内的前台 Activity 行，例如 `Resumed: ActivityRecord{...}` （Android 12 及更高版本）、
     // `topResumedActivity=ActivityRecord{...}` 或 `mResumedActivity: ActivityRecord{...}` （旧版本）。
     // 注意：不匹配位于所有屏幕之后的全局 `ResumedActivity:` 行，它仅表示全局焦点所在的 Activity 。
     private val resumedActivityRegex = """^\s*(?:Resumed:|topResumedActivity=|mResumedActivity:)""".toRegex()
-
-    // 正则表达式：`ActivityRecord{hash u0 com.example/.MainActivity t12}` 。
-    private val activityRecordRegex = """ActivityRecord\{\S+\s+u(\d+)\s+([^/\s]+)/([^\s}]+)\}?\s+t(-?\d+)""".toRegex()
 
     // 正则表达式：窗口列表中的窗口标题行，例如 `Window #0 Window{hash u0 NavigationBar0}:` 。
     private val windowHeaderRegex = """^\s*Window #\d+ Window\{(\S+) u(\d+) (.*)\}:\s*$""".toRegex()
@@ -420,33 +461,110 @@ object ADBOutputParser {
     }
 
     /**
-     * 解析 `dumpsys activity activities` 命令输出中的 Activity 列表。
+     * 解析 `dumpsys activity activities` 命令输出的 Activity 列表。
+     *
+     * 命令输出示例：
+     *
+     * ```text
+     * Display #0 (activities from top to bottom):
+     * Task{aa315c0 #93 type=standard A=10156:net.bi4vmr.study.ui.compose.graphic U=0 visible=false visibleRequested=false
+     * mode=fullscreen translucent=true sz=2}
+     * mLastPausedActivity: ActivityRecord{162549369 u0 net.bi4vmr.study.ui.compose.graphic/net.bi4vmr.study.shadow.TestUIBaseShadow t93}
+     * mLastNonFullscreenBounds=Rect(280, 640 - 801, 1720) isSleeping=false
+     *   * Hist  #1: ActivityRecord{162549369 u0 net.bi4vmr.study.ui.compose.graphic/net.bi4vmr.study.shadow.TestUIBaseShadow t93}
+     *     packageName=net.bi4vmr.study.ui.compose.graphic processName=net.bi4vmr.study.ui.compose.graphic
+     *     launchedFromUid=10156 launchedFromPackage=net.bi4vmr.study.ui.compose.graphic launchedFromFeature=null userId=0
+     *     app=ProcessRecord{264c5b5 18434:net.bi4vmr.study.ui.compose.graphic/u0a156}
+     *     Intent { xflg=0x4 cmp=net.bi4vmr.study.ui.compose.graphic/net.bi4vmr.study.shadow.TestUIBaseShadow }
+     *     rootOfTask=false task=Task{aa315c0 #93 type=standard A=10156:net.bi4vmr.study.ui.compose.graphic}
+     *     taskAffinity=10156:net.bi4vmr.study.ui.compose.graphic
+     *     <此处省略部分输出...>
+     *   * Hist  #0: ActivityRecord{152553714 u0 net.bi4vmr.study.ui.compose.graphic/net.bi4vmr.study.MainActivity t93}
+     *     packageName=net.bi4vmr.study.ui.compose.graphic processName=net.bi4vmr.study.ui.compose.graphic
+     *     launchedFromUid=2000 launchedFromPackage=com.android.shell launchedFromFeature=null userId=0
+     *     app=ProcessRecord{264c5b5 18434:net.bi4vmr.study.ui.compose.graphic/u0a156}
+     *     Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 xflg=0x4 cmp=net.bi4vmr.study.ui.compose.graphic/net.bi4vmr.study.MainActivity }
+     *     rootOfTask=true task=Task{aa315c0 #93 type=standard A=10156:net.bi4vmr.study.ui.compose.graphic}
+     *     taskAffinity=10156:net.bi4vmr.study.ui.compose.graphic
+     *
+     * Display #1 (activities from top to bottom):
+     * ```
      *
      * 每个屏幕内的 Activity 按照从顶层到底层的顺序排列。
      *
      * @param[input] 命令输出。
      * @return Activity 列表。
      */
-    fun parseActivities(input: List<String>): List<ActivityInfo> {
-        val list = mutableListOf<ActivityInfo>()
-        var displayID: String? = null
-        input.forEach { line ->
-            activityDisplayRegex.find(line)?.let {
-                displayID = it.groupValues[1]
-                return@forEach
-            }
-            // 无缩进的非空行表示屏幕分组已结束
-            if (line.isNotBlank() && !line.first().isWhitespace()) {
-                displayID = null
-                return@forEach
-            }
+    fun parseDumpActivities(input: List<String>): List<ActivityInfo> {
+        val results = mutableListOf<ActivityInfo>()
 
-            val currentDisplay = displayID ?: return@forEach
-            if (!activityHistRegex.containsMatchIn(line)) return@forEach
-            parseActivityRecord(line, currentDisplay)?.let { list.add(it) }
+        var currentDisplayID: String? = null
+        var currentActivity: ActivityInfo? = null
+        // 输出内容层级按照缩进区分，因此进入每个 Activity 记录时需要记录当前缩进量，根据后续行的缩进量可判断当前区块是否结束。
+        var currentIndent = 0
+
+        // 若先前内容已解析到 Activity 信息，将其提交至结果列表，并清空暂存变量。
+        fun commitActivityInfo() {
+            currentActivity?.let { results.add(it) }
+            currentActivity = null
         }
 
-        return list
+        input.forEach { line ->
+            if (line.isBlank()) return@forEach
+
+            // 匹配屏幕分组 `Display #X`
+            activityDisplayRegex.find(line)?.let {
+                commitActivityInfo()
+                currentDisplayID = it.groupValues[1]
+                return@forEach
+            }
+
+            // 屏幕分组是顶层元素，遇到无缩进的非空行，表示当前屏幕分组区块结束。
+            if (line.isNotBlank() && !line.first().isWhitespace()) {
+                commitActivityInfo()
+                currentDisplayID = null
+                return@forEach
+            }
+
+            // 若先前内容已解析屏幕信息，继续解析 Activity 信息，否则忽略当前行。
+            val displayID = currentDisplayID ?: return@forEach
+            // 计算当前行的缩进量
+            val indent = line.indexOfFirst { !it.isWhitespace() }
+
+            // 当前行是每条 Activity 记录的起始行。
+            if (activityHistRegex.containsMatchIn(line)) {
+                commitActivityInfo()
+                // 未匹配到关键信息则跳过本行
+                val match = activityRecordRegex.find(line) ?: return@forEach
+                // 已匹配到关键信息，解析 Activity 名称。
+                val userID = match.groupValues[1].toIntOrNull() ?: -1
+                val packageName = match.groupValues[2]
+                val className = match.groupValues[3]
+                val taskID = match.groupValues[4].toIntOrNull() ?: -1
+                currentActivity = ActivityInfo(
+                    packageName = packageName,
+                    className = className,
+                    displayID = displayID,
+                    userID = userID,
+                    taskID = taskID
+                )
+                currentIndent = indent
+                return@forEach
+            }
+
+            // 读取到缩进量小于 `Hist` 行，说明当前 Activity 区块已结束。
+            val activity = currentActivity ?: return@forEach
+            if (indent <= currentIndent) {
+                commitActivityInfo()
+                return@forEach
+            }
+            // 当前 Activity 区块未结束，则尝试解析剩余属性。
+            currentActivity = parseActivityDetail(line, activity)
+        }
+        // 遍历结束，如有剩余的 Activity 信息则提交至结果列表。
+        commitActivityInfo()
+
+        return results
     }
 
     /**
@@ -613,14 +731,51 @@ object ADBOutputParser {
         val match = activityRecordRegex.find(line) ?: return null
         val packageName = match.groupValues[2]
         val shortClass = match.groupValues[3]
-// 将 `.MainActivity` 简写形式补全为完整类名
         val className = if (shortClass.startsWith(".")) "$packageName$shortClass" else shortClass
         return ActivityInfo(
-            displayID = displayID,
             packageName = packageName,
             className = className,
+            displayID = displayID,
             taskID = match.groupValues[4].toIntOrNull() ?: -1,
             userID = match.groupValues[1].toIntOrNull() ?: -1
         )
+    }
+
+    /**
+     * 解析 `dumpsys activity activities` 命令输出中 `Hist` 行之后的 Activity 详情。
+     *
+     * @param[line] 详情行。
+     * @param[info] 当前已解析的 Activity 信息。
+     * @return 补充详情后的 Activity 信息。
+     */
+    private fun parseActivityDetail(line: String, info: ActivityInfo): ActivityInfo {
+        var result = info
+
+        activityIntentRegex.find(line)?.let {
+            result = result.copy(intent = it.groupValues[1])
+        }
+
+        if (line.trimStart().startsWith("app=")) {
+            activityProcessRecordRegex.find(line)?.let {
+                result = result.copy(
+                    processID = it.groupValues[1].toIntOrNull() ?: -1,
+                    processName = it.groupValues[2]
+                )
+            }
+        }
+
+        activityLaunchedFromUIDRegex.find(line)?.let {
+            result = result.copy(launchedFromUID = it.groupValues[1].toIntOrNull() ?: -1)
+        }
+
+        activityLaunchedFromPackageRegex.find(line)?.let {
+            result = result.copy(launchedFromPackage = it.groupValues[1])
+        }
+
+        activityTaskAffinityRegex.find(line)?.let {
+            result = result.copy(taskAffinity = it.groupValues[1])
+        }
+
+        return result
     }
 }

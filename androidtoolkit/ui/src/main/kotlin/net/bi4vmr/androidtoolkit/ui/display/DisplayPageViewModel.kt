@@ -171,24 +171,18 @@ class DisplayPageViewModel(
                 val executor = logicManager.selectedExecutorFlow.value
                 val state = runCatching {
                     when (query.tab) {
+                        ComponentTab.BASE -> ComponentsState(
+                            tab = query.tab
+                        )
+
                         ComponentTab.ACTIVITIES -> ComponentsState(
                             tab = query.tab,
                             activities = executor.getActivities(sn, query.displayID)
                         )
 
-                        ComponentTab.FOREGROUND_ACTIVITIES -> ComponentsState(
-                            tab = query.tab,
-                            activities = executor.getForegroundActivities(sn, query.displayID)
-                        )
-
                         ComponentTab.WINDOWS -> ComponentsState(
                             tab = query.tab,
                             windows = executor.getWindows(sn, query.displayID)
-                        )
-
-                        ComponentTab.FOREGROUND_WINDOWS -> ComponentsState(
-                            tab = query.tab,
-                            windows = executor.getForegroundWindows(sn, query.displayID)
                         )
                     }
                 }.getOrElse { ComponentsState(tab = query.tab) }
@@ -298,10 +292,9 @@ class DisplayPageViewModel(
  * 界面组件选项卡。
  */
 enum class ComponentTab(val label: String) {
+    BASE("基础信息"),
     ACTIVITIES("Activity 列表"),
-    FOREGROUND_ACTIVITIES("前台 Activity"),
-    WINDOWS("窗口列表"),
-    FOREGROUND_WINDOWS("前台窗口")
+    WINDOWS("窗口列表")
 }
 
 /**

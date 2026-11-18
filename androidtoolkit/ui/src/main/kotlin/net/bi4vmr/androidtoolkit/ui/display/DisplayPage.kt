@@ -63,19 +63,7 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
     val displays: List<DisplayInfo> by viewModel.displaysFlow.collectAsStateWithLifecycle()
     val selectedDisplay: DisplayInfo? by viewModel.selectedDisplayFlow.collectAsStateWithLifecycle()
     val componentTab: ComponentTab by viewModel.componentTabFlow.collectAsStateWithLifecycle()
-    val allDisplays: Boolean by viewModel.allDisplaysFlow.collectAsStateWithLifecycle()
     val components: ComponentsState by viewModel.componentsFlow.collectAsStateWithLifecycle()
-    val metrics: DisplayMetrics by viewModel.metricsFlow.collectAsStateWithLifecycle()
-    val toastManager: ToastManager = globalStateManager.toastManager
-    val showResult: (String) -> (Boolean) -> Unit = { action ->
-        { success ->
-            if (success) {
-                toastManager.show("${action}成功", ToastType.SUCCESS)
-            } else {
-                toastManager.show("${action}失败", ToastType.ERROR)
-            }
-        }
-    }
 
 
     // 根容器
@@ -114,25 +102,14 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            if (selectedDisplay != null) {
-                DisplayMetricsEditor(
-                    metrics = metrics,
-                    onSetSize = { w, h -> viewModel.setDisplaySize(w, h, showResult("修改分辨率")) },
-                    onResetSize = { viewModel.resetDisplaySize(showResult("还原分辨率")) },
-                    onSetDensity = { viewModel.setDisplayDensity(it, showResult("修改密度")) },
-                    onResetDensity = { viewModel.resetDisplayDensity(showResult("还原密度")) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
-                )
-            }
-
             HorizontalDivider()
 
             ComponentPanel(
+                globalStateManager,
+                viewModel = viewModel,
                 tab = componentTab,
-                allDisplays = allDisplays,
                 state = components,
                 onSelectTab = { viewModel.selectComponentTab(it) },
-                onAllDisplaysChange = { viewModel.setAllDisplays(it) },
                 onRefresh = { viewModel.refreshComponents() },
                 modifier = Modifier.fillMaxWidth().weight(1F)
             )
@@ -344,11 +321,11 @@ private fun DisplayMetricsEditor(
  */
 @Composable
 private fun ComponentPanel(
+    globalStateManager: GlobalStateManager,
+    viewModel: DisplayPageViewModel,
     tab: ComponentTab,
-    allDisplays: Boolean,
     state: ComponentsState,
     onSelectTab: (ComponentTab) -> Unit,
-    onAllDisplaysChange: (Boolean) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -367,11 +344,6 @@ private fun ComponentPanel(
 
             Spacer(Modifier.weight(1F))
 
-            Checkbox(checked = allDisplays, onCheckedChange = onAllDisplaysChange)
-            Text("所有显示屏")
-
-            Spacer(Modifier.width(Dimens.Layout.Space))
-
             OutlinedButton(onClick = onRefresh, enabled = !state.loading) {
                 Text("刷新")
             }
@@ -380,14 +352,36 @@ private fun ComponentPanel(
         Spacer(Modifier.height(Dimens.Layout.Space))
 
         Box(Modifier.weight(1F).fillMaxWidth()) {
-            val isActivityTab = (state.tab == ComponentTab.ACTIVITIES) ||
-                    (state.tab == ComponentTab.FOREGROUND_ACTIVITIES)
+            val isActivityTab = (state.tab == ComponentTab.ACTIVITIES)
             val empty = if (isActivityTab) state.activities.isEmpty() else state.windows.isEmpty()
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
 
                 empty -> Text("暂无数据", Modifier.align(Alignment.Center))
 
+                state.tab == ComponentTab.BASE -> {
+                    val metrics: DisplayMetrics by viewModel.metricsFlow.collectAsStateWithLifecycle()
+
+                    val toastManager: ToastManager = globalStateManager.toastManager
+                    val showResult: (String) -> (Boolean) -> Unit = { action ->
+                        { success ->
+                            if (success) {
+                                toastManager.show("${action}成功", ToastType.SUCCESS)
+                            } else {
+                                toastManager.show("${action}失败", ToastType.ERROR)
+                            }
+                        }
+                    }
+
+                    DisplayMetricsEditor(
+                        metrics = metrics,
+                        onSetSize = { w, h -> viewModel.setDisplaySize(w, h, showResult("修改分辨率")) },
+                        onResetSize = { viewModel.resetDisplaySize(showResult("还原分辨率")) },
+                        onSetDensity = { viewModel.setDisplayDensity(it, showResult("修改密度")) },
+                        onResetDensity = { viewModel.resetDisplayDensity(showResult("还原密度")) },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
+                    )
+                }
                 else -> SelectionContainer {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.Layout.SpaceSmall)) {
                         if (isActivityTab) {
@@ -406,8 +400,8 @@ private fun ComponentPanel(
 private fun ActivityListItem(activity: ActivityInfo) {
     ComponentCard(
         displayID = activity.displayID,
-        title = activity.className,
-        subtitle = activity.packageName,
+        title = activity.componentName,
+        subtitle = activity.taskAffinity,
         extra = "Task ${activity.taskID}  ·  User ${activity.userID}"
     )
 }
