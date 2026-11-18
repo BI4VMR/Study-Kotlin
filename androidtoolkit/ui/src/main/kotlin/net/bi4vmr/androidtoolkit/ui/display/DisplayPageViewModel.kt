@@ -6,24 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 
@@ -34,8 +23,10 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
  * @since 1.0.0
  */
 class DisplayPageViewModel(
-    private val logicManager: LogicManager
+    globalStateManager: GlobalStateManager
 ) : ViewModel() {
+
+    private val logicManager: LogicManager = globalStateManager.logicManager
 
     // 刷新触发器
     private val refreshTrigger = MutableStateFlow(0)
@@ -54,12 +45,14 @@ class DisplayPageViewModel(
                         is LocalDevice -> {
                             device.getDisplays()
                         }
+
                         is RemoteDevice -> {
                             logicManager.selectedExecutorFlow.value.getDisplays(device.getSN())
                         }
+
                         else -> emptyList()
                     }
-                    emit(list)
+                    emit(list.sortedBy { it.id })
                 }.flowOn(Dispatchers.IO)
             }
             .stateIn(

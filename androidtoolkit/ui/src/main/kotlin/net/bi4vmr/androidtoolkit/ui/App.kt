@@ -1,26 +1,8 @@
 package net.bi4vmr.androidtoolkit.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -35,6 +17,7 @@ import net.bi4vmr.androidtoolkit.ui.files.FilesPage
 import net.bi4vmr.androidtoolkit.ui.generic.GenericPage
 import net.bi4vmr.androidtoolkit.ui.setting.SettingPage
 import net.bi4vmr.androidtoolkit.ui.theme.AppTheme
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 应用主界面。
@@ -62,11 +45,11 @@ fun App() {
                                 icon = {
                                     Icon(
                                         imageVector = page.icon,
-                                        contentDescription = page.titleRes,
+                                        contentDescription = null,
                                         modifier = Modifier.size(Dimens.Icon.Large)
                                     )
                                 },
-                                label = { Text(page.titleRes) },
+                                label = { Text(stringResource(page.titleRes)) },
                                 onClick = { currentPage = page }
                             )
                         }

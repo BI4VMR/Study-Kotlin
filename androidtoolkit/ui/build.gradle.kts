@@ -31,7 +31,6 @@ dependencies {
     api(libKotlin.ktx.coroutines.swing)
     api(compose.desktop.currentOs)
     api(libKotlin.compose.material3)
-    api(libKotlin.compose.material.icons)
     api(libKotlin.compose.viewmodel)
     api(libKotlin.compose.resources)
 }

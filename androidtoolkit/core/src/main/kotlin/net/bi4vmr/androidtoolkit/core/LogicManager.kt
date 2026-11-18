@@ -2,24 +2,9 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.generateCertificate
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import io.ktor.network.tls.certificates.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import net.bi4vmr.androidtoolkit.base.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.base.enums.DarkMode
 import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
@@ -261,7 +246,7 @@ object LogicManager {
                             }
                         }
 
-                        newList
+                        newList.sortedBy { it.getSN() }
                     }
                 } else {
                     /* 远程执行器不支持记住远程设备，直接返回原列表即可。 */

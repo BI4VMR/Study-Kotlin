@@ -1,12 +1,9 @@
 package net.bi4vmr.androidtoolkit.ui.common
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.ui.graphics.vector.ImageVector
+import net.bi4vmr.androidtoolkit.ui.*
+import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * 页面。
@@ -19,7 +16,7 @@ enum class Pages(
     /**
      * 标签文本资源。
      */
-    val titleRes: String,
+    val titleRes: StringResource,
 
     /**
      * 图标。
@@ -30,25 +27,25 @@ enum class Pages(
     /**
      * 主页。
      */
-    GENERAL("主页", Icons.Filled.Home),
+    GENERAL(Res.string.common_home, Icons.Home),
 
     /**
      * 屏幕管理。
      */
-    DISPLAY("显示", Icons.Filled.SmartDisplay),
+    DISPLAY(Res.string.common_display, Icons.Screen),
 
     /**
      * 应用管理。
      */
-    APP("应用", Icons.Filled.Apps),
+    APP(Res.string.common_apps, Icons.Apps),
 
     /**
      * 文件管理。
      */
-    FILE("文件", Icons.Filled.Folder),
+    FILE(Res.string.common_files, Icons.File),
 
     /**
      * 设置。
      */
-    SETTING("设置", Icons.Filled.Settings);
+    SETTING(Res.string.common_setting, Icons.Settings);
 }

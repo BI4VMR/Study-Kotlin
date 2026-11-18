@@ -25,16 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -70,6 +60,7 @@ import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.DeviceFile
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
+import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
 import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
 
 /**
@@ -141,16 +132,16 @@ private fun NavigationBar(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.Layout.Space, vertical = Dimens.Layout.SpaceSmall)
     ) {
         IconButton(onClick = onBack, enabled = canGoBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "后退")
+            Icon(Icons.ScreenShot, contentDescription = "后退")
         }
         IconButton(onClick = onForward, enabled = canGoForward) {
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "前进")
+            Icon(Icons.ScreenShot, contentDescription = "前进")
         }
         IconButton(onClick = onUp, enabled = (path != FilesPageViewModel.ROOT)) {
-            Icon(Icons.Default.ArrowUpward, contentDescription = "上级目录")
+            Icon(Icons.ScreenShot, contentDescription = "上级目录")
         }
         IconButton(onClick = onRefresh) {
-            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            Icon(Icons.Refresh, contentDescription = "刷新")
         }
 
         Box(
@@ -180,9 +171,9 @@ private fun NavigationBar(
 
         IconButton(onClick = { editMode = !editMode }) {
             if (editMode) {
-                Icon(Icons.Default.Check, contentDescription = "切换为导航模式")
+                Icon(Icons.Close, contentDescription = "切换为导航模式")
             } else {
-                Icon(Icons.Default.Edit, contentDescription = "切换为编辑模式")
+                Icon(Icons.ScreenShot, contentDescription = "切换为编辑模式")
             }
         }
     }
@@ -208,7 +199,7 @@ private fun Breadcrumb(path: String, onNavigate: (String) -> Unit, onBlankClick:
             segments.forEachIndexed { index, name ->
                 if (index > 0) {
                     Icon(
-                        Icons.Default.ChevronRight,
+                        Icons.ScreenShot,
                         contentDescription = null,
                         modifier = Modifier.size(Dimens.Icon.Small)
                     )
@@ -349,7 +340,7 @@ private fun FileRow(file: DeviceFile, selected: Boolean, onClick: () -> Unit, on
             .padding(horizontal = Dimens.Layout.Padding, vertical = Dimens.Layout.ListItemPadding)
     ) {
         Icon(
-            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
+            imageVector = if (file.isDirectory) Icons.ScreenShot else Icons.ScreenShot,
             contentDescription = null,
             tint = if (file.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Dimens.Icon.Small)

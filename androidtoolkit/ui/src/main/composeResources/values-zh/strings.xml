@@ -20,8 +20,22 @@
     <string name="error_port_out_of_range">端口应当在 [0, 65535] 之间！</string>
 
 
+    <!-- 公共 -->
+    <string name="common_home">主页</string>
+    <string name="common_display">显示</string>
+    <string name="common_apps">应用</string>
+    <string name="common_files">文件</string>
+    <string name="common_setting">设置</string>
+
+
     <!-- 通用 -->
     <string name="generic_adddevicedialog_title">添加远程设备</string>
+
+
+    <!-- 显示 -->
+    <string name="display_tab_base">基础信息</string>
+    <string name="display_tab_activities">Activity 信息</string>
+    <string name="display_tab_windows">Window 信息</string>
 
 
     <!-- 设置 -->
@@ -39,4 +53,6 @@
     <string name="deviceselectpanel_localexecutor">本地</string>
     <string name="deviceselectpanel_unknown">未知设备</string>
     <string name="deviceselectpanel_remote">远程设备</string>
+
+    <string name="displayselectpanel_title">屏幕</string>
 </resources>

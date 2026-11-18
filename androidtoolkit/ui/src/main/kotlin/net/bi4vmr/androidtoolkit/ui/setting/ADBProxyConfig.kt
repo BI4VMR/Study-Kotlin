@@ -1,27 +1,8 @@
 package net.bi4vmr.androidtoolkit.ui.setting
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,11 +12,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.bi4vmr.androidtoolkit.base.constants.ConfigDefaults
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
+import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.PairedPeer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.enums.ServerState
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 /**
  * ADB 转发器配置。
@@ -166,7 +147,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                             )
                         }
                         TextButton(onClick = { pendingRevoke = client }) {
-                            Icon(Icons.Default.Delete, null)
+                            Icon(Icons.Delete, null)
                             Spacer(Modifier.width(Dimens.Layout.Space))
                             Text("删除")
                         }
@@ -219,7 +200,7 @@ fun ADBProxyConfig(globalStateManager: GlobalStateManager) {
                     globalStateManager.logicManager.setProxyInterface(interfaceInput)
                     globalStateManager.logicManager.setProxyPort(portNumber)
                 }) {
-                    Icon(Icons.Default.Save, null)
+                    Icon(Icons.Save, null)
                     Spacer(Modifier.width(Dimens.Layout.Space))
                     Text("保存")
                 }

@@ -25,7 +25,7 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
     Row(modifier = Modifier.fillMaxSize()) {
         DeviceSelectPanel(
             globalStateManager = globalStateManager,
-            modifier = Modifier.weight(0.4F).fillMaxHeight()
+            modifier = Modifier.fillMaxHeight().weight(0.4F)
         )
 
         VerticalDivider()
@@ -33,7 +33,7 @@ fun GenericPage(globalStateManager: GlobalStateManager) {
         DevicePanel(
             globalStateManager = globalStateManager,
             device = selectedDevice,
-            modifier = Modifier.weight(0.6F).fillMaxHeight()
+            modifier = Modifier.fillMaxHeight().weight(0.6F)
         )
     }
 }
