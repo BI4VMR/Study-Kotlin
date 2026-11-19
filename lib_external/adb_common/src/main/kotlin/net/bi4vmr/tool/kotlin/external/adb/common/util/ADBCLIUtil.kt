@@ -6,11 +6,7 @@ import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -327,6 +323,7 @@ object ADBCLIUtil {
             "wm size ${width}x$height -d $displayID"
         }
         val status = runForStatus(sn, cmd)
+        println("status -> $status")
         return CLIUtil.isSuccess(status)
     }
 
@@ -347,6 +344,7 @@ object ADBCLIUtil {
             "wm size reset -d $displayID"
         }
         val status = runForStatus(sn, cmd)
+        println("status -> $status")
         return CLIUtil.isSuccess(status)
     }
 

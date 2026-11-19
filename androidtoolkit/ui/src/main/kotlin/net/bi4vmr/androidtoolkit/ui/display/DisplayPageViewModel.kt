@@ -6,27 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
-import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 
 /**
  * ViewModel : 显示页面。
@@ -35,13 +21,14 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
  * @since 1.0.0
  */
 class DisplayPageViewModel(
-    private val globalStateManager: GlobalStateManager
+    val globalStateManager: GlobalStateManager
 ) : ViewModel() {
 
     private val logicManager: LogicManager = globalStateManager.logicManager
 
-    // 刷新触发器
-    private val refreshTrigger = MutableStateFlow(0)
+
+    // 刷新触发器：屏幕列表
+    private val displaysRefreshTrigger = MutableStateFlow(0)
 
     /**
      * Flow : 屏幕列表。
@@ -50,21 +37,16 @@ class DisplayPageViewModel(
      */
     val displaysFlow: StateFlow<List<DisplayInfo>> =
         logicManager.selectedDeviceFlow
-            .combine(refreshTrigger) { device, _ -> device }
+            .combine(displaysRefreshTrigger) { device, _ -> device }
             .flatMapLatest { device ->
                 flow {
-                    val list = when (device) {
-                        is LocalDevice -> {
-                            device.getDisplays()
-                        }
-
-                        is RemoteDevice -> {
-                            logicManager.selectedExecutorFlow.value.getDisplays(device.getSN())
-                        }
-
-                        else -> emptyList()
+                    if (device == null) {
+                        emit(emptyList())
+                        return@flow
                     }
-                    emit(list.sortedBy { it.id })
+
+                    val displays = logicManager.getSelectedExecutor().getDisplays(device.getSN())
+                    emit(displays.sortedBy { it.id })
                 }.flowOn(Dispatchers.IO)
             }
             .stateIn(
@@ -74,137 +56,178 @@ class DisplayPageViewModel(
             )
 
     /**
-     * Flow : 当前选中的屏幕。
+     * Flow : 当前选中的屏幕（内部）。
      */
-    private val lastSelectedDisplayFlow: MutableStateFlow<DisplayInfo?> = MutableStateFlow(null)
+    private val _selectedDisplayFlow: MutableStateFlow<DisplayInfo?> = MutableStateFlow(null)
 
     /**
      * Flow : 当前选中的屏幕。
      */
-    val selectedDisplayFlow: StateFlow<DisplayInfo?> =
-        combine(lastSelectedDisplayFlow, displaysFlow) { lastSelected, list ->
-            if (list.isEmpty()) {
-                // 列表为空，清除选中项。
-                null
-            } else {
-                if (lastSelected == null) {
-                    // 没有选中项，默认选中第一个。
-                    list.first()
-                } else {
-                    // 选中项非空，检查选中项是否仍在列表中；若不存在则选中第一个。
-                    list.find { (it.id == lastSelected.id) && (it.sn == lastSelected.sn) }
-                        ?: list.first()
-                }
-            }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+    val selectedDisplayFlow: StateFlow<DisplayInfo?> = _selectedDisplayFlow
 
-    // 刷新触发器：分辨率与密度
-    private val metricsRefreshTrigger = MutableStateFlow(0)
+    // 刷新触发器：屏幕尺寸信息
+    private val sizeRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : 当前选中屏幕的分辨率与密度。
+     * Flow : 屏幕尺寸信息。
+     *
+     * 跟随当前选中的屏幕，若无选中项则为空值。
      */
-    val metricsFlow: StateFlow<DisplayMetrics> =
-        combine(selectedDisplayFlow, metricsRefreshTrigger) { display, _ -> display }
+    val sizeInfoFlow: StateFlow<DisplaySize?> =
+        selectedDisplayFlow
+            .combine(sizeRefreshTrigger) { display, _ -> display }
             .flatMapLatest { display ->
+                println("sizeInfoFlow change ${sizeRefreshTrigger.value} -> $display")
                 flow {
                     if (display == null) {
-                        emit(DisplayMetrics())
+                        emit(null)
                         return@flow
                     }
 
-                    val executor = logicManager.selectedExecutorFlow.value
-                    val metrics = runCatching {
-                        DisplayMetrics(
-                            size = executor.getDisplaySize(display.sn, display.id),
-                            density = executor.getDisplayDensity(display.sn, display.id)
-                        )
-                    }.getOrElse { DisplayMetrics() }
-                    emit(metrics)
+                    val apiLevel = logicManager.getSelectedExecutor().getAPILevel(display.sn).toFloatOrNull() ?: 0F
+                    println("apiLevel -> $apiLevel")
+                    if (apiLevel < 29F) {
+                        println("display id -> ${display.id}")
+                        if (display.id == "0") {
+                            val info = logicManager.getSelectedExecutor().getDisplaySize(display.sn, null)
+                            emit(info)
+                            return@flow
+                        } else {
+                            println("sizeInfoFlow apiLevel < 30, emit null")
+                            emit(null)
+                            return@flow
+                        }
+                    }
+
+                    val info = logicManager.getSelectedExecutor().getDisplaySize(display.sn, display.id)
+                    println("sizeInfoFlow info ${info}")
+                    emit(info)
                 }.flowOn(Dispatchers.IO)
             }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
-                initialValue = DisplayMetrics()
+                initialValue = null
             )
 
-    // 刷新触发器：界面组件列表
-    private val componentsRefreshTrigger = MutableStateFlow(0)
+    // 刷新触发器：像素密度信息
+    private val densityRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : 当前选中的界面组件选项卡。
-     */
-    private val _componentTabFlow: MutableStateFlow<ComponentTab> = MutableStateFlow(ComponentTab.ACTIVITIES)
-    val componentTabFlow: StateFlow<ComponentTab> = _componentTabFlow
-
-    /**
-     * Flow : 是否列出所有屏幕的界面组件。
+     * Flow : 像素密度信息。
      *
-     * 为 `false` 时仅列出当前选中屏幕的界面组件。
+     * 跟随当前选中的屏幕，若无选中项则为空值。
      */
-    private val _allDisplaysFlow: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val allDisplaysFlow: StateFlow<Boolean> = _allDisplaysFlow
-
-    /**
-     * Flow : 界面组件列表。
-     *
-     * 跟随当前选中的设备、屏幕、选项卡与筛选条件。
-     */
-    val componentsFlow: StateFlow<ComponentsState> =
-        combine(
-            logicManager.selectedDeviceFlow,
-            selectedDisplayFlow,
-            componentTabFlow,
-            allDisplaysFlow,
-            componentsRefreshTrigger
-        ) { device, display, tab, all, _ ->
-            ComponentsQuery(device?.getSN(), if (all) null else display?.id, all, tab)
-        }.flatMapLatest { query ->
-            flow {
-                val sn = query.sn
-                if (sn == null || (!query.all && query.displayID == null)) {
-                    emit(ComponentsState(tab = query.tab))
-                    return@flow
-                }
-
-                emit(ComponentsState(tab = query.tab, loading = true))
-                val executor = logicManager.selectedExecutorFlow.value
-                val state = runCatching {
-                    when (query.tab) {
-                        ComponentTab.BASE -> ComponentsState(
-                            tab = query.tab
-                        )
-
-                        ComponentTab.ACTIVITIES -> ComponentsState(
-                            tab = query.tab,
-                            activities = executor.getActivities(sn, query.displayID)
-                        )
-
-                        ComponentTab.WINDOWS -> ComponentsState(
-                            tab = query.tab,
-                            windows = executor.getWindows(sn, query.displayID)
-                        )
+    val densityInfoFlow: StateFlow<DisplayDensity?> =
+        selectedDisplayFlow
+            .combine(densityRefreshTrigger) { display, _ -> display }
+            .flatMapLatest { display ->
+                flow {
+                    if (display == null) {
+                        emit(null)
+                        return@flow
                     }
-                }.getOrElse { ComponentsState(tab = query.tab) }
-                emit(state)
-            }.flowOn(Dispatchers.IO)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ComponentsState()
-        )
+
+                    val info = logicManager.getSelectedExecutor().getDisplayDensity(display.sn, display.id)
+                    emit(info)
+                }.flowOn(Dispatchers.IO)
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = null
+            )
+
+    // 刷新触发器：Activity 列表
+    private val activitiesRefreshTrigger = MutableStateFlow(0)
+
+    /**
+     * Flow : Activity 列表。
+     *
+     * 跟随当前选中的屏幕，若无选中项则为空列表。
+     */
+    val activitiesFlow: StateFlow<List<ActivityInfo>> =
+        selectedDisplayFlow
+            .combine(activitiesRefreshTrigger) { display, _ -> display }
+            .flatMapLatest { display ->
+                flow {
+                    if (display == null) {
+                        emit(emptyList())
+                        return@flow
+                    }
+
+                    val activities = logicManager.getSelectedExecutor().getActivities(display.sn, display.id)
+                    emit(activities)
+                }.flowOn(Dispatchers.IO)
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+
+    // 刷新触发器：Window 列表
+    private val windowsRefreshTrigger = MutableStateFlow(0)
+
+    /**
+     * Flow : Window 列表。
+     *
+     * 跟随当前选中的屏幕，若无选中项则为空列表。
+     */
+    val windowsFlow: StateFlow<List<WindowInfo>> =
+        selectedDisplayFlow
+            .combine(windowsRefreshTrigger) { display, _ -> display }
+            .flatMapLatest { display ->
+                flow {
+                    if (display == null) {
+                        emit(emptyList())
+                        return@flow
+                    }
+
+                    val activities = logicManager.getSelectedExecutor().getWindows(display.sn, display.id)
+                    emit(activities)
+                }.flowOn(Dispatchers.IO)
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+
+
+    init {
+        viewModelScope.launch {
+            displaysFlow.collect { displays ->
+                // 屏幕列表变更时，更新当前选中的屏幕。
+                if (displays.isNotEmpty()) {
+                    val selectedDisplay = selectedDisplayFlow.value
+                    if (selectedDisplay == null || !displays.contains(selectedDisplay)) {
+                        _selectedDisplayFlow.value = displays.first()
+                    }
+                } else {
+                    _selectedDisplayFlow.value = null
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            selectedDisplayFlow.collect { display ->
+                // 选中屏幕变更时，刷新一次尺寸与密度信息。
+                if (display != null) {
+                    println("selectedDisplayFlow change $display")
+                    refreshSizeInfo()
+                    refreshDensityInfo()
+                }
+            }
+        }
+    }
 
 
     /**
      * 选择屏幕。
      */
     fun selectDisplay(display: DisplayInfo) {
-        lastSelectedDisplayFlow.value = display
+        _selectedDisplayFlow.value = display
     }
 
     fun getSelectedDisplay(): DisplayInfo? {
@@ -215,7 +238,14 @@ class DisplayPageViewModel(
      * 刷新屏幕列表。
      */
     fun refreshDisplays() {
-        refreshTrigger.update { it + 1 }
+        displaysRefreshTrigger.update { it + 1 }
+    }
+
+    /**
+     * 刷新尺寸信息。
+     */
+    fun refreshSizeInfo() {
+        sizeRefreshTrigger.update { it + 1 }
     }
 
     /**
@@ -223,14 +253,67 @@ class DisplayPageViewModel(
      *
      * @param[onResult] 操作结果回调，在主线程调用。
      */
-    fun setDisplaySize(width: Int, height: Int, onResult: (Boolean) -> Unit) =
-        modifyMetrics(onResult) { sn, id -> setDisplaySize(sn, width, height, id) }
+    fun setDisplaySize(width: Int, height: Int, onResult: (Exception?) -> Unit) {
+        val executor = logicManager.getSelectedExecutor()
+        val display = getSelectedDisplay() ?: return
+        viewModelScope.launch {
+            try {
+                val apiLevel = logicManager.getSelectedExecutor().getAPILevel(display.sn).toFloatOrNull() ?: 0F
+                if (apiLevel < 29F) {
+                    if (display.id == "0") {
+                        executor.setDisplaySize(display.sn, width, height, null)
+                    } else {
+                        onResult(Exception("API Level < 29, only default display can be modified."))
+                        return@launch
+                    }
+                }else{
+                    executor.setDisplaySize(display.sn, width, height, display.id)
+                }
+
+                refreshDisplays()
+                refreshSizeInfo()
+                onResult(null)
+            } catch (e: Exception) {
+                onResult(e)
+            }
+        }
+    }
 
     /**
      * 还原当前屏幕的分辨率。
      */
-    fun resetDisplaySize(onResult: (Boolean) -> Unit) =
-        modifyMetrics(onResult) { sn, id -> resetDisplaySize(sn, id) }
+    fun resetDisplaySize(onResult: (Exception?) -> Unit) {
+        val executor = logicManager.getSelectedExecutor()
+        val display = getSelectedDisplay() ?: return
+        viewModelScope.launch {
+            try {
+                val apiLevel = logicManager.getSelectedExecutor().getAPILevel(display.sn).toFloatOrNull() ?: 0F
+                if (apiLevel < 29F) {
+                    if (display.id == "0") {
+                        executor.resetDisplaySize(display.sn,  null)
+                    } else {
+                        onResult(Exception("API Level < 29, only default display can be modified."))
+                        return@launch
+                    }
+                }else{
+                    executor.resetDisplaySize(display.sn, display.id)
+                }
+
+                refreshDisplays()
+                refreshSizeInfo()
+                onResult(null)
+            } catch (e: Exception) {
+                onResult(e)
+            }
+        }
+    }
+
+    /**
+     * 刷新像素密度信息。
+     */
+    fun refreshDensityInfo() {
+        densityRefreshTrigger.update { it + 1 }
+    }
 
     /**
      * 修改当前屏幕的密度。
@@ -257,33 +340,15 @@ class DisplayPageViewModel(
             val result = withContext(Dispatchers.IO) {
                 runCatching { executor.action(display.sn, display.id) }.getOrDefault(false)
             }
-            metricsRefreshTrigger.update { it + 1 }
+            // metricsRefreshTrigger.update { it + 1 }
             refreshDisplays()
             onResult(result)
         }
     }
 
     /**
-     * 选择界面组件选项卡。
+     * 开始投屏。
      */
-    fun selectComponentTab(tab: ComponentTab) {
-        _componentTabFlow.value = tab
-    }
-
-    /**
-     * 设置是否列出所有屏幕的界面组件。
-     */
-    fun setAllDisplays(all: Boolean) {
-        _allDisplaysFlow.value = all
-    }
-
-    /**
-     * 刷新界面组件列表。
-     */
-    fun refreshComponents() {
-        componentsRefreshTrigger.update { it + 1 }
-    }
-
     fun startCast() {
         getSelectedDisplay()?.let { display ->
             val device = logicManager.getSelectedDevice()
@@ -293,43 +358,4 @@ class DisplayPageViewModel(
             }
         }
     }
-
-
-    /**
-     * 界面组件查询条件。
-     */
-    private data class ComponentsQuery(
-        val sn: String?,
-        val displayID: String?,
-        val all: Boolean,
-        val tab: ComponentTab
-    )
 }
-
-
-/**
- * 界面组件选项卡。
- */
-enum class ComponentTab(val label: String) {
-    BASE("基础信息"),
-    ACTIVITIES("Activity 列表"),
-    WINDOWS("窗口列表")
-}
-
-/**
- * 界面组件列表状态。
- */
-data class ComponentsState(
-    val tab: ComponentTab = ComponentTab.ACTIVITIES,
-    val loading: Boolean = false,
-    val activities: List<ActivityInfo> = emptyList(),
-    val windows: List<WindowInfo> = emptyList()
-)
-
-/**
- * 屏幕分辨率与密度。
- */
-data class DisplayMetrics(
-    val size: DisplaySize? = null,
-    val density: DisplayDensity? = null
-)

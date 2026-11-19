@@ -3,39 +3,11 @@ package net.bi4vmr.androidtoolkit.ui.display
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,17 +18,9 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
-import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
-import net.bi4vmr.androidtoolkit.ui.component.InfoRow
-import net.bi4vmr.androidtoolkit.ui.component.SegmentedTab
-import net.bi4vmr.androidtoolkit.ui.component.SegmentedTabRow
-import net.bi4vmr.androidtoolkit.ui.component.ToastManager
-import net.bi4vmr.androidtoolkit.ui.component.ToastType
-import net.bi4vmr.androidtoolkit.ui.component.XOutlinedButton
+import net.bi4vmr.androidtoolkit.ui.component.*
 import net.bi4vmr.androidtoolkit.ui.displayselectpanel_title
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -93,7 +57,8 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
         VerticalDivider()
 
         // 右栏：屏幕详情
-        if (selectedDisplay == null) {
+        val currentDisplay = selectedDisplay
+        if (currentDisplay == null) {
             Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
                 Text("请选择一个显示屏", style = MaterialTheme.typography.bodyLarge)
             }
@@ -103,7 +68,7 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
         Column(Modifier.fillMaxHeight().weight(0.6F)) {
             DisplayDetailPanel(
                 viewModel = viewModel,
-                display = selectedDisplay,
+                display = currentDisplay,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -213,7 +178,7 @@ private fun DisplayListItem(
 @Composable
 private fun DisplayDetailPanel(
     viewModel: DisplayPageViewModel,
-    display: DisplayInfo?,
+    display: DisplayInfo,
     modifier: Modifier = Modifier
 ) {
     var tabs: Tabs by remember { mutableStateOf(Tabs.BASE) }
@@ -241,11 +206,10 @@ private fun DisplayDetailPanel(
         Spacer(Modifier.width(Dimens.Layout.Space))
 
         when (tabs) {
-            Tabs.BASE -> {
-                BaseInfo(viewModel, display)
-            }
+            Tabs.BASE -> BaseInfo(viewModel, display)
 
             Tabs.ACTIVITIES -> {}
+
             Tabs.WINDOWS -> {}
         }
     }
@@ -258,203 +222,147 @@ private fun DisplayDetailPanel(
 @Composable
 private fun BaseInfo(
     viewModel: DisplayPageViewModel,
-    display: DisplayInfo?,
+    display: DisplayInfo,
     modifier: Modifier = Modifier
 ) {
-    if (display == null) {
-        Box(modifier = modifier.padding(24.dp), contentAlignment = Alignment.Center) {
-            Text("请选择一个显示屏", style = MaterialTheme.typography.bodyLarge)
+    val toastManager: ToastManager = viewModel.globalStateManager.toastManager
+    val showResult: (String) -> (Boolean) -> Unit = { action ->
+        { success ->
+            if (success) {
+                toastManager.show("${action}成功", ToastType.SUCCESS)
+            } else {
+                toastManager.show("${action}失败", ToastType.ERROR)
+            }
         }
-        return
     }
 
+    val size: DisplaySize? by viewModel.sizeInfoFlow.collectAsStateWithLifecycle()
+    val density: DisplayDensity? by viewModel.densityInfoFlow.collectAsStateWithLifecycle()
+
+    var widthInput by remember(size) { mutableStateOf(size?.getWidth()?.toString() ?: "") }
+    var widthInvalid: Boolean by remember(size) { mutableStateOf(false) }
+    var heightInput by remember(size) { mutableStateOf(size?.getHeight()?.toString() ?: "") }
+    var heightInvalid: Boolean by remember(size) { mutableStateOf(false) }
+    var sizeError: String by remember(size) { mutableStateOf("") }
+    var densityInput by remember(density) { mutableStateOf(density?.getDensity()?.toString() ?: "") }
+    var densityInvalid: Boolean by remember(density) { mutableStateOf(false) }
+
     Column(modifier = modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Display ${display.id}", style = MaterialTheme.typography.headlineSmall)
-        HorizontalDivider()
         InfoRow("屏幕 ID", display.id)
         InfoRow("物理 ID", display.uniqueID.ifEmpty { "-" })
         InfoRow("分辨率", "${display.width} x ${display.height}")
         InfoRow("所属设备", display.sn.ifEmpty { "-" })
-    }
-}
 
-
-/**
- * 分辨率与密度编辑器。
- */
-@Composable
-private fun DisplayMetricsEditor(
-    metrics: DisplayMetrics,
-    onSetSize: (width: Int, height: Int) -> Unit,
-    onResetSize: () -> Unit,
-    onSetDensity: (Int) -> Unit,
-    onResetDensity: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val size = metrics.size
-    val density = metrics.density
-    var widthText by remember(size) { mutableStateOf(size?.getWidth()?.toString() ?: "") }
-    var heightText by remember(size) { mutableStateOf(size?.getHeight()?.toString() ?: "") }
-    var densityText by remember(density) { mutableStateOf(density?.getDensity()?.toString() ?: "") }
-
-    val width = widthText.toIntOrNull()?.takeIf { it > 0 }
-    val height = heightText.toIntOrNull()?.takeIf { it > 0 }
-    val densityValue = densityText.toIntOrNull()?.takeIf { it > 0 }
-
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space)) {
-        // 分辨率
-        InfoRow(
-            "逻辑分辨率",
-            when {
-                size == null -> "-"
-                size.hasOverride() -> "${size.overrideWidth} x ${size.overrideHeight}" +
-                        "（物理 ${size.physicalWidth} x ${size.physicalHeight}）"
-
-                else -> "${size.physicalWidth} x ${size.physicalHeight}"
-            }
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = widthText,
-                onValueChange = { widthText = it.filter(Char::isDigit) },
-                label = { Text("宽度") },
-                singleLine = true,
-                modifier = Modifier.width(120.dp)
-            )
-            Text(" x ", Modifier.padding(horizontal = Dimens.Layout.SpaceSmall))
-            OutlinedTextField(
-                value = heightText,
-                onValueChange = { heightText = it.filter(Char::isDigit) },
-                label = { Text("高度") },
-                singleLine = true,
-                modifier = Modifier.width(120.dp)
-            )
-            Spacer(Modifier.width(Dimens.Layout.Space))
-            Button(
-                onClick = { if (width != null && height != null) onSetSize(width, height) },
-                enabled = (size != null && width != null && height != null)
-            ) {
-                Text("修改")
-            }
-            Spacer(Modifier.width(Dimens.Layout.Space))
-            OutlinedButton(onClick = onResetSize, enabled = (size != null)) {
-                Text("还原")
-            }
-        }
-
-        // 密度
-        InfoRow(
-            "像素密度",
-            when {
-                density == null -> "-"
-                density.hasOverride() -> "${density.override} dpi（物理 ${density.physical} dpi）"
-                else -> "${density.physical} dpi"
-            }
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = densityText,
-                onValueChange = { densityText = it.filter(Char::isDigit) },
-                label = { Text("密度") },
-                singleLine = true,
-                modifier = Modifier.width(120.dp)
-            )
-            Spacer(Modifier.width(Dimens.Layout.Space))
-            Button(
-                onClick = { if (densityValue != null) onSetDensity(densityValue) },
-                enabled = (density != null && densityValue != null)
-            ) {
-                Text("修改")
-            }
-            Spacer(Modifier.width(Dimens.Layout.Space))
-            OutlinedButton(onClick = onResetDensity, enabled = (density != null)) {
-                Text("还原")
-            }
-        }
-    }
-}
-
-
-/**
- * 界面组件面板：展示 Activity 与窗口信息。
- */
-@Composable
-private fun ComponentPanel(
-    globalStateManager: GlobalStateManager,
-    viewModel: DisplayPageViewModel,
-    tab: ComponentTab,
-    state: ComponentsState,
-    onSelectTab: (ComponentTab) -> Unit,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier.padding(Dimens.Layout.Padding)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SegmentedTabRow {
-                ComponentTab.entries.forEach {
-                    SegmentedTab(
-                        selected = (it == tab),
-                        onClick = { onSelectTab(it) }
-                    ) {
-                        Text(it.label, maxLines = 1)
-                    }
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space)) {
+            // 分辨率
+            val currentSize = size
+            if (currentSize == null) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("无法获取分辨率信息", style = MaterialTheme.typography.bodyLarge)
                 }
-            }
-
-            Spacer(Modifier.weight(1F))
-
-            OutlinedButton(onClick = onRefresh, enabled = !state.loading) {
-                Text("刷新")
-            }
-        }
-
-        Spacer(Modifier.height(Dimens.Layout.Space))
-
-        Box(Modifier.weight(1F).fillMaxWidth()) {
-            val isActivityTab = (state.tab == ComponentTab.ACTIVITIES)
-            val empty = if (isActivityTab) state.activities.isEmpty() else state.windows.isEmpty()
-            when {
-                state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-
-                empty -> Text("暂无数据", Modifier.align(Alignment.Center))
-
-                state.tab == ComponentTab.BASE -> {
-                    val metrics: DisplayMetrics by viewModel.metricsFlow.collectAsStateWithLifecycle()
-
-                    val toastManager: ToastManager = globalStateManager.toastManager
-                    val showResult: (String) -> (Boolean) -> Unit = { action ->
-                        { success ->
-                            if (success) {
-                                toastManager.show("${action}成功", ToastType.SUCCESS)
-                            } else {
-                                toastManager.show("${action}失败", ToastType.ERROR)
-                            }
-                        }
-                    }
-
-                    DisplayMetricsEditor(
-                        metrics = metrics,
-                        onSetSize = { w, h -> viewModel.setDisplaySize(w, h, showResult("修改分辨率")) },
-                        onResetSize = { viewModel.resetDisplaySize(showResult("还原分辨率")) },
-                        onSetDensity = { viewModel.setDisplayDensity(it, showResult("修改密度")) },
-                        onResetDensity = { viewModel.resetDisplayDensity(showResult("还原密度")) },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
+            } else {
+                Row {
+                    Text("分辨率")
+                    Spacer(Modifier.weight(1F))
+                    Text("${currentSize.getWidth()} x ${currentSize.getHeight()} | ")
+                    Text(if (currentSize.hasOverride()) "用户设置" else "默认值")
+                }
+                Row {
+                    OutlinedTextField(
+                        value = widthInput,
+                        onValueChange = { widthInput = it.filter(Char::isDigit) },
+                        label = { Text("宽度") },
+                        singleLine = true,
+                        isError = widthInvalid,
+                        modifier = Modifier.width(120.dp)
                     )
-                }
+                    Text(" x ", Modifier.padding(horizontal = Dimens.Layout.SpaceSmall))
+                    OutlinedTextField(
+                        value = heightInput,
+                        onValueChange = { heightInput = it.filter(Char::isDigit) },
+                        label = { Text("高度") },
+                        singleLine = true,
+                        isError = heightInvalid,
+                        modifier = Modifier.width(120.dp)
+                    )
 
-                else -> SelectionContainer {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.Layout.SpaceSmall)) {
-                        if (isActivityTab) {
-                            items(state.activities) { ActivityListItem(it) }
-                        } else {
-                            items(state.windows) { WindowListItem(it) }
-                        }
+                    Button(
+                        onClick = {
+                            val widthNumber = widthInput.toIntOrNull()
+                            if (widthNumber == null) {
+                                widthInvalid = true
+                                // errorInfo = "端口号必须在 0~65535 范围内"
+                                return@Button
+                            }
+
+                            val heightNumber = heightInput.toIntOrNull()
+                            if (heightNumber == null) {
+                                heightInvalid = true
+                                // errorInfo = "端口号必须在 0~65535 范围内"
+                                return@Button
+                            }
+
+                            viewModel.setDisplaySize(widthNumber, heightNumber) {
+                                sizeError = it?.message ?: ""
+                            }
+                        },
+                        enabled = widthInput != currentSize.getWidth()
+                            .toString() || heightInput != currentSize.getHeight().toString()
+                    ) {
+                        Text("修改")
                     }
+                    Spacer(Modifier.width(Dimens.Layout.Space))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.resetDisplaySize {
+                                sizeError = it?.message ?: ""
+                            }
+                        },
+                        enabled = currentSize.hasOverride(),
+                    ) {
+                        Text("还原")
+                    }
+                }
+                if (sizeError.isNotBlank()) {
+                    Text(sizeError, color = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            // 密度
+            val density = density
+            InfoRow(
+                "像素密度",
+                when {
+                    density == null -> "-"
+                    density.hasOverride() -> "${density.override} dpi（物理 ${density.physical} dpi）"
+                    else -> "${density.physical} dpi"
+                }
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = densityInput,
+                    onValueChange = { densityInput = it.filter(Char::isDigit) },
+                    label = { Text("密度") },
+                    singleLine = true,
+                    isError = heightInvalid,
+                    modifier = Modifier.width(120.dp)
+                )
+                Spacer(Modifier.width(Dimens.Layout.Space))
+                // Button(
+                //     onClick = { if (densityValue != null) Unit },
+                //     enabled = (density != null && densityValue != null)
+                // ) {
+                //     Text("修改")
+                // }
+                Spacer(Modifier.width(Dimens.Layout.Space))
+                OutlinedButton(onClick = {}, enabled = (density != null)) {
+                    Text("还原")
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun ActivityListItem(activity: ActivityInfo) {
@@ -465,6 +373,7 @@ private fun ActivityListItem(activity: ActivityInfo) {
         extra = "Task ${activity.taskID}  ·  User ${activity.userID}"
     )
 }
+
 
 @Composable
 private fun WindowListItem(window: WindowInfo) {
