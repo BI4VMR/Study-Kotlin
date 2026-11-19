@@ -1,7 +1,21 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -62,9 +76,14 @@ private fun DevicePanel(
         InfoRow("Android版本", "-")
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = {
-                logicManager.selectedExecutorFlow.value.openShell(device.getSN())
-            }, enabled = enabled) { Text("打开 Shell") }
+            OutlinedButton(
+                onClick = {
+                    logicManager.selectedExecutorFlow.value.openShell(device.getSN())
+                }, enabled = enabled,
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.defaultMinSize(minWidth = 1.dp, minHeight = 1.dp)
+            ) { Text("打开 Shell") }
 
             Button(onClick = {
                 if (device is LocalDevice) {

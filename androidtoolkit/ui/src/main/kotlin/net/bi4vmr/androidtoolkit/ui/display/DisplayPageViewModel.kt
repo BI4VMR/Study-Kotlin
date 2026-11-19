@@ -6,13 +6,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 
@@ -23,7 +35,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
  * @since 1.0.0
  */
 class DisplayPageViewModel(
-    globalStateManager: GlobalStateManager
+    private val globalStateManager: GlobalStateManager
 ) : ViewModel() {
 
     private val logicManager: LogicManager = globalStateManager.logicManager
@@ -195,6 +207,10 @@ class DisplayPageViewModel(
         lastSelectedDisplayFlow.value = display
     }
 
+    fun getSelectedDisplay(): DisplayInfo? {
+        return selectedDisplayFlow.value
+    }
+
     /**
      * 刷新屏幕列表。
      */
@@ -266,6 +282,16 @@ class DisplayPageViewModel(
      */
     fun refreshComponents() {
         componentsRefreshTrigger.update { it + 1 }
+    }
+
+    fun startCast() {
+        getSelectedDisplay()?.let { display ->
+            val device = logicManager.getSelectedDevice()
+            if (device != null) {
+                val record = CastRecord(logicManager.getSelectedExecutor(), device, display.id)
+                globalStateManager.windowManager.addWindow(record)
+            }
+        }
     }
 
 

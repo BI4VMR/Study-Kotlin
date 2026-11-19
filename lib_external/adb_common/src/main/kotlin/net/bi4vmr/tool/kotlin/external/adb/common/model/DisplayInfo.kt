@@ -13,7 +13,7 @@ data class DisplayInfo(
     /**
      * 屏幕 ID。
      *
-     * 应用层的屏幕 ID，即我们在 `startActivity()` 、`am start` 等位置使用的屏幕标识符。
+     * 应用层的屏幕 ID，即我们在 `startActivity()`、`am start` 等位置使用的屏幕标识符。
      */
     @get:JvmName("getID")
     val id: String,
@@ -27,6 +27,9 @@ data class DisplayInfo(
      *
      * 在 Android 10 及更高版本中，通常为 `local:129`、`local:4630946370515662722` 等形式，编号根据屏幕参数生成，即使插拔屏幕也不
      * 会改变。
+     *
+     * 部分投屏软件使用虚拟屏幕捕获其他屏幕的画面，例如：Android Studio 虚拟设备格式为 `virtual:null,0,studio.screen.sharing:0,7`，
+     * Scrcpy 虚拟设备格式为 `virtual:com.android.shell,2000,scrcpy,1`。
      */
     @get:JvmName("getUniqueID")
     val uniqueID: String = "",
@@ -62,4 +65,14 @@ data class DisplayInfo(
      * @return 索引编号。
      */
     fun getUniqueIndex(): String = ADBOutputParser.parseDisplayUniqueIndex(uniqueID)
+
+    /**
+     * 判断是否为屏幕捕获设备。
+     *
+     * @return `true` 表示为屏幕捕获设备，`false` 表示非屏幕捕获设备。
+     */
+    fun isMirrorDevice(): Boolean {
+        return uniqueID.startsWith("virtual:") &&
+                (uniqueID.contains("scrcpy") || uniqueID.contains("studio.screen.sharing"))
+    }
 }

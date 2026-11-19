@@ -1,14 +1,44 @@
 package net.bi4vmr.androidtoolkit.ui.display
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -16,7 +46,13 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
-import net.bi4vmr.androidtoolkit.ui.component.*
+import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
+import net.bi4vmr.androidtoolkit.ui.component.InfoRow
+import net.bi4vmr.androidtoolkit.ui.component.SegmentedTab
+import net.bi4vmr.androidtoolkit.ui.component.SegmentedTabRow
+import net.bi4vmr.androidtoolkit.ui.component.ToastManager
+import net.bi4vmr.androidtoolkit.ui.component.ToastType
+import net.bi4vmr.androidtoolkit.ui.component.XOutlinedButton
 import net.bi4vmr.androidtoolkit.ui.displayselectpanel_title
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
@@ -39,7 +75,7 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
             // 设备选择面板
             DeviceSelectPanel(
                 globalStateManager = globalStateManager,
-                modifier = Modifier.weight(0.6F)
+                modifier = Modifier.weight(0.5F)
             )
 
             HorizontalDivider()
@@ -50,8 +86,7 @@ fun DisplayPage(globalStateManager: GlobalStateManager) {
                 displays = displays,
                 selectedDisplay = selectedDisplay,
                 onSelect = { viewModel.selectDisplay(it) },
-                onRefresh = { viewModel.refreshDisplays() },
-                modifier = Modifier.weight(0.4F)
+                modifier = Modifier.weight(0.5F)
             )
         }
 
@@ -82,7 +117,6 @@ private fun DisplaySelectPanel(
     displays: List<DisplayInfo>,
     selectedDisplay: DisplayInfo?,
     onSelect: (DisplayInfo) -> Unit,
-    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -101,7 +135,7 @@ private fun DisplaySelectPanel(
             // 刷新按钮
             IconButton(
                 modifier = Modifier.size(Dimens.Icon.Normal),
-                onClick = onRefresh
+                onClick = { viewModel.refreshDisplays() }
             ) {
                 Icon(Icons.Refresh, null, Modifier.size(Dimens.Icon.Normal))
             }
@@ -142,17 +176,22 @@ private fun DisplayListItem(
     selected: Boolean,
     onClick: (display: DisplayInfo) -> Unit
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = BorderStroke(
-            if (selected) 2.dp else 1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-        ),
-        modifier = Modifier.fillMaxWidth(),
-        onClick = { onClick(display) },
+    println(display)
+    val shape = CardDefaults.shape
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                shape = shape
+            )
+            .clickable { onClick(display) }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -180,14 +219,22 @@ private fun DisplayDetailPanel(
     var tabs: Tabs by remember { mutableStateOf(Tabs.BASE) }
 
     Column(modifier.padding(Dimens.Layout.Space)) {
-        SegmentedTabRow {
-            Tabs.entries.forEach { tab ->
-                SegmentedTab(
-                    selected = (tab == tabs),
-                    onClick = { tabs = tab }
-                ) {
-                    Text(text = stringResource(tab.titleRes), maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SegmentedTabRow {
+                Tabs.entries.forEach { tab ->
+                    SegmentedTab(
+                        selected = (tab == tabs),
+                        onClick = { tabs = tab }
+                    ) {
+                        Text(text = stringResource(tab.titleRes), maxLines = 1)
+                    }
                 }
+            }
+
+            Spacer(Modifier.weight(1F))
+
+            XOutlinedButton(onClick = { viewModel.startCast() }) {
+                Text("远程控制")
             }
         }
 
@@ -228,18 +275,6 @@ private fun BaseInfo(
         InfoRow("物理 ID", display.uniqueID.ifEmpty { "-" })
         InfoRow("分辨率", "${display.width} x ${display.height}")
         InfoRow("所属设备", display.sn.ifEmpty { "-" })
-
-        Button(onClick = {
-            //         val device = logicManager.selectedDeviceFlow.value
-            //         val display = selectedDisplay
-            //         if (device != null && display != null) {
-            //             globalStateManager.windowManager.addWindow(
-            //                 CastRecord(logicManager.selectedExecutorFlow.value, device, display.id)
-            //             )
-            //         }
-        }) {
-            Text("投屏")
-        }
     }
 }
 
