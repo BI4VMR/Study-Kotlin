@@ -178,7 +178,7 @@ enum class AndroidVersion(
     /**
      * Android 8.1。
      */
-    V_8_1("8.1", "27", "Android 8.1", "Oreo"),
+    V_8_1("8.1.0", "27", "Android 8.1", "Oreo"),
 
     /**
      * Android 9。

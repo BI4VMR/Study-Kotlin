@@ -3,36 +3,12 @@ package net.bi4vmr.androidtoolkit.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,14 +21,9 @@ import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
-import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.androidtoolkit.ui.Res
+import net.bi4vmr.androidtoolkit.ui.*
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
-import net.bi4vmr.androidtoolkit.ui.deviceselectpanel_remote
-import net.bi4vmr.androidtoolkit.ui.deviceselectpanel_title
-import net.bi4vmr.androidtoolkit.ui.deviceselectpanel_unknown
-import net.bi4vmr.androidtoolkit.ui.state_connecting
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -93,11 +64,15 @@ fun DeviceSelectPanel(
                 // 执行器列表
                 SegmentedTabRow {
                     executors.forEach { executor ->
+                        val name: String by produceState(initialValue = "-", executor) {
+                            value = executor.getDisplayName()
+                        }
+
                         SegmentedTab(
                             selected = executor == selectedExecutor,
                             onClick = { logicManager.selectExecutor(executor) }
                         ) {
-                            Text(text = executor.getDisplayName(), maxLines = 1)
+                            Text(text = name, maxLines = 1)
 
                             if (executor is RemoteExecutor) {
                                 Spacer(Modifier.width(Dimens.Layout.SpaceSmall))
@@ -171,7 +146,7 @@ private fun DeviceList(
             state == ServiceState.PREPARING -> {
                 ExecutorStatePanel(modifier = Modifier.weight(1F)) {
                     CircularProgressIndicator()
-                    Text("正在连接 ${executor.getDisplayName()} ...", style = MaterialTheme.typography.bodyMedium)
+                    Text("正在连接 ...", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
@@ -290,7 +265,7 @@ private fun DeviceListItem(
         sn,
         state
     ) {
-        value = executor.getName(sn, getString(Res.string.deviceselectpanel_unknown))
+        value = executor.getDeviceName(sn, getString(Res.string.deviceselectpanel_unknown))
     }
 
     val type: ConnectionType? by produceState(initialValue = null, executor, sn, state) {

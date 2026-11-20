@@ -1,29 +1,22 @@
 package net.bi4vmr.androidtoolkit.core.model
 
 import com.android.ddmlib.FileListingService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.java.common.base.id.IDUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 
 /**
  * 本地执行器。
+ *
+ * 使用本地 ADB 进程操作本机连接的设备。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -32,30 +25,30 @@ object LocalExecutor : ADBExecutor {
 
     private val adbObserver: ADBObserver = ADBObserver()
 
-    private val taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var taskScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 
-    // 本地执行器固定返回无效 ID
-    override fun getID(): String = IDUtil.UUID_NL_INVALID
-
-    override fun getType(): ExecutorType = ExecutorType.LOCAL
-
-    /**
-     * 连接本地 ADB 服务，可重复调用。已就绪或正在准备时忽略。
-     */
     override fun init() {
         adbObserver.init()
+        taskScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         taskScope.launch {
             ADBController.init()
         }
     }
 
     override fun release() {
+        taskScope.cancel()
+
         adbObserver.terminate()
         ADBController.terminate()
     }
 
-    override fun getDisplayName(): String = "本机"
+    // 本地执行器固定返回无效 ID
+    override fun getID(): String = IDUtil.UUID_NL_INVALID
+
+    override fun getType(): ExecutorType = ExecutorType.LOCAL
+
+    override suspend fun getDisplayName(): String = "本地"
 
     override fun getStateFlow(): StateFlow<ServiceState> = adbObserver.serviceStateFlow
 
@@ -63,13 +56,27 @@ object LocalExecutor : ADBExecutor {
 
     override fun getDevicesFlow(): StateFlow<List<ADBDevice>> = adbObserver.devicesFlow
 
-    override suspend fun getDisplays(sn: String): List<DisplayInfo> = withContext(Dispatchers.IO) {
-        ADBCLIUtil.getDisplays(sn)
-    }
+
+    /*
+     * ----- 常用命令 -----
+     */
 
     override suspend fun runForText(sn: String, command: String): String? = withContext(Dispatchers.IO) {
         ADBCLIUtil.runForText(sn, command)
     }
+
+    override fun openShell(sn: String) {
+        ADBCLIUtil.openShell(sn)
+    }
+
+    override fun root(sn: String): Int = ADBCLIUtil.root(sn)
+
+    override fun reboot(sn: String, option: String): Int = ADBCLIUtil.reboot(sn, option)
+
+
+    /*
+     * ----- 设备信息 -----
+     */
 
     override suspend fun getManufacturer(sn: String): String = withContext(Dispatchers.IO) {
         ADBCLIUtil.getManufacturer(sn)
@@ -91,20 +98,22 @@ object LocalExecutor : ADBExecutor {
         ADBCLIUtil.getAPILevel(sn)
     }
 
-    override suspend fun getName(sn: String, fallback: String): String = withContext(Dispatchers.IO) {
+    override suspend fun getDeviceName(sn: String, fallback: String): String = withContext(Dispatchers.IO) {
         ADBController.getDevice(sn)?.getName(fallback) ?: fallback
     }
 
-    override suspend fun getDeviceType(sn: String): ConnectionType? = ADBController.getDevice(sn)?.getType()
-
-    override fun openShell(sn: String) {
-        ADBCLIUtil.openShell(sn)
+    override suspend fun getDeviceType(sn: String): ConnectionType? = withContext(Dispatchers.IO) {
+        ADBController.getDevice(sn)?.getType()
     }
 
 
     /*
      * ----- 图形界面 -----
      */
+
+    override suspend fun getDisplays(sn: String): List<DisplayInfo> = withContext(Dispatchers.IO) {
+        ADBCLIUtil.getDisplays(sn)
+    }
 
     override suspend fun getDisplaySize(sn: String, displayID: String): DisplaySize? =
         withContext(Dispatchers.IO) { ADBCLIUtil.getDisplaySize(sn, displayID) }
@@ -127,22 +136,14 @@ object LocalExecutor : ADBExecutor {
     override suspend fun getActivities(sn: String, displayID: String?): List<ActivityInfo> =
         withContext(Dispatchers.IO) { ADBCLIUtil.getActivities(sn, displayID) }
 
-    override suspend fun getForegroundActivities(sn: String, displayID: String?): List<ActivityInfo> =
-        withContext(Dispatchers.IO) { ADBCLIUtil.getForegroundActivities(sn, displayID) }
-
     override suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo> =
         withContext(Dispatchers.IO) { ADBCLIUtil.getWindows(sn, displayID) }
 
     override suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo> =
         withContext(Dispatchers.IO) { ADBCLIUtil.getForegroundWindows(sn, displayID) }
 
-
-    /*
-     * ----- 软件包管理 -----
-     */
-
-    override suspend fun listPackages(sn: String, type: PackageType): List<String> =
-        ADBCLIUtil.listPackages(sn, type)
+    override suspend fun getGlobalFocusInfo(sn: String): FocusInfo =
+        withContext(Dispatchers.IO) { ADBCLIUtil.getGlobalFocusInfo(sn) }
 
 
     /*
@@ -182,5 +183,14 @@ object LocalExecutor : ADBExecutor {
             permissions = permissions ?: "",
             linkTarget = if (isLink) info?.removePrefix("-> ")?.trim() else null
         )
+    }
+
+
+    /*
+     * ----- 软件包管理 -----
+     */
+
+    override suspend fun listPackages(sn: String, type: PackageType): List<String> = withContext(Dispatchers.IO) {
+        ADBCLIUtil.listPackages(sn, type)
     }
 }

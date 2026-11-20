@@ -7,11 +7,7 @@ import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -482,21 +478,6 @@ object ADBCLIUtil {
     }
 
     /**
-     * 获取前台 Activity 。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的前台 Activity。
-     * @return 前台 Activity 列表，每个显示屏最多一项。命令执行异常时返回空列表。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getForegroundActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
-        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
-        return ADBOutputParser.parseResumedActivities(lines)
-            .filter { displayID == null || it.displayID == displayID }
-    }
-
-    /**
      * 获取窗口列表。
      *
      * @param[sn] 设备序列号。
@@ -535,6 +516,25 @@ object ADBCLIUtil {
         return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
             .filter { displayID == null || it.displayID == displayID }
             .map { it.copy(sn = sn) }
+    }
+
+    /**
+     * 获取全局焦点信息。
+     *
+     * Android 9 及更低版本多屏 API 不完善，焦点所在屏幕始终为 `0`。
+     *
+     * @param[sn] 设备序列号。
+     * @return 全局焦点信息。
+     */
+    @JvmStatic
+    fun getGlobalFocusInfo(sn: String): FocusInfo {
+        val lines = runForLines(sn, "dumpsys activity activities") ?: return FocusInfo()
+        val result = ADBOutputParser.parseGlobalFocusInfo(lines)
+
+        // Android 9 及更低版本的 Activity 信息没有焦点信息，回退到通过 Window 信息获取。
+        if (result.windowHash != "-") return result
+        val linesFallback = runForLines(sn, "dumpsys window windows") ?: return result
+        return ADBOutputParser.parseGlobalFocusInfoV9L(linesFallback)
     }
 
     /**
@@ -974,12 +974,4 @@ object ADBCLIUtil {
             throw Exception(errorInfo)
         }
     }
-
-    /**
-     * 构建 `wm` 命令的显示屏参数。
-     *
-     * @param[displayID] 显示屏逻辑 ID。
-     * @return 参数文本。若未指定显示屏则返回空字符串。
-     */
-    private fun displayArg(displayID: String?): String = if (displayID == null) "" else " -d $displayID"
 }

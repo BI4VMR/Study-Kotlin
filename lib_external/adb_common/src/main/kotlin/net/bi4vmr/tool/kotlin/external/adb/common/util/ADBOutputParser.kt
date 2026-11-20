@@ -1,12 +1,9 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseFocusedWindows
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseWindows
 
 /**
  * ADB 输出解析器。
@@ -116,6 +113,27 @@ object ADBOutputParser {
      */
     private val resumeActivityRegex = """^\s*(?:Resumed:|ResumedActivity:)""".toRegex()
 
+    /**
+     * 正则表达式：Activity 信息中当前焦点窗口信息。
+     *
+     * 格式：`Window{<对象 Hash> u<用户 ID> <窗口名称>}`。
+     *
+     * 一些版本的变体格式：
+     *
+     * - Android 11 : Window{d16f04d mode=0 rootTaskId=1 u0 NotificationShade}
+     * - Android 15 : Window{da5e969 u0 NotificationShade}
+     */
+    private val focusedWindowRegex = """\bmCurrentFocus=Window\{(\S+?)(?:\s+.*?)?\s+u\d+\s+(\S+?)\}""".toRegex()
+
+    /**
+     * 正则表达式：Activity 信息中当前焦点屏幕信息。
+     *
+     * 格式：`Display: mDisplayId=<屏幕 ID>`。
+     *
+     * 目前 Activity 信息中仅会出现一次该格式的行，因此可以使用关键字搜索确认焦点屏幕。
+     */
+    private val focusedDisplayRegex = """^\s*Display: mDisplayId=(\d+)""".toRegex()
+
     // 正则表达式：屏幕内的前台 Activity 行，例如 `Resumed: ActivityRecord{...}` （Android 12 及更高版本）、
     // `topResumedActivity=ActivityRecord{...}` 或 `mResumedActivity: ActivityRecord{...}` （旧版本）。
     // 注意：不匹配位于所有屏幕之后的全局 `ResumedActivity:` 行，它仅表示全局焦点所在的 Activity 。
@@ -138,9 +156,6 @@ object ADBOutputParser {
 
     // 正则表达式：`dumpsys window displays` 中的屏幕分组，例如 `Display: mDisplayId=0 ...` 。
     private val windowDisplaySectionRegex = """^\s*Display: mDisplayId=(\d+)""".toRegex()
-
-    // 正则表达式：焦点窗口，例如 `mCurrentFocus=Window{hash u0 com.example/com.example.MainActivity}` 。
-    private val focusedWindowRegex = """\bmCurrentFocus=Window\{(\S+) u(\d+) (.*)\}""".toRegex()
 
 
     /**
@@ -596,74 +611,6 @@ object ADBOutputParser {
     }
 
     /**
-     * 解析全局焦点信息。
-     *
-     * 解析 `dumpsys activity activities` 命令输出内容，获取前台 Activity 与 Window 信息。
-     *
-     * 命令输出示例：
-     *
-     * ```text
-     * ActivityTaskSupervisor state:
-     *   topDisplayFocusedRootTask=Task{b4221ec #1100752 type=home}
-     *   Display: mDisplayId=3 (organized)
-     *     init=1920x720 160dpi mMinSizeOfResizeableTaskDp=220 cur=1920x720 app=1800x720 rng=600x720-1800x1920
-     *     deferred=false mLayoutNeeded=false mTouchExcludeRegion=SkRegion((0,0,1920,720))
-     *   mCurrentFocus=Window{3c701b9 u0 PopupWindow:23074a8}
-     *   mFocusedApp=ActivityRecord{1d39097 u11 com.android.launcher/.HomeActivity} t1100753}
-     * ```
-     *
-     * @param[input] 命令输出。
-     * @return 焦点信息。
-     */
-    fun parseGlobalFocusInfo(input: List<String>): FocusInfo {
-        var inArea = false
-        input.forEach { line ->
-            if (line.isBlank()) return@forEach
-
-            if (line.startsWith("ActivityTaskSupervisor state:")) {
-                inArea = true
-                return@forEach
-            }
-
-            // ActivityTaskSupervisor 是顶层元素，遇到无缩进的非空行，表示当前区块结束。
-            if (line.isNotBlank() && !line.first().isWhitespace()) {
-                return@forEach
-            }
-        }
-        return FocusInfo()
-    }
-
-    /**
-     * 解析 `dumpsys activity activities` 命令输出中的前台 Activity 。
-     *
-     * @param[input] 命令输出。
-     * @return 各屏幕的前台 Activity 列表，每个屏幕最多一项。
-     */
-    @Deprecated("")
-    fun parseResumedActivities(input: List<String>): List<ActivityInfo> {
-        val map = linkedMapOf<String, ActivityInfo>()
-        var displayID: String? = null
-        input.forEach { line ->
-            activityDisplayRegex.find(line)?.let {
-                displayID = it.groupValues[1]
-                return@forEach
-            }
-            // 无缩进的非空行表示屏幕分组已结束
-            if (line.isNotBlank() && !line.first().isWhitespace()) {
-                displayID = null
-                return@forEach
-            }
-
-            val currentDisplay = displayID ?: return@forEach
-            if (map.containsKey(currentDisplay)) return@forEach
-            if (!resumedActivityRegex.containsMatchIn(line)) return@forEach
-            parseActivityRecord(line, currentDisplay)?.let { map[currentDisplay] = it }
-        }
-
-        return map.values.toList()
-    }
-
-    /**
      * 解析 `dumpsys window windows` 命令输出中的窗口列表。
      *
      * 窗口按照从顶层到底层的顺序排列。
@@ -766,6 +713,99 @@ object ADBOutputParser {
                 }
             }
             .distinctBy { it.hash }
+    }
+
+    /**
+     * 解析全局焦点信息。
+     *
+     * 解析 `dumpsys activity activities` 命令输出内容，获取当前焦点所在的 Activity 与 Window 信息。
+     *
+     * 命令输出示例：
+     *
+     * ```text
+     * ActivityTaskSupervisor state:
+     *   topDisplayFocusedRootTask=Task{b4221ec #1100752 type=home}
+     *   Display: mDisplayId=3 (organized)
+     *     init=1920x720 160dpi mMinSizeOfResizeableTaskDp=220 cur=1920x720 app=1800x720 rng=600x720-1800x1920
+     *     deferred=false mLayoutNeeded=false mTouchExcludeRegion=SkRegion((0,0,1920,720))
+     *   mCurrentFocus=Window{3c701b9 u0 PopupWindow:23074a8}
+     *   mFocusedApp=ActivityRecord{1d39097 u11 com.android.launcher/.HomeActivity} t1100753}
+     * ```
+     *
+     * @param[input] 命令输出内容。
+     * @return 焦点信息。
+     */
+    fun parseGlobalFocusInfo(input: List<String>): FocusInfo {
+        var result = FocusInfo()
+        input.forEach { line ->
+            if (line.isBlank()) return@forEach
+
+            if (line.contains("mFocusedApp=")) {
+                /* 解析焦点 Activity 信息 */
+                activityRecordRegex.find(line)?.let {
+                    val hash = it.groupValues[1]
+                    val packageName = it.groupValues[3]
+                    val className = it.groupValues[4]
+                    result = result.copy(activityHash = hash, activityPackage = packageName, activityClass = className)
+                }
+            } else if (line.contains("mCurrentFocus=")) {
+                /* 解析焦点 Activity 信息 */
+                focusedWindowRegex.find(line)?.let {
+                    val hash = it.groupValues[1]
+                    val name = it.groupValues[2].trim()
+                    result = result.copy(windowName = name, windowHash = hash)
+                }
+            } else if (line.contains("Display: mDisplayId=")) {
+                /* 解析焦点屏幕信息 */
+                focusedDisplayRegex.find(line)?.let {
+                    val displayID = it.groupValues[1]
+                    result = result.copy(displayID = displayID)
+                }
+            }
+        }
+
+        return result
+    }
+
+    /**
+     * 解析全局焦点信息（Android 9 及更低版本）。
+     *
+     * Android 9 及更低版本不支持多屏，焦点屏幕 ID 固定为 `0`。
+     *
+     * 命令输出示例：
+     *
+     * ```text
+     *   mCurrentFocus=Window{b18fe80 u0 com.meizu.flyme.launcher/com.meizu.flyme.launcher.Launcher}
+     *   mFocusedApp=AppWindowToken{ddeb129 token=Token{53359ac ActivityRecord{c79b7fe u0 com.meizu.flyme.launcher/.Launcher t136}}}
+     * ```
+     *
+     * @param[input] 命令输出内容。
+     * @return 焦点信息。
+     */
+    fun parseGlobalFocusInfoV9L(input: List<String>): FocusInfo {
+        var result = FocusInfo(displayID = "0")
+        input.forEach { line ->
+            if (line.isBlank()) return@forEach
+
+            if (line.contains("mFocusedApp=")) {
+                activityRecordRegex.find(line)?.let {
+                    result = result.copy(
+                        activityHash = it.groupValues[1],
+                        activityPackage = it.groupValues[3],
+                        activityClass = it.groupValues[4]
+                    )
+                }
+            } else if (line.contains("mCurrentFocus=")) {
+                focusedWindowRegex.find(line)?.let {
+                    result = result.copy(
+                        windowHash = it.groupValues[1],
+                        windowName = it.groupValues[2].trim()
+                    )
+                }
+            }
+        }
+
+        return result
     }
 
     /**

@@ -853,19 +853,6 @@ class ADBProxyClient(
     }
 
     /**
-     * 获取前台 Activity 。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的前台 Activity 。
-     * @return 前台 Activity 列表，每个显示屏最多一项。命令执行异常时返回空列表。
-     */
-    suspend fun getForegroundActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
-        val lines = runForLines(sn, "dumpsys activity activities") ?: return emptyList()
-        return ADBOutputParser.parseResumedActivities(lines)
-            .filter { displayID == null || it.displayID == displayID }
-    }
-
-    /**
      * 获取窗口列表。
      *
      * @param[sn] 设备序列号。

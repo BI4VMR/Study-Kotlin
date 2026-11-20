@@ -1,27 +1,15 @@
 package net.bi4vmr.androidtoolkit.core.mcp
 
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.ApplicationCallPipeline
-import io.ktor.server.application.call
+import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
-import io.ktor.server.response.respondText
+import io.ktor.server.response.*
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
-import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.types.Implementation
-import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
-import io.modelcontextprotocol.kotlin.sdk.types.TextContent
-import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
+import io.modelcontextprotocol.kotlin.sdk.types.*
+import kotlinx.serialization.json.*
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
@@ -165,11 +153,11 @@ object McpService {
     }
 
     private fun executorId(executor: ADBExecutor): String =
-        if (executor.getType() == ExecutorType.LOCAL) ID_LOCAL else executor.getDisplayName()
+        if (executor.getType() == ExecutorType.LOCAL) ID_LOCAL else "-"
 
     private fun describe(executor: ADBExecutor): String = when (executor.getType()) {
         ExecutorType.LOCAL -> "本机 ADB，客户端可直接在终端使用 adb 命令操作，无需经过本软件。"
-        ExecutorType.REMOTE -> "远程主机 ${executor.getDisplayName()} 上的 ADB，仅能通过 adb_shell 工具操作。"
+        ExecutorType.REMOTE -> "远程主机 TODO executor.getDisplayName() 上的 ADB，仅能通过 adb_shell 工具操作。"
     }
 
     private fun resolveExecutor(args: JsonObject?): ADBExecutor? {
