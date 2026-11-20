@@ -2,9 +2,24 @@
 
 package net.bi4vmr.androidtoolkit.core
 
-import io.ktor.network.tls.certificates.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import io.ktor.network.tls.certificates.generateCertificate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.base.enums.ADBExecFileMode
 import net.bi4vmr.androidtoolkit.base.enums.DarkMode
 import net.bi4vmr.androidtoolkit.base.model.DeviceRecord
@@ -338,10 +353,9 @@ object LogicManager {
             //     .onFailure { println("LogicManager init: failed to start MCP service: $it") }
         }
 
-        /* 设备列表变化时，优先恢复用户上次选择的设备，找不到则选中第一个 */
+        /* 设备列表变化时，优先恢复用户上次选择的设备，未找到则选中第一项。 */
         taskScope.launch {
             devicesFlow.collect { devices ->
-                // 仅修改选中状态，不改变用户偏好的序列号。
                 _selectedDeviceFlow.value =
                     devices.firstOrNull { it.getSN() == preferredSN } ?: devices.firstOrNull()
             }

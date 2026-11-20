@@ -5,8 +5,13 @@ import net.bi4vmr.tool.java.common.base.io.FileIOUtil
 import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -287,19 +292,28 @@ object ADBCLIUtil {
     /**
      * 获取显示屏分辨率。
      *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回空值。
+     *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
-     * 的分辨率，只能以空值调用该方法。
+     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
      * @return 分辨率信息。若显示屏不存在则返回空值。
      */
     @JvmStatic
     @JvmOverloads
-    fun getDisplaySize(sn: String, displayID: String? = null): DisplaySize? {
-        val cmd = if (displayID == null) {
-            "wm size"
+    fun getDisplaySize(sn: String, displayID: String = "0"): DisplaySize? {
+        val version = AndroidVersion.fromAPILevel(getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return null
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm size"
+            }
         } else {
             "wm size -d $displayID"
         }
+
         val lines = runForLines(sn, cmd) ?: return null
         return ADBOutputParser.parseWMSize(lines)
     }
@@ -307,63 +321,88 @@ object ADBCLIUtil {
     /**
      * 设置显示屏分辨率。
      *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
      * @param[sn] 设备序列号。
      * @param[width] 宽度。
      * @param[height] 高度。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
-     * 的分辨率，只能以空值调用该方法。
+     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
     @JvmOverloads
-    fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String? = null): Boolean {
-        val cmd = if (displayID == null) {
-            "wm size ${width}x$height"
+    fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm size ${width}x$height"
+            }
         } else {
             "wm size ${width}x$height -d $displayID"
         }
+
         val status = runForStatus(sn, cmd)
-        println("status -> $status")
         return CLIUtil.isSuccess(status)
     }
 
     /**
      * 还原显示屏分辨率。
      *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
-     * 的分辨率，只能以空值调用该方法。
+     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
     @JvmOverloads
-    fun resetDisplaySize(sn: String, displayID: String? = null): Boolean {
-        val cmd = if (displayID == null) {
-            "wm size reset"
+    fun resetDisplaySize(sn: String, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm size reset"
+            }
         } else {
             "wm size reset -d $displayID"
         }
+
         val status = runForStatus(sn, cmd)
-        println("status -> $status")
         return CLIUtil.isSuccess(status)
     }
 
     /**
      * 获取显示屏像素密度。
      *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回空值。
+     *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
-     * 的分辨率，只能以空值调用该方法。
+     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
      * @return 密度信息。若出现异常则返回空值。
      */
     @JvmStatic
     @JvmOverloads
-    fun getDisplayDensity(sn: String, displayID: String? = null): DisplayDensity? {
-        val cmd = if (displayID == null) {
-            "wm density"
+    fun getDisplayDensity(sn: String, displayID: String = "0"): DisplayDensity? {
+        val version = AndroidVersion.fromAPILevel(getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return null
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm density"
+            }
         } else {
             "wm density -d $displayID"
         }
+
         val lines = runForLines(sn, cmd) ?: return null
         return ADBOutputParser.parseWMDensity(lines)
     }
@@ -371,20 +410,29 @@ object ADBCLIUtil {
     /**
      * 设置显示屏像素密度。
      *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
      * @param[sn] 设备序列号。
      * @param[density] 密度。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
-     * 的分辨率，只能以空值调用该方法。
+     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
     @JvmOverloads
-    fun setDisplayDensity(sn: String, density: Int, displayID: String? = null): Boolean {
-        val cmd = if (displayID == null) {
-            "wm density $density"
+    fun setDisplayDensity(sn: String, density: Int, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm density $density"
+            }
         } else {
             "wm density $density -d $displayID"
         }
+
         val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }
@@ -392,19 +440,28 @@ object ADBCLIUtil {
     /**
      * 还原显示屏像素密度。
      *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏，通常是 ID 为 `0` 的显示屏。Android 10 以下版本不支持调整主屏以外屏幕
-     * 的分辨率，只能以空值调用该方法。
+     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
     @JvmOverloads
-    fun resetDisplayDensity(sn: String, displayID: String? = null): Boolean {
-        val cmd = if (displayID == null) {
-            "wm density reset"
+    fun resetDisplayDensity(sn: String, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm density reset"
+            }
         } else {
             "wm density reset -d $displayID"
         }
+
         val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }

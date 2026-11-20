@@ -139,6 +139,63 @@ interface ADBExecutor {
      */
 
     /**
+     * 获取显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return 分辨率信息。若出现异常或显示屏不存在则返回空值。
+     */
+    suspend fun getDisplaySize(sn: String, displayID: String): DisplaySize?
+
+    /**
+     * 设置显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[width] 宽度。
+     * @param[height] 高度。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String): Boolean
+
+    /**
+     * 还原显示屏分辨率。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun resetDisplaySize(sn: String, displayID: String): Boolean
+
+    /**
+     * 获取显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return 密度信息。若出现异常则返回空值。
+     */
+    suspend fun getDisplayDensity(sn: String, displayID: String): DisplayDensity?
+
+    /**
+     * 设置显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[density] 密度。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun setDisplayDensity(sn: String, density: Int, displayID: String): Boolean
+
+    /**
+     * 还原显示屏像素密度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
+     * @return `true` 表示操作成功； `false` 表示操作失败。
+     */
+    suspend fun resetDisplayDensity(sn: String, displayID: String): Boolean
+
+    /**
      * 获取 Activity 列表。
      *
      * @param[sn] 设备序列号。
@@ -173,64 +230,6 @@ interface ADBExecutor {
      * @return 焦点窗口列表，每个显示屏最多一项。若出现异常则返回空列表。
      */
     suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo>
-
-
-    /**
-     * 获取显示屏分辨率。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
-     * @return 分辨率信息。若出现异常或显示屏不存在则返回空值。
-     */
-    suspend fun getDisplaySize(sn: String, displayID: String?): DisplaySize?
-
-    /**
-     * 设置显示屏分辨率。
-     *
-     * @param[sn] 设备序列号。
-     * @param[width] 宽度。
-     * @param[height] 高度。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String?): Boolean
-
-    /**
-     * 还原显示屏分辨率。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    suspend fun resetDisplaySize(sn: String, displayID: String?): Boolean
-
-    /**
-     * 获取显示屏像素密度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
-     * @return 密度信息。若出现异常则返回空值。
-     */
-    suspend fun getDisplayDensity(sn: String, displayID: String?): DisplayDensity?
-
-    /**
-     * 设置显示屏像素密度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[density] 密度。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    suspend fun setDisplayDensity(sn: String, density: Int, displayID: String?): Boolean
-
-    /**
-     * 还原显示屏像素密度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
-     */
-    suspend fun resetDisplayDensity(sn: String, displayID: String?): Boolean
 
 
     /*

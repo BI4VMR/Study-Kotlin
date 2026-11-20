@@ -106,6 +106,24 @@ object LocalExecutor : ADBExecutor {
      * ----- 图形界面 -----
      */
 
+    override suspend fun getDisplaySize(sn: String, displayID: String): DisplaySize? =
+        withContext(Dispatchers.IO) { ADBCLIUtil.getDisplaySize(sn, displayID) }
+
+    override suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String): Boolean =
+        withContext(Dispatchers.IO) { ADBCLIUtil.setDisplaySize(sn, width, height, displayID) }
+
+    override suspend fun resetDisplaySize(sn: String, displayID: String): Boolean =
+        withContext(Dispatchers.IO) { ADBCLIUtil.resetDisplaySize(sn, displayID) }
+
+    override suspend fun getDisplayDensity(sn: String, displayID: String): DisplayDensity? =
+        withContext(Dispatchers.IO) { ADBCLIUtil.getDisplayDensity(sn, displayID) }
+
+    override suspend fun setDisplayDensity(sn: String, density: Int, displayID: String): Boolean =
+        withContext(Dispatchers.IO) { ADBCLIUtil.setDisplayDensity(sn, density, displayID) }
+
+    override suspend fun resetDisplayDensity(sn: String, displayID: String): Boolean =
+        withContext(Dispatchers.IO) { ADBCLIUtil.resetDisplayDensity(sn, displayID) }
+
     override suspend fun getActivities(sn: String, displayID: String?): List<ActivityInfo> =
         withContext(Dispatchers.IO) { ADBCLIUtil.getActivities(sn, displayID) }
 
@@ -117,25 +135,6 @@ object LocalExecutor : ADBExecutor {
 
     override suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo> =
         withContext(Dispatchers.IO) { ADBCLIUtil.getForegroundWindows(sn, displayID) }
-
-
-    override suspend fun getDisplaySize(sn: String, displayID: String?): DisplaySize? =
-        withContext(Dispatchers.IO) { ADBCLIUtil.getDisplaySize(sn, displayID) }
-
-    override suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String?): Boolean =
-        withContext(Dispatchers.IO) { ADBCLIUtil.setDisplaySize(sn, width, height, displayID) }
-
-    override suspend fun resetDisplaySize(sn: String, displayID: String?): Boolean =
-        withContext(Dispatchers.IO) { ADBCLIUtil.resetDisplaySize(sn, displayID) }
-
-    override suspend fun getDisplayDensity(sn: String, displayID: String?): DisplayDensity? =
-        withContext(Dispatchers.IO) { ADBCLIUtil.getDisplayDensity(sn, displayID) }
-
-    override suspend fun setDisplayDensity(sn: String, density: Int, displayID: String?): Boolean =
-        withContext(Dispatchers.IO) { ADBCLIUtil.setDisplayDensity(sn, density, displayID) }
-
-    override suspend fun resetDisplayDensity(sn: String, displayID: String?): Boolean =
-        withContext(Dispatchers.IO) { ADBCLIUtil.resetDisplayDensity(sn, displayID) }
 
 
     /*

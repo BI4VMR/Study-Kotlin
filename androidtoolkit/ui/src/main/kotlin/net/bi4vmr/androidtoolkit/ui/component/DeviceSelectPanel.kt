@@ -3,8 +3,6 @@ package net.bi4vmr.androidtoolkit.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +25,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -198,7 +194,7 @@ private fun DeviceList(
                             textAlign = TextAlign.Center
                         )
                     }
-                    Button(onClick = { executor.init() }) {
+                    XOutlinedButton(onClick = { executor.init() }) {
                         Icon(Icons.Refresh, null)
                         Text("重新初始化")
                     }
@@ -213,9 +209,9 @@ private fun DeviceList(
 
             else -> {
                 LazyColumn(
-                    modifier = Modifier.weight(1F),
                     contentPadding = PaddingValues(vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1F)
                 ) {
                     items(devices, key = { it.getSN() }) { device ->
                         val isSelected = (device.getSN() == selected?.getSN())
@@ -238,32 +234,13 @@ private fun DeviceList(
                         )
                     }
                 }
-            }
-        }
 
-        val shape = CardDefaults.shape
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.clip(shape)
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = shape
-                )
-                .clickable {
-
+                XOutlinedButton(
+                    onClick = { connectDeviceDialogState = true }
+                ) {
+                    Icon(Icons.Add, null, Modifier.size(Dimens.Icon.Small))
+                    Text("添加设备")
                 }
-        ) {
-            Icon(Icons.Add, null)
-            Text("添加设备")
-        }
-
-        Row {
-            OutlinedButton(
-                onClick = { connectDeviceDialogState = true }
-            ) {
-                Icon(Icons.Add, null)
-                Text("添加设备")
             }
         }
 

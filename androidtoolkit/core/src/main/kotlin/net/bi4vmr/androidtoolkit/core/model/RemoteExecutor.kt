@@ -92,6 +92,24 @@ class RemoteExecutor(
      * ----- 图形界面 -----
      */
 
+    override suspend fun getDisplaySize(sn: String, displayID: String): DisplaySize? =
+        client.getDisplaySize(sn, displayID)
+
+    override suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String): Boolean =
+        client.setDisplaySize(sn, width, height, displayID)
+
+    override suspend fun resetDisplaySize(sn: String, displayID: String): Boolean =
+        client.resetDisplaySize(sn, displayID)
+
+    override suspend fun getDisplayDensity(sn: String, displayID: String): DisplayDensity? =
+        client.getDisplayDensity(sn, displayID)
+
+    override suspend fun setDisplayDensity(sn: String, density: Int, displayID: String): Boolean =
+        client.setDisplayDensity(sn, density, displayID)
+
+    override suspend fun resetDisplayDensity(sn: String, displayID: String): Boolean =
+        client.resetDisplayDensity(sn, displayID)
+
     override suspend fun getActivities(sn: String, displayID: String?): List<ActivityInfo> =
         client.getActivities(sn, displayID)
 
@@ -103,25 +121,6 @@ class RemoteExecutor(
 
     override suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo> =
         client.getForegroundWindows(sn, displayID)
-
-
-    override suspend fun getDisplaySize(sn: String, displayID: String?): DisplaySize? =
-        client.getDisplaySize(sn, displayID)
-
-    override suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String?): Boolean =
-        client.setDisplaySize(sn, width, height, displayID)
-
-    override suspend fun resetDisplaySize(sn: String, displayID: String?): Boolean =
-        client.resetDisplaySize(sn, displayID)
-
-    override suspend fun getDisplayDensity(sn: String, displayID: String?): DisplayDensity? =
-        client.getDisplayDensity(sn, displayID)
-
-    override suspend fun setDisplayDensity(sn: String, density: Int, displayID: String?): Boolean =
-        client.setDisplayDensity(sn, density, displayID)
-
-    override suspend fun resetDisplayDensity(sn: String, displayID: String?): Boolean =
-        client.resetDisplayDensity(sn, displayID)
 
 
     /*

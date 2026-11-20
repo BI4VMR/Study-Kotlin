@@ -93,10 +93,17 @@ data class ActivityInfo(
     /**
      * 是否正在前台。
      *
-     * TODO 暂未实现。
+     * 较新版本的系统支持分屏，可能有多个 Activity 同时进入 Resumed 状态。
      */
     @get:JvmName("isResumed")
-    val resumed: Boolean = false
+    val resumed: Boolean = false,
+
+    /**
+     * ActivityRecord 的哈希值。
+     *
+     * 若解析失败则为空字符串。
+     */
+    val hash: String = ""
 ) {
 
     /**

@@ -5,6 +5,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 
 /**
@@ -81,7 +82,7 @@ object ADBOutputParser {
      *
      * 格式：`ActivityRecord{<对象 Hash> u<用户 ID> <Activity 完整名称> t<任务 ID>}`。
      */
-    private val activityRecordRegex = """ActivityRecord\{\S+\s+u(\d+)\s+([^/\s]+)/([^\s}]+)\}?\s+t(-?\d+)""".toRegex()
+    private val activityRecordRegex = """ActivityRecord\{(\S+)\s+u(\d+)\s+([^/\s]+)/([^\s}]+)\}?\s+t(-?\d+)""".toRegex()
 
     /**
      * 正则表达式： Activity 详情中的进程信息。
@@ -110,10 +111,15 @@ object ADBOutputParser {
      */
     private val activityTaskAffinityRegex = """\btaskAffinity=(?:\d+:)?(\S+)""".toRegex()
 
+    /**
+     * 正则表达式：Activity 列表中当前屏幕内状态为 Resumed 的实例。
+     */
+    private val resumeActivityRegex = """^\s*(?:Resumed:|ResumedActivity:)""".toRegex()
+
     // 正则表达式：屏幕内的前台 Activity 行，例如 `Resumed: ActivityRecord{...}` （Android 12 及更高版本）、
     // `topResumedActivity=ActivityRecord{...}` 或 `mResumedActivity: ActivityRecord{...}` （旧版本）。
     // 注意：不匹配位于所有屏幕之后的全局 `ResumedActivity:` 行，它仅表示全局焦点所在的 Activity 。
-    private val resumedActivityRegex = """^\s*(?:Resumed:|topResumedActivity=|mResumedActivity:)""".toRegex()
+    private val resumedActivityRegex = """^\s*(?:Resumed:|ResumedActivity:)""".toRegex()
 
     // 正则表达式：窗口列表中的窗口标题行，例如 `Window #0 Window{hash u0 NavigationBar0}:` 。
     private val windowHeaderRegex = """^\s*Window #\d+ Window\{(\S+) u(\d+) (.*)\}:\s*$""".toRegex()
@@ -488,6 +494,7 @@ object ADBOutputParser {
      *     taskAffinity=10156:net.bi4vmr.study.ui.compose.graphic
      *
      * Display #1 (activities from top to bottom):
+     * <此处省略部分输出...>
      * ```
      *
      * 每个屏幕内的 Activity 按照从顶层到底层的顺序排列。
@@ -528,6 +535,25 @@ object ADBOutputParser {
 
             // 若先前内容已解析屏幕信息，继续解析 Activity 信息，否则忽略当前行。
             val displayID = currentDisplayID ?: return@forEach
+
+            /*
+             * 若为 ResumedActivity 行，则查找现有 Activity 中对应的记录，将属性置位。
+             *
+             * 该信息在每个显示屏区块的末尾出现，其中的 Activity 应当已解析到结果列表中。
+             */
+            if (resumeActivityRegex.containsMatchIn(line)) {
+                val match = activityRecordRegex.find(line) ?: return@forEach
+                val hash = match.groupValues[1]
+                // 寻找旧的表项，将其替换为新的记录。
+                val i = results.indexOfFirst { it.displayID == displayID && it.hash == hash }
+                if (i >= 0) {
+                    val old = results.removeAt(i)
+                    val new = old.copy(resumed = true)
+                    results.add(i, new)
+                }
+                return@forEach
+            }
+
             // 计算当前行的缩进量
             val indent = line.indexOfFirst { !it.isWhitespace() }
 
@@ -536,17 +562,19 @@ object ADBOutputParser {
                 commitActivityInfo()
                 // 未匹配到关键信息则跳过本行
                 val match = activityRecordRegex.find(line) ?: return@forEach
-                // 已匹配到关键信息，解析 Activity 名称。
-                val userID = match.groupValues[1].toIntOrNull() ?: -1
-                val packageName = match.groupValues[2]
-                val className = match.groupValues[3]
-                val taskID = match.groupValues[4].toIntOrNull() ?: -1
+                // 已匹配到关键信息，解析 Activity 名称等属性。
+                val hash = match.groupValues[1]
+                val userID = match.groupValues[2].toIntOrNull() ?: -1
+                val packageName = match.groupValues[3]
+                val className = match.groupValues[4]
+                val taskID = match.groupValues[5].toIntOrNull() ?: -1
                 currentActivity = ActivityInfo(
                     packageName = packageName,
                     className = className,
                     displayID = displayID,
                     userID = userID,
-                    taskID = taskID
+                    taskID = taskID,
+                    hash = hash
                 )
                 currentIndent = indent
                 return@forEach
@@ -568,11 +596,50 @@ object ADBOutputParser {
     }
 
     /**
+     * 解析全局焦点信息。
+     *
+     * 解析 `dumpsys activity activities` 命令输出内容，获取前台 Activity 与 Window 信息。
+     *
+     * 命令输出示例：
+     *
+     * ```text
+     * ActivityTaskSupervisor state:
+     *   topDisplayFocusedRootTask=Task{b4221ec #1100752 type=home}
+     *   Display: mDisplayId=3 (organized)
+     *     init=1920x720 160dpi mMinSizeOfResizeableTaskDp=220 cur=1920x720 app=1800x720 rng=600x720-1800x1920
+     *     deferred=false mLayoutNeeded=false mTouchExcludeRegion=SkRegion((0,0,1920,720))
+     *   mCurrentFocus=Window{3c701b9 u0 PopupWindow:23074a8}
+     *   mFocusedApp=ActivityRecord{1d39097 u11 com.android.launcher/.HomeActivity} t1100753}
+     * ```
+     *
+     * @param[input] 命令输出。
+     * @return 焦点信息。
+     */
+    fun parseGlobalFocusInfo(input: List<String>): FocusInfo {
+        var inArea = false
+        input.forEach { line ->
+            if (line.isBlank()) return@forEach
+
+            if (line.startsWith("ActivityTaskSupervisor state:")) {
+                inArea = true
+                return@forEach
+            }
+
+            // ActivityTaskSupervisor 是顶层元素，遇到无缩进的非空行，表示当前区块结束。
+            if (line.isNotBlank() && !line.first().isWhitespace()) {
+                return@forEach
+            }
+        }
+        return FocusInfo()
+    }
+
+    /**
      * 解析 `dumpsys activity activities` 命令输出中的前台 Activity 。
      *
      * @param[input] 命令输出。
      * @return 各屏幕的前台 Activity 列表，每个屏幕最多一项。
      */
+    @Deprecated("")
     fun parseResumedActivities(input: List<String>): List<ActivityInfo> {
         val map = linkedMapOf<String, ActivityInfo>()
         var displayID: String? = null
