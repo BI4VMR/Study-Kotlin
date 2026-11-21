@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.runBlocking
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
@@ -131,14 +132,18 @@ private fun DevicePanel(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             XOutlinedButton(
                 onClick = {
-                    viewModel.getSelectedExecutor().root(device.getSN())
+                    runBlocking {
+                        viewModel.getSelectedExecutor().root(device.getSN())
+                    }
                 },
                 enabled = enabled
             ) { Text("Root") }
 
             XOutlinedButton(
                 onClick = {
-                    viewModel.getSelectedExecutor().reboot(device.getSN())
+                    runBlocking {
+                        viewModel.getSelectedExecutor().reboot(device.getSN())
+                    }
                 },
                 enabled = enabled
             ) { Text("重启") }

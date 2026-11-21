@@ -71,13 +71,11 @@ class RemoteExecutor(
         client.openShell(sn)
     }
 
-    override fun root(sn: String): Int {
-        TODO("Not yet implemented")
-    }
+    override suspend fun root(sn: String): Int =
+        client.root(sn)
 
-    override fun reboot(sn: String, option: String): Int {
-        TODO("Not yet implemented")
-    }
+    override suspend fun reboot(sn: String, option: String): Int =
+        client.reboot(sn, option)
 
 
     /*

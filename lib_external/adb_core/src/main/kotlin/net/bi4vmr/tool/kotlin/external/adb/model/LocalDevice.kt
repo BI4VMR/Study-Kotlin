@@ -95,7 +95,7 @@ data class LocalDevice(
         ADBCLIUtil.run(getSN(), command, redirectError)
 
     /**
-     * 执行 ADB Shell 命令并获取返回值。
+     * 执行 ADB Shell 命令并获取状态码。
      *
      * @param[command] 命令语句。
      * @return 状态码。若出现异常则返回 `-1` 。
@@ -155,7 +155,7 @@ data class LocalDevice(
     /**
      * 切换为 Root 权限。
      *
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     fun root(): Int = ADBCLIUtil.root(getSN())
 
@@ -163,7 +163,7 @@ data class LocalDevice(
      * 重启。
      *
      * @param[option] 附加命令，可以携带 `recovery` 、 `fastboot` 、 `bootloader` 等选项，默认为空。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmOverloads
     fun reboot(option: String = ""): Int = ADBCLIUtil.reboot(getSN(), option)

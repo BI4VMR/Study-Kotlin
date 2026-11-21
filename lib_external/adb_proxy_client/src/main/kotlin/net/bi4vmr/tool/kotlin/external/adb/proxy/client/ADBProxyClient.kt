@@ -1,41 +1,20 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.URLBuilder
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
-import io.ktor.http.contentType
-import io.ktor.http.encodeURLParameter
-import io.ktor.http.isSuccess
-import io.ktor.http.path
-import io.ktor.network.tls.addKeyStore
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.network.tls.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.bi4vmr.tool.java.common.base.file.FileUtil
@@ -49,33 +28,20 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.exceptions.RPCException
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import org.slf4j.LoggerFactory
-import java.io.DataInputStream
-import java.io.EOFException
-import java.io.File
-import java.io.FileNotFoundException
-import java.io.IOException
+import java.io.*
 import java.net.ConnectException
 import java.net.ServerSocket
 import kotlin.coroutines.EmptyCoroutineContext
@@ -335,6 +301,7 @@ class ADBProxyClient(
      * @return 状态码。若出现异常则返回 `-1` 。
      */
     suspend fun runForStatus(sn: String, command: String): Int {
+        logger.debug("RunForStatus. SN:[$sn] Command:[$command]")
         return try {
             val response = requireClient().post(buildURL(APIs.ADB_EXEC_STATUS)) {
                 val params = ADBExecRequest(
@@ -348,11 +315,11 @@ class ADBProxyClient(
             if (response.status.isSuccess()) {
                 response.bodyAsText().trim().toIntOrNull() ?: -1
             } else {
-                logger.warn("Failed to run command. Reason:[${response.bodyAsText()}]")
+                logger.warn("RunForStatus - HTTP status is fail. Code:[${response.status}] Body:[${response.bodyAsText()}]")
                 -1
             }
         } catch (e: Exception) {
-            logger.warn("Failed to run command. Reason:[${e.message}]")
+            logger.warn("RunForStatus - Failed to run command. Reason:[${e.message}]")
             -1
         }
     }
@@ -488,6 +455,25 @@ class ADBProxyClient(
             }
         }
     }
+
+    /**
+     * 切换为 Root 权限。
+     *
+     * @param[sn] 设备序列号。
+     * @return 状态码。若出现异常则返回 `-1`。
+     */
+    suspend fun root(sn: String): Int =
+        runForStatus(sn, "root")
+
+    /**
+     * 重启。
+     *
+     * @param[sn] 设备序列号。
+     * @param[option] 附加命令，可以携带 `recovery`、`fastboot`、`bootloader` 等选项，默认为空。
+     * @return 状态码。若出现异常则返回 `-1`。
+     */
+    suspend fun reboot(sn: String, option: String = ""): Int =
+        runForStatus(sn, "reboot $option".trim())
 
 
     /*
@@ -861,7 +847,7 @@ class ADBProxyClient(
      */
     suspend fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
         val lines = runForLines(sn, "dumpsys window windows") ?: return emptyList()
-        return ADBOutputParser.parseWindows(lines)
+        return ADBOutputParser.parseDumpWindows(lines)
             .filter { displayID == null || it.displayID == displayID }
     }
 
@@ -885,7 +871,11 @@ class ADBProxyClient(
 
         return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
             .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
+    }
+
+    suspend fun getGlobalFocusInfo(sn: String): FocusInfo {
+        // TODO
+        return FocusInfo()
     }
 
 

@@ -2,8 +2,8 @@ package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseDumpWindows
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseFocusedWindows
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser.parseWindows
 
 /**
  * ADB 输出解析器。
@@ -134,22 +134,27 @@ object ADBOutputParser {
      */
     private val focusedDisplayRegex = """^\s*Display: mDisplayId=(\d+)""".toRegex()
 
-    // 正则表达式：屏幕内的前台 Activity 行，例如 `Resumed: ActivityRecord{...}` （Android 12 及更高版本）、
-    // `topResumedActivity=ActivityRecord{...}` 或 `mResumedActivity: ActivityRecord{...}` （旧版本）。
-    // 注意：不匹配位于所有屏幕之后的全局 `ResumedActivity:` 行，它仅表示全局焦点所在的 Activity 。
-    private val resumedActivityRegex = """^\s*(?:Resumed:|ResumedActivity:)""".toRegex()
+    /**
+     * 正则表达式：窗口列表中的窗口标题行。
+     *
+     * 格式：`Window #<序号> Window{<Hash> u<用户 ID> <窗口标题>}:`。
+     */
+    private val windowHeaderRegex = """^\s*Window #\d+ Window\{(\S+?)(?:\s+.*?)?\s+u(\d+)\s+(\S+?)\}:\s*$""".toRegex()
 
-    // 正则表达式：窗口列表中的窗口标题行，例如 `Window #0 Window{hash u0 NavigationBar0}:` 。
-    private val windowHeaderRegex = """^\s*Window #\d+ Window\{(\S+) u(\d+) (.*)\}:\s*$""".toRegex()
-
-    // 正则表达式：窗口所在屏幕 ID 。
+    /**
+     * 正则表达式：窗口所在的屏幕 ID。
+     */
     private val windowDisplayIDRegex = """\bmDisplayId=(\d+)""".toRegex()
 
-    // 正则表达式：窗口所属包名。
+    /**
+     * 正则表达式：窗口所属包名。
+     */
     private val windowPackageRegex = """\bpackage=(\S+)""".toRegex()
 
-    // 正则表达式：窗口可见状态。
-    private val windowVisibleRegex = """\b(?:isVisible|isOnScreen)=true\b""".toRegex()
+    /**
+     * 正则表达式：窗口可见状态。
+     */
+    private val windowVisibleRegex = """\bisVisible=true\b""".toRegex()
 
     // 正则表达式：窗口信息结束行（无缩进或缩进 2 个空格的非空行）。
     private val windowEndRegex = """^(?: {2})?\S""".toRegex()
@@ -604,10 +609,81 @@ object ADBOutputParser {
             // 当前 Activity 区块未结束，则尝试解析剩余属性。
             currentActivity = parseActivityDetail(line, activity)
         }
-        // 遍历结束，如有剩余的 Activity 信息则提交至结果列表。
+        // 遍历结束，如有 Activity 信息则提交至结果列表。
         commitActivityInfo()
 
         return results
+    }
+
+    /**
+     * 解析 Window 信息。
+     *
+     * 从 `dumpsys window windows` 命令的输出结果中提取 Window 信息。
+     *
+     * 每个屏幕内的 Window 按照从顶层到底层的顺序排列。
+     *
+     * @param[input] 原始命令内容（分行）。
+     * @return Window 列表。
+     */
+    fun parseDumpWindows(input: List<String>): List<WindowInfo> {
+        val results = mutableListOf<WindowInfo>()
+
+        var currentWindow: WindowInfo? = null
+        // 输出内容层级按照缩进区分，因此进入每个窗口记录时需要记录当前缩进量，根据后续行的缩进量可判断当前区块是否结束。
+        var currentIndent = 0
+
+        // 若先前内容已解析到 Window 信息，将其提交至结果列表，并清空暂存变量。
+        fun commitWindowInfo() {
+            currentWindow?.let { results.add(it) }
+            currentWindow = null
+        }
+
+        input.forEach { line ->
+            if (line.isBlank()) return@forEach
+
+            // 匹配窗口分组 `Window #X`
+            windowHeaderRegex.find(line)?.let {
+                commitWindowInfo()
+                currentWindow = WindowInfo(
+                    title = it.groupValues[3].trim(),
+                    userID = it.groupValues[2].toIntOrNull() ?: -1,
+                    hash = it.groupValues[1]
+                )
+                return@forEach
+            }
+
+            // 遇到无缩进的非空行，表示当前窗口区块结束。
+            if (line.isNotBlank() && !line.first().isWhitespace()) {
+                commitWindowInfo()
+                return@forEach
+            }
+
+            // 若先前内容已解析窗口信息，继续解析窗口详情，否则忽略当前行。
+            val window = currentWindow ?: return@forEach
+
+            // 计算当前行的缩进量
+            val indent = line.indexOfFirst { !it.isWhitespace() }
+
+            var updated = window
+            if (updated.displayID.isEmpty()) {
+                windowDisplayIDRegex.find(line)?.let { updated = updated.copy(displayID = it.groupValues[1]) }
+            }
+            if (updated.packageName.isEmpty()) {
+                windowPackageRegex.find(line)?.let { updated = updated.copy(packageName = it.groupValues[1]) }
+            }
+            currentWindow = updated
+        }
+        // 遍历结束，如有窗口信息则提交至结果列表。
+        commitWindowInfo()
+
+        // 部分窗口没有 `package=` 字段，尝试从 `包名/类名` 格式的标题中提取包名。
+        return results.map {
+            if (it.packageName.isEmpty() && it.title.contains('/')) {
+                it.copy(packageName = it.title.substringBefore('/').substringAfterLast(' '))
+            } else {
+                it
+            }
+        }
     }
 
     /**
@@ -618,14 +694,14 @@ object ADBOutputParser {
      * @param[input] 命令输出。
      * @return 窗口列表。
      */
-    fun parseWindows(input: List<String>): List<WindowInfo> {
-        val list = mutableListOf<WindowInfo>()
+    fun parseDumpWindows2(input: List<String>): List<WindowInfo> {
+        val results = mutableListOf<WindowInfo>()
         var current: WindowInfo? = null
 
         input.forEach { line ->
             val header = windowHeaderRegex.find(line)
             if (header != null) {
-                current?.let { list.add(it) }
+                current?.let { results.add(it) }
                 current = WindowInfo(
                     hash = header.groupValues[1],
                     userID = header.groupValues[2].toIntOrNull() ?: -1,
@@ -637,7 +713,7 @@ object ADBOutputParser {
             val window = current ?: return@forEach
             // 窗口属性行缩进至少为 4 个空格（折行内容可能仅缩进 1 个空格），缩进为 0 或 2 个空格的非空行表示当前窗口的信息已结束。
             if (windowEndRegex.containsMatchIn(line)) {
-                list.add(window)
+                results.add(window)
                 current = null
                 return@forEach
             }
@@ -654,10 +730,10 @@ object ADBOutputParser {
             }
             current = updated
         }
-        current?.let { list.add(it) }
+        current?.let { results.add(it) }
 
-// 部分窗口没有 `package=` 字段，尝试从 `包名/类名` 格式的标题中提取包名。
-        return list.map {
+        // 部分窗口没有 `package=` 字段，尝试从 `包名/类名` 格式的标题中提取包名。
+        return results.map {
             if (it.packageName.isEmpty() && it.title.contains('/')) {
                 it.copy(packageName = it.title.substringBefore('/').substringAfterLast(' '))
             } else {
@@ -700,7 +776,7 @@ object ADBOutputParser {
      * 通过哈希值关联窗口列表，补全焦点窗口的屏幕 ID 、包名等信息。
      *
      * @param[focused] [parseFocusedWindows] 的解析结果。
-     * @param[windows] [parseWindows] 的解析结果。
+     * @param[windows] [parseDumpWindows] 的解析结果。
      * @return 焦点窗口列表。
      */
     fun mergeFocusedWindows(focused: Map<String, WindowInfo>, windows: List<WindowInfo>): List<WindowInfo> {

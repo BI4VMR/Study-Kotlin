@@ -69,9 +69,11 @@ object LocalExecutor : ADBExecutor {
         ADBCLIUtil.openShell(sn)
     }
 
-    override fun root(sn: String): Int = ADBCLIUtil.root(sn)
+    override suspend fun root(sn: String): Int =
+        ADBCLIUtil.root(sn)
 
-    override fun reboot(sn: String, option: String): Int = ADBCLIUtil.reboot(sn, option)
+    override suspend fun reboot(sn: String, option: String): Int =
+        ADBCLIUtil.reboot(sn, option)
 
 
     /*

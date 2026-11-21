@@ -3,34 +3,11 @@ package net.bi4vmr.androidtoolkit.ui.display
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,19 +18,9 @@ import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
-import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
-import net.bi4vmr.androidtoolkit.ui.component.InfoRow
-import net.bi4vmr.androidtoolkit.ui.component.SegmentedTab
-import net.bi4vmr.androidtoolkit.ui.component.SegmentedTabRow
-import net.bi4vmr.androidtoolkit.ui.component.ToastManager
-import net.bi4vmr.androidtoolkit.ui.component.ToastType
-import net.bi4vmr.androidtoolkit.ui.component.XOutlinedButton
+import net.bi4vmr.androidtoolkit.ui.component.*
 import net.bi4vmr.androidtoolkit.ui.displayselectpanel_title
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -243,7 +210,7 @@ private fun DisplayDetailPanel(
 
             Tabs.ACTIVITIES -> ActivityInfo(viewModel)
 
-            Tabs.WINDOWS -> {}
+            Tabs.WINDOWS -> WindowInfo(viewModel)
         }
     }
 }
@@ -423,14 +390,14 @@ private fun BaseInfo(
 }
 
 /**
- * 基本信息面板。
+ * Activity 信息面板。
  */
 @Composable
 private fun ActivityInfo(
     viewModel: DisplayPageViewModel
 ) {
     val list = viewModel.activitiesFlow.collectAsStateWithLifecycle()
-    LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
+    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
         items(list.value, key = { it.componentName }) { activity ->
             ActivityListItem(activity)
         }
@@ -448,6 +415,20 @@ private fun ActivityListItem(activity: ActivityInfo) {
     )
 }
 
+/**
+ * Window 信息面板。
+ */
+@Composable
+private fun WindowInfo(
+    viewModel: DisplayPageViewModel
+) {
+    val list = viewModel.windowsFlow.collectAsStateWithLifecycle()
+    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+        items(list.value, key = { it.hash }) { window ->
+            WindowListItem(window)
+        }
+    }
+}
 
 @Composable
 private fun WindowListItem(window: WindowInfo) {

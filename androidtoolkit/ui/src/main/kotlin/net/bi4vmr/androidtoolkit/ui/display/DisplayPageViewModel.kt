@@ -6,23 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 
 /**
  * ViewModel : 显示页面。
@@ -41,7 +29,7 @@ class DisplayPageViewModel(
     private val displaysRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : 屏幕列表。
+     * Flow：屏幕列表。
      *
      * 跟随当前选中的设备，若无选中项则为空列表。
      */
@@ -66,12 +54,12 @@ class DisplayPageViewModel(
             )
 
     /**
-     * Flow : 当前选中的屏幕（内部）。
+     * Flow：当前选中的屏幕（内部）。
      */
     private val _selectedDisplayFlow: MutableStateFlow<DisplayInfo?> = MutableStateFlow(null)
 
     /**
-     * Flow : 当前选中的屏幕。
+     * Flow：当前选中的屏幕。
      */
     val selectedDisplayFlow: StateFlow<DisplayInfo?> = _selectedDisplayFlow
 
@@ -85,7 +73,7 @@ class DisplayPageViewModel(
     private val sizeRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : 屏幕尺寸信息。
+     * Flow：屏幕尺寸信息。
      *
      * 跟随当前选中的屏幕，若无选中项则为空值。
      */
@@ -112,7 +100,7 @@ class DisplayPageViewModel(
     private val densityRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : 像素密度信息。
+     * Flow：像素密度信息。
      *
      * 跟随当前选中的屏幕，若无选中项则为空值。
      */
@@ -139,7 +127,7 @@ class DisplayPageViewModel(
     private val activitiesRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : Activity 列表。
+     * Flow：Activity 列表。
      *
      * 跟随当前选中的屏幕，若无选中项则为空列表。
      */
@@ -167,7 +155,7 @@ class DisplayPageViewModel(
     private val windowsRefreshTrigger = MutableStateFlow(0)
 
     /**
-     * Flow : Window 列表。
+     * Flow：Window 列表。
      *
      * 跟随当前选中的屏幕，若无选中项则为空列表。
      */
@@ -181,8 +169,8 @@ class DisplayPageViewModel(
                         return@flow
                     }
 
-                    val activities = logicManager.getSelectedExecutor().getWindows(display.sn, display.id)
-                    emit(activities)
+                    val windows = logicManager.getSelectedExecutor().getWindows(display.sn, display.id)
+                    emit(windows)
                 }.flowOn(Dispatchers.IO)
             }
             .stateIn(

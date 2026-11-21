@@ -81,7 +81,7 @@ interface ADBExecutor {
      * @param[sn] 设备序列号。
      * @return 状态码。若出现异常则返回 `-1`。
      */
-    fun root(sn: String): Int
+    suspend fun root(sn: String): Int
 
     /**
      * 重启。
@@ -90,7 +90,7 @@ interface ADBExecutor {
      * @param[option] 附加命令，可以携带 `recovery`、`fastboot`、`bootloader` 等选项，默认为空。
      * @return 状态码。若出现异常则返回 `-1`。
      */
-    fun reboot(sn: String, option: String = ""): Int
+    suspend fun reboot(sn: String, option: String = ""): Int
 
 
     /*

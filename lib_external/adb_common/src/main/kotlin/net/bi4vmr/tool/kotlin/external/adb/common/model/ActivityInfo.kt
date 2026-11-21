@@ -21,7 +21,7 @@ data class ActivityInfo(
     val className: String,
 
     /**
-     * 屏幕逻辑 ID。
+     * 屏幕 ID。
      */
     @get:JvmName("getDisplayID")
     val displayID: String,
@@ -94,15 +94,18 @@ data class ActivityInfo(
      * 是否正在前台。
      *
      * 较新版本的系统支持分屏，可能有多个 Activity 同时进入 Resumed 状态。
+     *
+     * 若解析失败也视为不可见。
      */
     @get:JvmName("isResumed")
     val resumed: Boolean = false,
 
     /**
-     * ActivityRecord 的哈希值。
+     * ActivityRecord 的 Hash 值。
      *
      * 若解析失败则为空字符串。
      */
+    @get:JvmName("getHash")
     val hash: String = ""
 ) {
 
@@ -111,4 +114,19 @@ data class ActivityInfo(
      */
     @get:JvmName("getComponentName")
     val componentName: String = "$packageName/$className"
+
+    /**
+     * 获取完整组件名称。
+     *
+     * 如果类名为 `.` 开头的简写形式，将其补全为完全限定名称。
+     *
+     * @return 组件名称。
+     */
+    fun getFullComponentName(): String {
+        return if (className.startsWith(".")) {
+            "$packageName/$packageName$className"
+        } else {
+            "$packageName/$className"
+        }
+    }
 }

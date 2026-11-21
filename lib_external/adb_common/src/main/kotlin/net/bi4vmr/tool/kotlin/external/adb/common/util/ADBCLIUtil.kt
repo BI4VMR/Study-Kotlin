@@ -122,14 +122,13 @@ object ADBCLIUtil {
         terminal: Terminal? = null,
         newWindow: Boolean = true,
         keep: Boolean = true
-    ): Process {
-        return TerminalUtil.launch(
+    ): Process =
+        TerminalUtil.launch(
             terminal = terminal,
             command = "${getExecutableName()} -s $sn shell",
             newWindow = newWindow,
             keep = keep
         )
-    }
 
     /**
      * 切换为 Root 权限。
@@ -138,7 +137,8 @@ object ADBCLIUtil {
      * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmStatic
-    fun root(sn: String): Int = runForStatus(sn, "root")
+    fun root(sn: String): Int =
+        runForStatus(sn, "root")
 
     /**
      * 重启。
@@ -149,15 +149,8 @@ object ADBCLIUtil {
      */
     @JvmStatic
     @JvmOverloads
-    fun reboot(sn: String, option: String = ""): Int {
-        val command = if (option.isBlank()) {
-            "reboot"
-        } else {
-            "reboot $option"
-        }
-
-        return runForStatus(sn, command)
-    }
+    fun reboot(sn: String, option: String = ""): Int =
+        runForStatus(sn, "reboot $option".trim())
 
 
     /*
@@ -172,9 +165,8 @@ object ADBCLIUtil {
      * @return 属性值。若属性不存在则返回空值。
      */
     @JvmStatic
-    fun getProperty(sn: String, key: String): String? {
-        return runForText(sn, "getprop $key")?.trim()
-    }
+    fun getProperty(sn: String, key: String): String? =
+        runForText(sn, "getprop $key")?.trim()
 
     /**
      * 获取设备属性。
@@ -185,9 +177,8 @@ object ADBCLIUtil {
      * @return 属性值。若属性不存在则返回默认值。
      */
     @JvmStatic
-    fun getProperty(sn: String, key: String, default: String): String {
-        return runForText(sn, "getprop $key") ?: default
-    }
+    fun getProperty(sn: String, key: String, default: String): String =
+        runForText(sn, "getprop $key") ?: default
 
     /**
      * 获取设备制造商。
@@ -273,7 +264,7 @@ object ADBCLIUtil {
      * 获取显示屏物理 ID 索引。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 逻辑 ID。
+     * @param[displayID] 显示屏 ID。
      * @return 索引序号。无法获取时返回 `0`。
      */
     @JvmStatic
@@ -291,7 +282,7 @@ object ADBCLIUtil {
      * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回空值。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
      * @return 分辨率信息。若显示屏不存在则返回空值。
      */
     @JvmStatic
@@ -322,7 +313,7 @@ object ADBCLIUtil {
      * @param[sn] 设备序列号。
      * @param[width] 宽度。
      * @param[height] 高度。
-     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
@@ -351,7 +342,7 @@ object ADBCLIUtil {
      * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
@@ -380,7 +371,7 @@ object ADBCLIUtil {
      * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回空值。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
      * @return 密度信息。若出现异常则返回空值。
      */
     @JvmStatic
@@ -410,7 +401,7 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[density] 密度。
-     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
@@ -439,7 +430,7 @@ object ADBCLIUtil {
      * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认值为 `0`，表示主屏。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmStatic
@@ -466,31 +457,30 @@ object ADBCLIUtil {
      * 获取 Activity 列表。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的 Activity。
-     * @return Activity 列表，每个显示屏内按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     * @param[displayID] 显示屏 ID。默认为空值，表示列出所有显示屏的 Activity。
+     * @return Activity 列表。命令执行失败时返回空列表。每个显示屏内按照从顶层到底层的顺序排列。
      */
     @JvmStatic
     @JvmOverloads
     fun getActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
         val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
-        return ADBOutputParser.parseDumpActivities(lines)
-            .filter { displayID == null || it.displayID == displayID }
+        val list = ADBOutputParser.parseDumpActivities(lines)
+        return if (displayID == null) list else list.filter { it.displayID == displayID }
     }
 
     /**
-     * 获取窗口列表。
+     * 获取 Window 列表。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的窗口。
-     * @return 窗口列表，按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     * @param[displayID] 显示屏 ID。默认为空值，表示列出所有显示屏的 Window。
+     * @return Window 列表。命令执行失败时返回空列表。每个显示屏内按照从顶层到底层的顺序排列。
      */
     @JvmStatic
     @JvmOverloads
     fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
         val lines = runForLines(sn, "dumpsys window windows") ?: emptyList()
-        return ADBOutputParser.parseWindows(lines)
-            .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
+        val list = ADBOutputParser.parseDumpWindows(lines)
+        return if (displayID == null) list else list.filter { it.displayID == displayID }
     }
 
     /**
@@ -515,7 +505,6 @@ object ADBCLIUtil {
 
         return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
             .filter { displayID == null || it.displayID == displayID }
-            .map { it.copy(sn = sn) }
     }
 
     /**
