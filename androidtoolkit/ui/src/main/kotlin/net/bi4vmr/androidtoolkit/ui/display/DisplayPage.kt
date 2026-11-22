@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -397,7 +398,10 @@ private fun ActivityInfo(
     viewModel: DisplayPageViewModel
 ) {
     val list = viewModel.activitiesFlow.collectAsStateWithLifecycle()
-    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+    LazyColumn(
+        verticalArrangement = spacedBy(4.dp),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
         items(list.value, key = { it.componentName }) { activity ->
             ActivityListItem(activity)
         }
@@ -423,7 +427,10 @@ private fun WindowInfo(
     viewModel: DisplayPageViewModel
 ) {
     val list = viewModel.windowsFlow.collectAsStateWithLifecycle()
-    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+    LazyColumn(
+        verticalArrangement = spacedBy(4.dp),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
         items(list.value, key = { it.hash }) { window ->
             WindowListItem(window)
         }
@@ -436,7 +443,7 @@ private fun WindowListItem(window: WindowInfo) {
         displayID = window.displayID,
         title = window.title,
         subtitle = window.packageName.ifEmpty { "-" },
-        extra = "${if (window.visible) "可见" else "不可见"}  ·  User ${window.userID}  ·  ${window.hash}"
+        extra = "${if (window.visible == true) "可见" else "不可见"}  ·  User ${window.userID}  ·  ${window.hash}"
     )
 }
 

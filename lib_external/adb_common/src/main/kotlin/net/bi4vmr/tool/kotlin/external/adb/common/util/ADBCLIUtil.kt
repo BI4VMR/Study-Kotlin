@@ -4,16 +4,19 @@ import net.bi4vmr.tool.java.common.base.io.BaseIOUtil
 import net.bi4vmr.tool.java.common.base.io.FileIOUtil
 import net.bi4vmr.tool.java.common.base.io.IOUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
+import net.bi4vmr.tool.kotlin.external.adb.common.constants.Intents
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil.buildCommand
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import java.io.File
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 
 /**
  * ADB 命令行工具。
@@ -47,7 +50,7 @@ object ADBCLIUtil {
     @JvmStatic
     @JvmOverloads
     fun run(sn: String, command: String, redirectError: Boolean = true): Process {
-        val optimizedCommand = buildCommand(sn, command)
+        val optimizedCommand = buildCommandArgs(sn, command)
         return CLIUtil.run(optimizedCommand, redirectError)
     }
 
@@ -60,7 +63,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun runForStatus(sn: String, command: String): Int {
-        val optimizedCommand = buildCommand(sn, command)
+        val optimizedCommand = buildCommandArgs(sn, command)
         return CLIUtil.runForStatus(optimizedCommand)
     }
 
@@ -72,7 +75,6 @@ object ADBCLIUtil {
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
-     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     @JvmStatic
@@ -80,11 +82,10 @@ object ADBCLIUtil {
     fun runForLines(
         sn: String,
         command: String,
-        redirectError: Boolean = true,
-        charset: String? = null
+        redirectError: Boolean = true
     ): List<String>? {
-        val optimizedCommand = buildCommand(sn, command)
-        return CLIUtil.runForLines(optimizedCommand, redirectError, charset)
+        val optimizedCommand = buildCommandArgs(sn, command)
+        return CLIUtil.runForLines(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
     }
 
     /**
@@ -95,14 +96,28 @@ object ADBCLIUtil {
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
-     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     @JvmStatic
     @JvmOverloads
-    fun runForText(sn: String, command: String, redirectError: Boolean = true, charset: String? = null): String? {
-        val optimizedCommand = buildCommand(sn, command)
-        return CLIUtil.runForText(optimizedCommand, redirectError, charset)
+    fun runForText(sn: String, command: String, redirectError: Boolean = true): String? {
+        val optimizedCommand = buildCommandArgs(sn, command)
+        return CLIUtil.runForText(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
+    }
+
+    /**
+     * 执行 ADB Shell 命令并获取错误消息。
+     * <p>
+     * 执行命令并阻塞当前线程，读取错误输出并转为文本。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句。
+     * @return 命令的错误输出文本。若出现异常则返回空值。
+     */
+    @JvmStatic
+    fun runForError(sn: String, command: String): String? {
+        val optimizedCommand = buildCommandArgs(sn, command)
+        return CLIUtil.runForError(optimizedCommand, StandardCharsets.UTF_8.name())
     }
 
     /**
@@ -484,30 +499,6 @@ object ADBCLIUtil {
     }
 
     /**
-     * 获取前台（焦点）窗口。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示列出所有显示屏的焦点窗口。
-     * @return 焦点窗口列表，每个显示屏最多一项。命令执行异常时返回空列表。
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun getForegroundWindows(sn: String, displayID: String? = null): List<WindowInfo> {
-        // Android 10 及更高版本在各屏幕分组中记录焦点窗口；旧版本仅有全局焦点窗口，需要回退到 `dumpsys window windows` 获取。
-        var focused = ADBOutputParser.parseFocusedWindows(
-            runForLines(sn, "dumpsys window displays") ?: emptyList()
-        )
-        if (focused.isEmpty()) {
-            focused = ADBOutputParser.parseFocusedWindows(
-                runForLines(sn, "dumpsys window windows") ?: emptyList()
-            )
-        }
-
-        return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
-            .filter { displayID == null || it.displayID == displayID }
-    }
-
-    /**
      * 获取全局焦点信息。
      *
      * Android 9 及更低版本多屏 API 不完善，焦点所在屏幕始终为 `0`。
@@ -646,6 +637,21 @@ object ADBCLIUtil {
     @JvmStatic
     fun remount(sn: String): Boolean {
         val status = runForStatus(sn, "remount")
+        return CLIUtil.isSuccess(status)
+    }
+
+    /**
+     * 触发媒体扫描。
+     *
+     * @param[sn] 设备序列号。
+     * @param[path] 扫描路径。默认值为根目录 `/`。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun mediaScan(sn: String, path: String = "/"): Boolean {
+        val cmd = "am broadcast -a ${Intents.Action.MEDIA_SCAN} -d file:/$path"
+        val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }
 
@@ -811,7 +817,10 @@ object ADBCLIUtil {
         }
         builder.append(" \'$packageName\'")
 
-        runForError(sn, builder.toString())
+        val error = runForError(sn, builder.toString()) ?: ""
+        if (error.isNotBlank()) {
+            throw Exception(error)
+        }
     }
 
     /**
@@ -831,7 +840,10 @@ object ADBCLIUtil {
         }
         builder.append(" \'$packageName\'")
 
-        runForError(sn, builder.toString())
+        val error = runForError(sn, builder.toString()) ?: ""
+        if (error.isNotBlank()) {
+            throw Exception(error)
+        }
     }
 
     /**
@@ -853,7 +865,11 @@ object ADBCLIUtil {
                 builder.append(" --user $userID")
             }
             builder.append(" \'$packageName\'")
-            runForError(sn, builder.toString())
+
+            val error = runForError(sn, builder.toString()) ?: ""
+            if (error.isNotBlank()) {
+                throw Exception(error)
+            }
         } catch (_: Exception) {
             // `disable-user` 是较新版本提供的命令，对于多用户系统如果 `disable` 命令执行失败，则尝试使用该命令。
             val builder = StringBuilder("pm disable-user")
@@ -861,7 +877,11 @@ object ADBCLIUtil {
                 builder.append(" --user $userID")
             }
             builder.append(" \'$packageName\'")
-            runForError(sn, builder.toString())
+
+            val error = runForError(sn, builder.toString()) ?: ""
+            if (error.isNotBlank()) {
+                throw Exception(error)
+            }
         }
     }
 
@@ -873,7 +893,7 @@ object ADBCLIUtil {
     /**
      * 构建 ADB 命令。
      *
-     * 使用当前序列号构建 ADB 命令。若原命令包含 `adb shell` 或 `adb exec-out` 前缀，将会保留；若未指明则使用 `adb shell` 执行命令。
+     * 使用当前设备构建 ADB 命令。若原命令包含 `adb shell` 或 `adb exec-out` 前缀，将会保留；若未指明前缀默认添加 `adb shell`。
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
@@ -903,17 +923,45 @@ object ADBCLIUtil {
             }
         }
 
-        // 将空指令替换为立刻返回的空语句，防止进入ADB交互式环境导致调用线程被无限阻塞。
+        // 将 `adb shell ""` 指令替换为立刻返回的空语句，防止进入 ADB 交互式环境导致调用线程被无限阻塞。
         if (trimmedNoQuotes.isBlank()) {
             trimmed = ":"
         }
 
         // 添加当前序列号并返回原命令内容
         return if (execOut) {
-            String.format("${getExecutableName()} -s %s exec-out %s", sn, trimmed)
+            String.format("${getExecutableName()} -s %s exec-out \'%s\'", sn, trimmed)
         } else {
-            String.format("${getExecutableName()} -s %s shell %s", sn, trimmed)
+            String.format("${getExecutableName()} -s %s shell \'%s\'", sn, trimmed)
         }
+    }
+
+
+    /**
+     * 构建 ADB 命令数组。
+     *
+     * [buildCommand] 方法生成的命令行便于人类阅读，但不适合创建进程，本方法将生成可用于远程执行的参数数组。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令语句。
+     * @return 命令语句。如果输入语句为空，则返回空命令 `:`。
+     */
+    @JvmStatic
+    fun buildCommandArgs(sn: String, command: String): Array<String> {
+        val cmd = buildCommand(sn, command)
+        // 远程命令起始位置
+        val quoteIndex = cmd.indexOf(" \'")
+        if (quoteIndex < 0) {
+            return emptyArray()
+        }
+
+        // `adb -s <sn> shell` 或 `adb -s <sn> exec-out` 前缀
+        val prefix = cmd.substring(0, quoteIndex)
+        val prefixArgs = CLIUtil.parseCommand(prefix)
+        // 单引号之间的命令部分
+        val suffix = cmd.substring(quoteIndex + 2, cmd.length - 1)
+        // `parseCommand()` 方法将会移除引号并进行解析，无法处理带有空格的文件名等参数，因此仅处理前缀部分，后缀部分作为一个参数传入。
+        return arrayOf(*prefixArgs, suffix)
     }
 
     /**
@@ -936,31 +984,5 @@ object ADBCLIUtil {
     @JvmStatic
     fun isADBShellCommand(command: String): Boolean {
         return adbCMDRegex.matches(command)
-    }
-
-
-    /*
-     * ----- 内部方法 -----
-     */
-
-    /**
-     * 执行命令并检查是否有错误。
-     *
-     * 忽略标准输出，若读取到错误输出则抛出异常。
-     *
-     * @param[sn] 设备序列号。
-     * @param[command] 命令语句。
-     * @throws[Exception] 执行失败。消息为 ADB 命令输出的错误信息。
-     */
-    private fun runForError(sn: String, command: String) {
-        val process = run(sn, command)
-        BaseIOUtil.readAndDrop(process.inputStream)
-        val errorInfo = BaseIOUtil.readAsText(process.errorStream)
-        process.waitFor()
-        CLIUtil.stopProcess(process)
-
-        if (errorInfo.isNotBlank()) {
-            throw Exception(errorInfo)
-        }
     }
 }

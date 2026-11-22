@@ -6,6 +6,7 @@ import com.android.ddmlib.SyncException
 import com.android.ddmlib.SyncService
 import net.bi4vmr.tool.java.common.base.file.FilePathUtil
 import net.bi4vmr.tool.java.common.base.file.FileUtil
+import net.bi4vmr.tool.java.common.base.general.TextUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFolderTransferListener
@@ -110,16 +111,11 @@ data class LocalDevice(
      *
      * @param[command] 命令语句。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
-     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     @JvmOverloads
-    fun runForLines(
-        command: String,
-        redirectError: Boolean = true,
-        charset: String? = null
-    ): List<String>? =
-        ADBCLIUtil.runForLines(getSN(), command, redirectError, charset)
+    fun runForLines(command: String, redirectError: Boolean = true): List<String>? =
+        ADBCLIUtil.runForLines(getSN(), command, redirectError)
 
     /**
      * 执行 ADB Shell 命令并获取文本消息。
@@ -128,12 +124,11 @@ data class LocalDevice(
      *
      * @param[command] 命令语句。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
-     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     @JvmOverloads
-    fun runForText(command: String, redirectError: Boolean = true, charset: String? = null): String? =
-        ADBCLIUtil.runForText(getSN(), command, redirectError, charset)
+    fun runForText(command: String, redirectError: Boolean = true): String? =
+        ADBCLIUtil.runForText(getSN(), command, redirectError)
 
     /**
      * 打开交互式 Shell 。
@@ -348,13 +343,20 @@ data class LocalDevice(
      *
      * @param[local] 源文件（PC 端）。
      * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾表示将文件写入目标目录并保持原名，否则表示使用目标路径指定的文件名称。
+     * @param[refreshMediaDB] 文件传输完毕后是否刷新媒体数据库。默认值为 `true`。传输多个文件至同一目录时可设为 `false` 并在完毕后调用 [mediaScan]。
+     * @param[listener] 传输进度监听器。
      * @throws[FileNotFoundException] 源文件不存在或不可读。
      * @throws[IllegalStateException] 源文件指向目录。
      * @throws[IllegalArgumentException] 未指明目标路径。
      * @throws[IOException] 目标路径不可写入。
      * @throws[SyncException] 传输失败或用户取消任务。具体错误类型可通过 [SyncException.SyncError] 获取。
      */
-    fun pushFile(local: String, remote: String, listener: ADBFileTransferListener) {
+    fun pushFile(
+        local: String,
+        remote: String,
+        refreshMediaDB: Boolean = true,
+        listener: ADBFileTransferListener
+    ) {
         /* 参数校验 */
         if (local.isBlank()) {
             throw IllegalArgumentException("Local path is empty!")
@@ -384,10 +386,14 @@ data class LocalDevice(
 
 
         val remoteParent = FilePathUtil.getParent(remotePath)
+        if (TextUtil.isBlank(remoteParent)) {
+            throw IllegalArgumentException("Remote path parent is empty! Path:[$remotePath]")
+        }
+
         // 如果目标目录不存在则自动创建
-        runForStatus("mkdir -p \"$remoteParent\"")
+        runForStatus("mkdir -p \'$remoteParent\'")
         // ADB 将数据传输至临时文件后才判断目标路径是否可写，提前判断并报错可节省大文件传输的耗时。
-        val state = runForStatus("test -w \"$remoteParent\"")
+        val state = runForStatus("test -w \'$remoteParent\'")
         if (!CLIUtil.isSuccess(state)) {
             throw IOException("Remote directory cannot be write! Path:[$remoteParent]")
         }
@@ -469,6 +475,10 @@ data class LocalDevice(
         syncService.use { syncService ->
             syncService.pushFile(localFile.absolutePath, remotePath, monitor)
         }
+
+        if (refreshMediaDB) {
+            mediaScan(remoteParent)
+        }
     }
 
     /**
@@ -479,6 +489,7 @@ data class LocalDevice(
      * @param[local] 源目录（PC 端）。
      * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将源目录写入该目录并保持原名，否则表示源目录的内容写入路径指定
      * 的目录。
+     * @param[listener] 传输进度监听器。
      * @throws[FileNotFoundException] 源目录不存在或不可读。
      * @throws[IllegalStateException] 源文件不是目录。
      * @throws[IllegalArgumentException] 未指明目标路径。
@@ -495,12 +506,12 @@ data class LocalDevice(
             throw IllegalArgumentException("Remote path is empty!")
         }
 
-        val localFile = File(local)
-        if (!localFile.canRead()) {
+        val localFolder = File(local)
+        if (!localFolder.canRead()) {
             throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
         }
 
-        if (!localFile.isDirectory) {
+        if (!localFolder.isDirectory) {
             throw IllegalStateException("Input is not directory! Path:[${local}]")
         }
 
@@ -508,7 +519,7 @@ data class LocalDevice(
         /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
         val remoteIsDir = FilePathUtil.isDirectory(remote)
         val remotePath = if (remoteIsDir) {
-            "$remote${localFile.name}"
+            "$remote${localFolder.name}"
         } else {
             remote
         }
@@ -516,7 +527,7 @@ data class LocalDevice(
 
         /* 计算文件总数 */
         var totalCount = 0
-        localFile.walkTopDown().forEach {
+        localFolder.walkTopDown().forEach {
             if (it.isFile) totalCount++
         }
         listener.onStart(totalCount)
@@ -558,26 +569,30 @@ data class LocalDevice(
 
 
         /* 深度优先遍历源目录，处理每个元素。 */
-        localFile.walkTopDown().forEach {
+        localFolder.walkTopDown().forEach {
             if (cancelled.get()) {
                 throw SyncException(SyncException.SyncError.CANCELED)
             }
 
-            // 计算相对于源目录的路径，并转换为 Android 端的路径格式。
-            val relative = it.relativeTo(localFile).invariantSeparatorsPath
-            val target = if (relative.isEmpty()) remotePath else "${remotePath.trimEnd('/')}/$relative"
+            // 获取当前文件相对于源目录的路径，并拼接在目标路径之后。
+            val relative = it.relativeTo(localFolder).invariantSeparatorsPath
+            if (relative.isBlank()) return@forEach
+            val target = "$remotePath/$relative"
 
+            // 创建目录
             if (it.isDirectory) {
-                // 创建目录（包括空目录）
-                runForStatus("mkdir -p \"$target\"")
+                runForStatus("mkdir -p \'$target\'")
                 return@forEach
             }
 
+            // 跳过非普通文件的特殊文件节点
             if (!it.isFile) return@forEach
 
             currentPath = it.absolutePath
-            pushFile(it.absolutePath, target, fileListener)
+            pushFile(it.absolutePath, target, false, fileListener)
         }
+
+        mediaScan(remote)
 
         listener.onEnd()
     }
@@ -585,7 +600,7 @@ data class LocalDevice(
     /**
      * 推送文件到 Android 设备。
      *
-     * `adb push` 命令封装，支持目录，适用于无需获取进度的简单场景。
+     * `adb push` 命令封装，支持处理目录，适用于无需获取进度的简单场景。
      *
      * @param[local] 源路径（PC 端）。
      * @param[remote] 目标路径（Android 端）。
@@ -600,6 +615,7 @@ data class LocalDevice(
      *
      * @param[remote] 源路径（Android 端）。
      * @param[local] 目标路径（PC 端）。如果以 `/` 结尾表示将文件写入该目录并保持原名，否则表示使用路径指定的文件名称。
+     * @param[listener] 传输进度监听器。
      * @throws[FileNotFoundException] 目标目录不可写。
      * @throws[IllegalStateException] 源文件指向目录。
      * @throws[IllegalArgumentException] 未指明源路径或目标路径。
@@ -617,7 +633,7 @@ data class LocalDevice(
         }
 
         // 检查设备上是否存在该文件
-        val isFile: Boolean = CLIUtil.isSuccess(runForStatus("test -f \"$remote\""))
+        val isFile: Boolean = CLIUtil.isSuccess(runForStatus("test -f \'$remote\'"))
         if (!isFile) {
             throw FileNotFoundException("Remote file not exist or is directory! Path:[$remote]")
         }
@@ -648,7 +664,7 @@ data class LocalDevice(
         }
 
         // 读取文件大小（DDMLib 输入路径时不会回调文件大小，需要通过命令读取。）
-        val fileSize: Long = runForText("stat -c %s \"$remote\"")?.toLongOrNull() ?: 0L
+        val fileSize: Long = runForText("stat -c %s \'$remote\'")?.toLongOrNull() ?: 0L
 
         // DDMLib 进度回调实现
         val monitor = object : SyncService.ISyncProgressMonitor {
@@ -736,6 +752,7 @@ data class LocalDevice(
      * @param[remote] 源目录（Android 端）。
      * @param[local] 目标路径（PC 端）。如果以 `/` 结尾则表示将源目录写入该目录并保持原名，否则表示源目录的内容写入路径指定
      * 的目录。
+     * @param[listener] 传输进度监听器。
      * @throws[FileNotFoundException] 源目录不存在或目标目录不可写。
      * @throws[IllegalArgumentException] 未指明源路径或目标路径。
      * @throws[IOException] 无法获取源目录的文件列表。
@@ -752,12 +769,12 @@ data class LocalDevice(
         }
 
         // 检查设备上是否存在该目录
-        val isDir: Boolean = CLIUtil.isSuccess(runForStatus("test -d \"$remote\""))
+        val isDir: Boolean = CLIUtil.isSuccess(runForStatus("test -d \'$remote\'"))
         if (!isDir) {
             throw FileNotFoundException("Remote directory not exist or is file! Path:[$remote]")
         }
 
-        // 去除末尾的 `/` ，便于计算相对路径。
+        // 移除源路径末尾可能存在的 `/`。
         val remoteRoot = remote.trimEnd('/').ifEmpty { "/" }
 
 
@@ -770,26 +787,29 @@ data class LocalDevice(
 
         localRoot.mkdirs()
         if (!localRoot.canWrite()) {
-            throw FileNotFoundException("Local path not exist or writeable! Path:[${localRoot}]")
+            throw FileNotFoundException("Local path is not writeable! Path:[$localRoot]")
         }
 
-
         /* 获取源目录中的所有目录与文件 */
-        val dirs: List<String> = runForLines("find \"$remoteRoot\" -type d", false)
-            ?: throw IOException("Cannot list remote directory! Path:[$remoteRoot]")
-        val files: List<String> = runForLines("find \"$remoteRoot\" -type f", false)
-            ?: throw IOException("Cannot list remote directory! Path:[$remoteRoot]")
+        val dirs: List<String> = runForLines("find \'$remoteRoot\' -type d", false)
+            ?.filter { it.isNotBlank() }
+            ?: throw IOException("Can not access remote directory! Path:[$remoteRoot]")
+        val files: List<String> = runForLines("find \'$remoteRoot\' -type f", false)
+            ?.filter { it.isNotBlank() }
+            ?: throw IOException("Can not access remote directory! Path:[$remoteRoot]")
 
-        // 计算相对于源目录的路径
+
+        // 获取当前路径相对于参考目录的相对路径
         fun relativeOf(path: String): String =
             path.removePrefix(remoteRoot).trimStart('/')
 
+
         /* 在本地创建目录结构（包括空目录） */
-        dirs.filter { it.isNotBlank() }.forEach {
+        dirs.forEach {
             File(localRoot, relativeOf(it)).mkdirs()
         }
 
-        val totalCount = files.count { it.isNotBlank() }
+        val totalCount = files.size
         listener.onStart(totalCount)
 
         var currentIndex = 0
@@ -845,7 +865,7 @@ data class LocalDevice(
     /**
      * 从 Android 设备拉取文件。
      *
-     * `adb pull` 命令封装，支持目录，适用于无需获取进度的简单场景。
+     * `adb pull` 命令封装，支持处理目录，适用于无需获取进度的简单场景。
      *
      * @param[remote] 源路径（Android 端）。
      * @param[local] 目标路径（PC 端）。
@@ -866,6 +886,15 @@ data class LocalDevice(
      * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     fun remount(): Boolean = ADBCLIUtil.remount(getSN())
+
+    /**
+     * 触发媒体扫描。
+     *
+     * @param[path] 扫描路径。默认值为根目录 `/`。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmOverloads
+    fun mediaScan(path: String = "/"): Boolean = ADBCLIUtil.mediaScan(getSN(), path)
 
 
     /*

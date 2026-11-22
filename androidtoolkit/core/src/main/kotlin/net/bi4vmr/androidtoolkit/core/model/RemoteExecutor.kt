@@ -128,9 +128,6 @@ class RemoteExecutor(
     override suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo> =
         client.getWindows(sn, displayID)
 
-    override suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo> =
-        client.getForegroundWindows(sn, displayID)
-
     override suspend fun getGlobalFocusInfo(sn: String): FocusInfo {
         TODO("Not yet implemented")
     }

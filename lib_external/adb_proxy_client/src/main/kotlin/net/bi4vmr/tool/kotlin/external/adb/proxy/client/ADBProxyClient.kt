@@ -330,19 +330,17 @@ class ADBProxyClient(
      * @param[sn] 设备序列号。
      * @param[command] 命令语句，与本地 `ADBUtil.runForText()` 的规则一致。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
-     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     suspend fun runForText(
         sn: String,
         command: String,
-        redirectError: Boolean = true,
-        charset: String? = null
+        redirectError: Boolean = true
     ): String? {
         return try {
             val response = requireClient().post(buildURL(APIs.ADB_EXEC_TEXT)) {
                 contentType(ContentType.Application.Json)
-                setBody(ADBExecRequest(sn, command, redirectError, charset))
+                setBody(ADBExecRequest(sn, command, redirectError))
             }
 
             if (response.status.isSuccess()) {
@@ -363,16 +361,14 @@ class ADBProxyClient(
      * @param[sn] 设备序列号。
      * @param[command] 命令语句，与本地 `ADBUtil.runForLines()` 的规则一致。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
-     * @param[charset] 字符集名称。默认为空值，表示自动侦测。
      * @return 命令输出的文本行。若出现异常则返回空值。
      */
     suspend fun runForLines(
         sn: String,
         command: String,
-        redirectError: Boolean = true,
-        charset: String? = null
+        redirectError: Boolean = true
     ): List<String>? {
-        val text = runForText(sn, command, redirectError, charset) ?: return null
+        val text = runForText(sn, command, redirectError) ?: return null
         // 与按行读取的语义保持一致：末尾换行符不产生空行。
         return text.lineSequence().toList()
     }
@@ -848,28 +844,6 @@ class ADBProxyClient(
     suspend fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
         val lines = runForLines(sn, "dumpsys window windows") ?: return emptyList()
         return ADBOutputParser.parseDumpWindows(lines)
-            .filter { displayID == null || it.displayID == displayID }
-    }
-
-    /**
-     * 获取前台（焦点）窗口。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的焦点窗口。
-     * @return 焦点窗口列表，每个显示屏最多一项。命令执行异常时返回空列表。
-     */
-    suspend fun getForegroundWindows(sn: String, displayID: String? = null): List<WindowInfo> {
-        // Android 10 及更高版本在各屏幕分组中记录焦点窗口；旧版本仅有全局焦点窗口，需要回退到 `dumpsys window windows` 获取。
-        var focused = ADBOutputParser.parseFocusedWindows(
-            runForLines(sn, "dumpsys window displays") ?: emptyList()
-        )
-        if (focused.isEmpty()) {
-            focused = ADBOutputParser.parseFocusedWindows(
-                runForLines(sn, "dumpsys window windows") ?: emptyList()
-            )
-        }
-
-        return ADBOutputParser.mergeFocusedWindows(focused, getWindows(sn))
             .filter { displayID == null || it.displayID == displayID }
     }
 

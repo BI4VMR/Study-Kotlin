@@ -141,9 +141,6 @@ object LocalExecutor : ADBExecutor {
     override suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo> =
         withContext(Dispatchers.IO) { ADBCLIUtil.getWindows(sn, displayID) }
 
-    override suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo> =
-        withContext(Dispatchers.IO) { ADBCLIUtil.getForegroundWindows(sn, displayID) }
-
     override suspend fun getGlobalFocusInfo(sn: String): FocusInfo =
         withContext(Dispatchers.IO) { ADBCLIUtil.getGlobalFocusInfo(sn) }
 

@@ -24,12 +24,5 @@ data class ADBExecRequest(
     /**
      * 是否重定向错误输出。
      */
-    val redirectError: Boolean = true,
-
-    /**
-     * 字符集。
-     *
-     * 空值表示由服务端自动侦测。
-     */
-    val charset: String? = null
+    val redirectError: Boolean = true
 )

@@ -243,15 +243,6 @@ interface ADBExecutor {
     suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo>
 
     /**
-     * 获取前台（焦点）窗口。
-     *
-     * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。为空值时列出所有显示屏的焦点窗口。
-     * @return 焦点窗口列表，每个显示屏最多一项。若出现异常则返回空列表。
-     */
-    suspend fun getForegroundWindows(sn: String, displayID: String?): List<WindowInfo>
-
-    /**
      * 获取全局焦点信息。
      *
      * Android 9 及更低版本多屏 API 不完善，焦点所在屏幕始终为 `0`。

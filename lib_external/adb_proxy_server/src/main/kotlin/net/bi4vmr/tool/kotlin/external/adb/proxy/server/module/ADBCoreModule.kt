@@ -2,21 +2,13 @@ package net.bi4vmr.tool.kotlin.external.adb.proxy.server.module
 
 import com.pty4j.PtyProcessBuilder
 import com.pty4j.WinSize
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
-import io.ktor.server.websocket.DefaultWebSocketServerSession
-import io.ktor.server.websocket.webSocket
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.websocket.*
+import io.ktor.websocket.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -31,11 +23,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.service.ADBCoreService
@@ -238,7 +226,7 @@ class ADBCoreModule : ADBProxyModule {
 
     private suspend fun onADBExecForText(params: ADBExecRequest): String? {
         return withContext(Dispatchers.IO) {
-            ADBCLIUtil.runForText(params.sn, params.command, params.redirectError, params.charset)
+            ADBCLIUtil.runForText(params.sn, params.command, params.redirectError)
         }
     }
 
@@ -431,7 +419,7 @@ class ADBCoreModule : ADBProxyModule {
             }
 
             try {
-                withContext(Dispatchers.IO) { device.pushFile(tempFile.absolutePath, remote, listener) }
+                withContext(Dispatchers.IO) { device.pushFile(tempFile.absolutePath, remote, listener = listener) }
                 sendEvent(FilePushEvent(FilePushEvent.TYPE_END, size = tempFile.length(), total = tempFile.length()))
             } catch (e: Exception) {
                 if (listener.isCancelled()) {

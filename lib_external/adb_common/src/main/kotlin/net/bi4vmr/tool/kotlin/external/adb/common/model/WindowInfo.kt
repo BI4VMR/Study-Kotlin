@@ -41,10 +41,10 @@ data class WindowInfo(
     /**
      * 窗口是否可见。
      *
-     * 若解析失败也视为不可见。
+     * 若解析失败则为空值。
      */
     @get:JvmName("isVisible")
-    val visible: Boolean = false,
+    val visible: Boolean? = null,
 
     /**
      * Window 的 Hash 值。

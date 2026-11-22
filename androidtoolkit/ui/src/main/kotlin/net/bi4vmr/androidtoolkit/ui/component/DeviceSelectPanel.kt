@@ -265,7 +265,12 @@ private fun DeviceListItem(
         sn,
         state
     ) {
-        value = executor.getDeviceName(sn, getString(Res.string.deviceselectpanel_unknown))
+        val fallback = getString(Res.string.deviceselectpanel_unknown)
+        value = if (device.isOnline()) {
+            executor.getDeviceName(sn, fallback)
+        } else {
+            fallback
+        }
     }
 
     val type: ConnectionType? by produceState(initialValue = null, executor, sn, state) {
