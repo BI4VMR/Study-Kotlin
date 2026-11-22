@@ -1,53 +1,21 @@
 package net.bi4vmr.androidtoolkit.ui.files
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -129,16 +97,17 @@ private fun NavigationBar(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Dimens.Layout.SpaceSmall),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.Layout.Space, vertical = Dimens.Layout.SpaceSmall)
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = Dimens.Layout.Space, vertical = Dimens.Layout.SpaceSmall)
     ) {
         IconButton(onClick = onBack, enabled = canGoBack) {
-            Icon(Icons.ScreenShot, contentDescription = "后退")
+            Icon(Icons.Back, contentDescription = "后退")
         }
         IconButton(onClick = onForward, enabled = canGoForward) {
-            Icon(Icons.ScreenShot, contentDescription = "前进")
+            Icon(Icons.Forward, contentDescription = "前进")
         }
         IconButton(onClick = onUp, enabled = (path != FilesPageViewModel.ROOT)) {
-            Icon(Icons.ScreenShot, contentDescription = "上级目录")
+            Icon(Icons.Back_2, contentDescription = "上级目录")
         }
         IconButton(onClick = onRefresh) {
             Icon(Icons.Refresh, contentDescription = "刷新")
@@ -173,7 +142,7 @@ private fun NavigationBar(
             if (editMode) {
                 Icon(Icons.Close, contentDescription = "切换为导航模式")
             } else {
-                Icon(Icons.ScreenShot, contentDescription = "切换为编辑模式")
+                Icon(Icons.Add, contentDescription = "切换为编辑模式")
             }
         }
     }
@@ -188,7 +157,8 @@ private fun Breadcrumb(path: String, onNavigate: (String) -> Unit, onBlankClick:
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxSize().clickable(onClick = onBlankClick).padding(horizontal = Dimens.Layout.SpaceSmall)
+        modifier = Modifier.fillMaxSize().clickable(onClick = onBlankClick)
+            .padding(horizontal = Dimens.Layout.SpaceSmall)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -258,10 +228,12 @@ private fun PathEditor(path: String, onConfirm: (String) -> Unit, onCancel: () -
                         onConfirm(value.text)
                         true
                     }
+
                     Key.Escape -> {
                         onCancel()
                         true
                     }
+
                     else -> false
                 }
             }
@@ -279,6 +251,7 @@ private fun FileList(state: FilesPageViewModel.ListState, onOpen: (DeviceFile) -
         FilesPageViewModel.ListState.Loading -> Box(modifier, contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
+
         is FilesPageViewModel.ListState.Error -> CenterHint("无法打开目录：${state.path}", modifier)
         is FilesPageViewModel.ListState.Success -> {
             if (state.files.isEmpty()) {
@@ -317,7 +290,8 @@ private fun CenterHint(text: String, modifier: Modifier) {
 private fun FileHeader() {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.Layout.Padding, vertical = Dimens.Layout.SpaceSmall)
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = Dimens.Layout.Padding, vertical = Dimens.Layout.SpaceSmall)
     ) {
         val style = MaterialTheme.typography.labelMedium
         Spacer(Modifier.width(Dimens.Icon.Small + Dimens.Layout.Space))
@@ -340,7 +314,7 @@ private fun FileRow(file: DeviceFile, selected: Boolean, onClick: () -> Unit, on
             .padding(horizontal = Dimens.Layout.Padding, vertical = Dimens.Layout.ListItemPadding)
     ) {
         Icon(
-            imageVector = if (file.isDirectory) Icons.ScreenShot else Icons.ScreenShot,
+            imageVector = if (file.isDirectory) Icons.Folder else Icons.File,
             contentDescription = null,
             tint = if (file.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Dimens.Icon.Small)

@@ -1,5 +1,10 @@
 package net.bi4vmr.androidtoolkit.ui.common.icon
 
+import com.example.test.content_copy
+import com.example.test.content_paste
+import com.example.test.image
+import com.example.test.search
+
 /**
  * 矢量图标。
  *
@@ -22,6 +27,9 @@ object Icons {
     val Forward_2 = arrow_forward_ios
     val Back = arrow_back
     val Back_2 = arrow_back_ios
+    val Search = search
+    val Copy = content_copy
+    val Paste = content_paste
 
     val Info = info
     val Warning = warning
@@ -29,6 +37,7 @@ object Icons {
 
     val File = draft
     val Folder = folder
+    val Picture = image
 
     val Home = home
     val Apps = apps

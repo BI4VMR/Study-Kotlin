@@ -71,7 +71,7 @@ fun XOutlinedButton(
     ) {
         CompositionLocalProvider(
             LocalContentColor provides contentColor,
-            LocalTextStyle provides MaterialTheme.typography.labelLarge
+            LocalTextStyle provides MaterialTheme.typography.bodyMedium
         ) {
             Row(
                 horizontalArrangement = Arrangement.Center,
