@@ -812,27 +812,6 @@ object ADBOutputParser {
     }
 
     /**
-     * 解析 `ActivityRecord{...}` 文本。
-     *
-     * @param[line] 包含 `ActivityRecord{...}` 的文本。
-     * @param[displayID] 屏幕 ID 。
-     * @return Activity 信息。若格式不符合预期则返回空值。
-     */
-    private fun parseActivityRecord(line: String, displayID: String): ActivityInfo? {
-        val match = activityRecordRegex.find(line) ?: return null
-        val packageName = match.groupValues[2]
-        val shortClass = match.groupValues[3]
-        val className = if (shortClass.startsWith(".")) "$packageName$shortClass" else shortClass
-        return ActivityInfo(
-            packageName = packageName,
-            className = className,
-            displayID = displayID,
-            taskID = match.groupValues[4].toIntOrNull() ?: -1,
-            userID = match.groupValues[1].toIntOrNull() ?: -1
-        )
-    }
-
-    /**
      * 解析 `dumpsys activity activities` 命令输出中 `Hist` 行之后的 Activity 详情。
      *
      * @param[line] 详情行。

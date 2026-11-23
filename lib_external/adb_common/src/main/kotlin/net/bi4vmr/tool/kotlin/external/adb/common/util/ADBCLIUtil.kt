@@ -82,7 +82,7 @@ object ADBCLIUtil {
     fun runForLines(
         sn: String,
         command: String,
-        redirectError: Boolean = true
+        redirectError: Boolean = false
     ): List<String>? {
         val optimizedCommand = buildCommandArgs(sn, command)
         return CLIUtil.runForLines(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
@@ -100,7 +100,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     @JvmOverloads
-    fun runForText(sn: String, command: String, redirectError: Boolean = true): String? {
+    fun runForText(sn: String, command: String, redirectError: Boolean = false): String? {
         val optimizedCommand = buildCommandArgs(sn, command)
         return CLIUtil.runForText(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
     }

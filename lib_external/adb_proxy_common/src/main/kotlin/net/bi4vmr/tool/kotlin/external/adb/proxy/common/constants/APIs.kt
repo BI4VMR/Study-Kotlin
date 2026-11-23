@@ -111,6 +111,26 @@ object APIs {
      */
     const val ADB_FILE_PUSH: String = "/adb/file/push"
 
+    /**
+     * 推送文件到设备。
+     *
+     * 协议为 WebSocket，请求方式为 HTTP GET，查询参数包括：
+     *  `sn` （设备序列号）、 `remote` （目标路径）、 `name` （源文件名称）与 `size` （源文件大小）。
+     *
+     * 客户端
+     * 发送文件数据 N...
+     *
+     *
+     * 服务端：写入临时文件
+     *
+     * 客户端
+     * 发送结束消息
+     *
+     * 服务端：开始传输，并通过文本帧回报进度。
+     *
+     */
+    const val ADB_FILE_PUSH_FILE: String = "/adb/file/push-file"
+
 
     /* ----- 屏幕投射 ----- */
 

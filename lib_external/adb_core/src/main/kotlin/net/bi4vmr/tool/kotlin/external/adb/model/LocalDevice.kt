@@ -30,7 +30,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * [getSN]、[getState]、[isOnline] 方法为内存读写，不必在子线程调用；其他方法耗时可能较长，建议在非 UI 线程调用。
  *
- * 其他大部分方法均为 [ADBCLIUtil] 的快捷调用，例如：[ADBCLIUtil.screenshotAsPNG] 在此处可以针对当前设备调用，省略 `sn` 参数。
+ * 除了引用 [ddmDevice] 的方法，其他方法均为 [ADBCLIUtil] 的快捷调用，例如：[ADBCLIUtil.screenshotAsPNG] 在此处可以针对当前设备调用，
+ * 省略 `sn` 参数。
  *
  * @author bi4vmr@outlook.com
  * @since 1.0.0
@@ -87,7 +88,7 @@ data class LocalDevice(
      * 执行 ADB Shell 命令。
      *
      * @param[command] 命令语句。
-     * @param[redirectError] 是否重定向错误输出流。默认值为 `true` 。
+     * @param[redirectError] 是否重定向错误输出流。默认值为 `true`。
      * @return [Process] 实例，永不为空，进程启动失败时抛出异常。
      * @throws[IOException] 进程启动失败。
      */
@@ -99,7 +100,7 @@ data class LocalDevice(
      * 执行 ADB Shell 命令并获取状态码。
      *
      * @param[command] 命令语句。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     fun runForStatus(command: String): Int =
         ADBCLIUtil.runForStatus(getSN(), command)
@@ -110,7 +111,7 @@ data class LocalDevice(
      * 执行命令并阻塞当前线程，将错误输出与标准输出合并，然后读取所有输出数据并转为文本。
      *
      * @param[command] 命令语句。
-     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
+     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     @JvmOverloads
@@ -123,7 +124,7 @@ data class LocalDevice(
      * 执行命令并阻塞当前线程，将错误输出与标准输出合并，然后读取所有输出数据并转为文本。
      *
      * @param[command] 命令语句。
-     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true` 。
+     * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
      * @return 命令输出文本。若出现异常则返回空值。
      */
     @JvmOverloads
@@ -131,7 +132,7 @@ data class LocalDevice(
         ADBCLIUtil.runForText(getSN(), command, redirectError)
 
     /**
-     * 打开交互式 Shell 。
+     * 打开交互式 Shell。
      *
      * @param[terminal] 终端程序，可以传入 [Terminals] 内置枚举，也可以传入 [Terminal] 接口自定义实现。默认值为空，此时使用默认终端。
      * @param[newWindow] 是否在新窗口中打开。默认值为是。部分终端程序不支持标签页，即使该参数设为否也会在新窗口中打开。
