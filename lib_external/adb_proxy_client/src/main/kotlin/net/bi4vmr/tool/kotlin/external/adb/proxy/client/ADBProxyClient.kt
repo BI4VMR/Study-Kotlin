@@ -13,6 +13,7 @@ import io.ktor.network.tls.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.builtins.ListSerializer
@@ -730,6 +731,123 @@ class ADBProxyClient(
                     }
                 }
             }
+            uploadJob.cancel()
+        }
+
+        val event = result ?: throw IOException("Connection closed before push completed!")
+        when {
+            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
+            event.cancel -> {
+                listener?.onEnd()
+                throw IOException("Push cancelled by user!")
+            }
+
+            else -> listener?.onEnd()
+        }
+    }
+
+    /**
+     * 流式推送文件到远程设备。
+     *
+     * 文件数据按块发送至服务端，服务端收到后立即写入设备，不在代理设备磁盘上缓存完整文件。适用于大文件或代理设备磁盘空间有限的场景。
+     *
+     * 与 [pushFile] 相比，本方法没有“先上传完整文件，再推送至设备”的两个阶段，监听器回调的进度即为整体进度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[local] 源文件（本机）。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
+     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
+     * @param[chunkSize] 单次读取并发送的数据量（字节）。默认值为 [Constants.FILE_STREAM_CHUNK_SIZE]。
+     * @throws[FileNotFoundException] 源文件不存在或不可读。
+     * @throws[IllegalStateException] 源文件指向目录。
+     * @throws[IllegalArgumentException] 未指明目标路径或分块大小无效。
+     * @throws[IOException] 传输失败或用户取消推送。
+     */
+    @JvmOverloads
+    suspend fun pushFileStreaming(
+        sn: String,
+        local: File,
+        remote: String,
+        listener: ADBFileTransferListener? = null,
+        chunkSize: Int = Constants.FILE_STREAM_CHUNK_SIZE
+    ) {
+        /* 参数校验 */
+        require(sn.isNotBlank()) { "Device SN is required!" }
+        if (!local.canRead()) {
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
+        }
+        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
+        require(remote.isNotBlank()) { "Remote path is empty!" }
+        require(chunkSize > 0) { "Chunk size must be positive! Value:[$chunkSize]" }
+
+        val total = local.length()
+        val path = APIs.ADB_FILE_PUSH_FILE +
+                "?sn=${sn.encodeURLParameter()}" +
+                "&remote=${remote.encodeURLParameter()}" +
+                "&name=${local.name.encodeURLParameter()}" +
+                "&size=$total"
+
+        fun notifyProgress(size: Long) {
+            if (total <= 0) {
+                listener?.onProgress(size, Double.NaN)
+            } else {
+                listener?.onProgress(size, size.toDouble() / total.toDouble())
+            }
+        }
+
+        var result: FilePushEvent? = null
+        openWebSocket(path) {
+            // 服务端每写入一个分块便回报进度，发送任务收到进度后再发送下一个分块，避免大量数据堆积在内存中。
+            val ackChannel = Channel<Unit>(Channel.CONFLATED)
+
+            listener?.setCancelNotifier {
+                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
+            }
+            listener?.onStart(total)
+
+            /* 读取本地文件并分块发送，服务端收到后立即写入设备 */
+            val uploadJob = launch(Dispatchers.IO) {
+                local.inputStream().use { input ->
+                    val buffer = ByteArray(chunkSize)
+                    while (listener?.isCancelled() != true) {
+                        val count = input.read(buffer)
+                        if (count < 0) {
+                            send(Frame.Text(FilePushEvent.CMD_EOF))
+                            break
+                        }
+                        if (count == 0) {
+                            continue
+                        }
+
+                        send(Frame.Binary(true, buffer.copyOf(count)))
+                        // 等待服务端确认当前分块已写入设备；通道关闭表示传输已结束。
+                        if (ackChannel.receiveCatching().getOrNull() == null) {
+                            break
+                        }
+                    }
+                }
+            }
+
+            /* 接收服务端事件 */
+            for (frame in incoming) {
+                if (frame !is Frame.Text) {
+                    continue
+                }
+
+                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
+                when (event.type) {
+                    FilePushEvent.TYPE_PROGRESS -> {
+                        notifyProgress(event.size)
+                        ackChannel.trySend(Unit)
+                    }
+
+                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
+                        result = event
+                        break
+                    }
+                }
+            }
+            ackChannel.close()
             uploadJob.cancel()
         }
 

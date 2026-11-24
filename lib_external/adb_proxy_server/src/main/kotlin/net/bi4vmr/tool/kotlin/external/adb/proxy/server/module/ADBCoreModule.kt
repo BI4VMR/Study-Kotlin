@@ -9,6 +9,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -27,6 +28,7 @@ import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.service.ADBCoreService
+import net.bi4vmr.tool.kotlin.external.adb.proxy.server.service.ADBFilePushStream
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Files
@@ -202,6 +204,10 @@ class ADBCoreModule : ADBProxyModule {
 
             webSocket(APIs.ADB_FILE_PUSH) {
                 onADBFilePushWSConnect(this, server.jsonTool)
+            }
+
+            webSocket(APIs.ADB_FILE_PUSH_FILE) {
+                onADBFilePushStreamWSConnect(this, server.jsonTool)
             }
         }
     }
@@ -437,6 +443,99 @@ class ADBCoreModule : ADBProxyModule {
         } finally {
             withContext(NonCancellable + Dispatchers.IO) { tempDir.deleteRecursively() }
             session.close()
+        }
+    }
+
+    /**
+     * 流式文件推送。
+     *
+     * 与 [onADBFilePushWSConnect] 不同，本方法收到数据后立即写入设备端，不在代理设备磁盘上生成完整临时文件。
+     */
+    private suspend fun onADBFilePushStreamWSConnect(session: DefaultWebSocketServerSession, jsonTool: Json) {
+        /* 参数校验 */
+        val query = session.call.request.queryParameters
+        val sn = query["sn"]
+        val remote = query["remote"]
+        val name = query["name"]?.let { File(it).name }
+        val total = query["size"]?.toLongOrNull() ?: 0L
+        logger.debug("Receive [${APIs.ADB_FILE_PUSH_FILE}] request. SN:[$sn] Remote:[$remote] Name:[$name] Size:[$total]")
+        if (sn.isNullOrBlank() || remote.isNullOrBlank() || name.isNullOrBlank()) {
+            session.close(
+                CloseReason(
+                    CloseReason.Codes.CANNOT_ACCEPT,
+                    "Parameter [sn], [remote] and [name] are required."
+                )
+            )
+            return
+        }
+
+        suspend fun sendEvent(event: FilePushEvent) {
+            try {
+                val text = jsonTool.encodeToString(FilePushEvent.serializer(), event)
+                session.send(Frame.Text(text))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // 连接可能已经断开，事件发送失败无需中断资源清理流程。
+            }
+        }
+
+        var stream: ADBFilePushStream? = null
+        try {
+            /* 建立设备端写入流 */
+            val pushStream = withContext(Dispatchers.IO) {
+                service.openFilePushStream(sn, remote, name)
+            }
+            stream = pushStream
+            sendEvent(FilePushEvent(FilePushEvent.TYPE_START, total = total))
+
+
+            /* 接收数据并立即写入设备 */
+            var transferred = 0L
+            var completed = false
+            var cancelled = false
+
+            while (true) {
+                val frame = session.incoming.receiveCatching().getOrNull() ?: break
+
+                if (frame is Frame.Binary) {
+                    val data = frame.readBytes()
+                    withContext(Dispatchers.IO) { pushStream.write(data) }
+                    transferred += data.size
+                    sendEvent(FilePushEvent(FilePushEvent.TYPE_PROGRESS, size = transferred, total = total))
+                } else if (frame is Frame.Text) {
+                    when (frame.readText()) {
+                        FilePushEvent.CMD_EOF -> {
+                            completed = true
+                            break
+                        }
+
+                        FilePushEvent.CMD_CANCEL -> {
+                            cancelled = true
+                            break
+                        }
+                    }
+                }
+            }
+
+            if (!completed || cancelled) {
+                sendEvent(FilePushEvent(FilePushEvent.TYPE_END, cancel = true))
+                return
+            }
+
+
+            /* 等待设备端完成写入 */
+            withContext(Dispatchers.IO) { pushStream.finish() }
+            sendEvent(FilePushEvent(FilePushEvent.TYPE_END, size = transferred, total = total))
+        } catch (e: CancellationException) {
+            // 服务端关闭或客户端断开，交由 `finally` 清理资源。
+            throw e
+        } catch (e: Exception) {
+            logger.warn("Failed to push file by stream. Reason:[${e.message}]")
+            sendEvent(FilePushEvent(FilePushEvent.TYPE_ERROR, message = e.message ?: e.javaClass.name))
+        } finally {
+            runCatching { stream?.cancel() }
+            runCatching { session.close() }
         }
     }
 }

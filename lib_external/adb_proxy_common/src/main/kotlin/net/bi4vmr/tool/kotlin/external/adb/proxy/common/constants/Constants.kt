@@ -21,6 +21,13 @@ object Constants {
     const val PROTOCOL_VERSION: String = "1"
 
     /**
+     * 流式文件推送默认分块大小（字节）。
+     *
+     * 客户端每读取该大小的数据即发送至服务端，服务端收到后立即写入设备，不在代理设备磁盘上缓存完整文件。
+     */
+    const val FILE_STREAM_CHUNK_SIZE: Int = 32 * 1024 * 1024
+
+    /**
      * 配对会话超时时间（毫秒）。
      *
      * 从客户端提交承诺（[APIs.PAIR_COMMIT]）开始计时。超时后会话失效，等待中的确认请求返回超时结果。
