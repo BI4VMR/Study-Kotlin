@@ -13,13 +13,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFolderTransferList
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
@@ -301,10 +295,11 @@ data class LocalDevice(
     /**
      * 获取显示屏物理 ID 索引。
      *
-     * @param[displayID] 逻辑 ID 。
+     * @param[displayID] 逻辑 ID。
      * @return 索引序号。无法获取时返回 `0`。
      */
-    fun getDisplayUniqueIndex(displayID: String): String = ADBCLIUtil.getDisplayUniqueIndex(getSN(), displayID)
+    fun getDisplayUniqueIndex(displayID: String): String =
+        ADBCLIUtil.getDisplayUniqueIndex(getSN(), displayID)
 
     /**
      * 获取显示屏分辨率。

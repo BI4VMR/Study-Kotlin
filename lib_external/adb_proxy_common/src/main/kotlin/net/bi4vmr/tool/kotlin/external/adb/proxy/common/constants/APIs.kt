@@ -39,7 +39,7 @@ object APIs {
      *
      * 服务端用于通告设备状态变更等事件。
      *
-     * 协议为 WebSocket 。
+     * 协议为 WebSocket。
      */
     const val ADB_EVENTS: String = "/adb/events"
 

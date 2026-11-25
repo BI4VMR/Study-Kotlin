@@ -1,43 +1,21 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.URLBuilder
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
-import io.ktor.http.contentType
-import io.ktor.http.encodeURLParameter
-import io.ktor.http.isSuccess
-import io.ktor.http.path
-import io.ktor.network.tls.addKeyStore
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readBytes
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.network.tls.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -48,45 +26,32 @@ import net.bi4vmr.tool.kotlin.external.adb.cast.enums.AudioCodec
 import net.bi4vmr.tool.kotlin.external.adb.cast.enums.VideoCodec
 import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
+import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.exceptions.RPCException
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBFileTransferRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FileTransferEvent
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import org.slf4j.LoggerFactory
-import java.io.DataInputStream
-import java.io.EOFException
-import java.io.File
-import java.io.FileNotFoundException
-import java.io.IOException
+import java.io.*
 import java.net.ConnectException
 import java.net.ServerSocket
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
+ * TODO
  * 终端桥接程序上行帧类型：窗口尺寸变化（与 `util:shell_transfer` 中的定义保持一致）。
  */
 private const val SHELL_FRAME_RESIZE: Int = 1
@@ -148,7 +113,7 @@ class ADBProxyClient(
     /**
      * 是否启用加密连接。
      *
-     * `false` 表示使用明文 HTTP ； `true` 表示使用 HTTPS 。该配置应当与服务端匹配。
+     * `false` 表示使用明文 HTTP；`true` 表示使用 HTTPS。该配置应当与服务端匹配。
      */
     @Volatile
     var enableTLS: Boolean = false
@@ -181,41 +146,41 @@ class ADBProxyClient(
 
 
     /**
-     * Flow : 远程连接状态。
+     * Flow：远程连接状态。
      *
      * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
     private val _serviceStateFlow: MutableStateFlow<ServiceState> = MutableStateFlow(ServiceState.INIT)
 
     /**
-     * Flow : 远程连接状态。
+     * Flow：远程连接状态。
      *
      * 通过 WebSocket 信令通道是否就绪反馈客户端与服务端之间的连通性。
      */
     val serviceStateFlow: StateFlow<ServiceState> = _serviceStateFlow
 
     /**
-     * Flow : 服务端错误。
+     * Flow：服务端错误。
      */
     private val _serviceErrorFlow: MutableStateFlow<Exception?> = MutableStateFlow(null)
 
     /**
-     * Flow : 服务端错误。
+     * Flow：服务端错误。
      */
     val errorFlow: StateFlow<Exception?> = _serviceErrorFlow
 
     /**
-     * Flow : 远程设备列表。
+     * Flow：远程设备列表。
      */
     private val _devicesFlow: MutableStateFlow<List<RemoteDevice>> = MutableStateFlow(emptyList())
 
     /**
-     * Flow : 远程设备列表。
+     * Flow：远程设备列表。
      */
     val devicesFlow: StateFlow<List<RemoteDevice>> = _devicesFlow
 
 
-    /* ----- 客户端配置 ----- */
+    /* ----- 客户端管理 ----- */
 
     /**
      * 初始化。
@@ -362,7 +327,7 @@ class ADBProxyClient(
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句，与本地 `ADBUtil.runForStatus()` 的规则一致。
-     * @return 状态码。若出现异常则返回 `-1` 。
+     * @return 状态码。若出现异常则返回 `-1`。
      */
     suspend fun runForStatus(sn: String, command: String): Int {
         logger.debug("RunForStatus. SN:[$sn] Command:[$command]")
@@ -715,11 +680,24 @@ class ADBProxyClient(
      * 获取显示屏分辨率。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏。
      * @return 分辨率信息。若出现异常或显示屏不存在则返回空值。
      */
-    suspend fun getDisplaySize(sn: String, displayID: String? = null): DisplaySize? {
-        val lines = runForLines(sn, "wm size${displayArg(displayID)}") ?: return null
+    suspend fun getDisplaySize(sn: String, displayID: String = "0"): DisplaySize? {
+        val version = AndroidVersion.fromAPILevel(ADBCLIUtil.getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return null
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm size"
+            }
+        } else {
+            "wm size -d $displayID"
+        }
+
+        val lines = runForLines(sn, cmd) ?: return null
         return ADBOutputParser.parseWMSize(lines)
     }
 
@@ -729,11 +707,24 @@ class ADBProxyClient(
      * @param[sn] 设备序列号。
      * @param[width] 宽度。
      * @param[height] 高度。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
-    suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm size ${width}x$height${displayArg(displayID)}")
+    suspend fun setDisplaySize(sn: String, width: Int, height: Int, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(ADBCLIUtil.getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm size ${width}x$height"
+            }
+        } else {
+            "wm size ${width}x$height -d $displayID"
+        }
+
+        val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }
 
@@ -741,11 +732,24 @@ class ADBProxyClient(
      * 还原显示屏分辨率。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
-    suspend fun resetDisplaySize(sn: String, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm size reset${displayArg(displayID)}")
+    suspend fun resetDisplaySize(sn: String, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(ADBCLIUtil.getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm size reset"
+            }
+        } else {
+            "wm size reset -d $displayID"
+        }
+
+        val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }
 
@@ -753,11 +757,24 @@ class ADBProxyClient(
      * 获取显示屏像素密度。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏。
      * @return 密度信息。若出现异常则返回空值。
      */
-    suspend fun getDisplayDensity(sn: String, displayID: String? = null): DisplayDensity? {
-        val lines = runForLines(sn, "wm density${displayArg(displayID)}") ?: return null
+    suspend fun getDisplayDensity(sn: String, displayID: String = "0"): DisplayDensity? {
+        val version = AndroidVersion.fromAPILevel(ADBCLIUtil.getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return null
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm density"
+            }
+        } else {
+            "wm density -d $displayID"
+        }
+
+        val lines = runForLines(sn, cmd) ?: return null
         return ADBOutputParser.parseWMDensity(lines)
     }
 
@@ -766,11 +783,24 @@ class ADBProxyClient(
      *
      * @param[sn] 设备序列号。
      * @param[density] 密度。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
-    suspend fun setDisplayDensity(sn: String, density: Int, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm density $density${displayArg(displayID)}")
+    suspend fun setDisplayDensity(sn: String, density: Int, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(ADBCLIUtil.getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm density $density"
+            }
+        } else {
+            "wm density $density -d $displayID"
+        }
+
+        val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }
 
@@ -778,11 +808,24 @@ class ADBProxyClient(
      * 还原显示屏像素密度。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示默认显示屏。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @param[displayID] 显示屏逻辑 ID。默认为空值，表示默认显示屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
-    suspend fun resetDisplayDensity(sn: String, displayID: String? = null): Boolean {
-        val status = runForStatus(sn, "wm density reset${displayArg(displayID)}")
+    suspend fun resetDisplayDensity(sn: String, displayID: String = "0"): Boolean {
+        val version = AndroidVersion.fromAPILevel(ADBCLIUtil.getAPILevel(sn))
+        val cmd = if (version.getAPILevelMajor() < AndroidVersion.V_10.getAPILevelMajor()) {
+            if (displayID != "0") {
+                // Android 10 以下版本不支持调整主屏以外的其他屏幕
+                return false
+            } else {
+                // Android 10 以下版本不支持 `-d` 参数，该命令只能调整主屏参数。
+                "wm density reset"
+            }
+        } else {
+            "wm density reset -d $displayID"
+        }
+
+        val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }
 
@@ -790,31 +833,47 @@ class ADBProxyClient(
      * 获取 Activity 列表。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的 Activity 。
-     * @return Activity 列表，每个显示屏内按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     * @param[displayID] 显示屏 ID。默认为空值，表示列出所有显示屏的 Activity。
+     * @return Activity 列表。命令执行失败时返回空列表。每个显示屏内按照从顶层到底层的顺序排列。
      */
     suspend fun getActivities(sn: String, displayID: String? = null): List<ActivityInfo> {
-        val lines = runForLines(sn, "dumpsys activity activities") ?: return emptyList()
-        return ADBOutputParser.parseDumpActivities(lines)
-            .filter { displayID == null || it.displayID == displayID }
+        val lines = runForLines(sn, "dumpsys activity activities") ?: emptyList()
+        val list = ADBOutputParser.parseDumpActivities(lines)
+        return if (displayID == null) list else list.filter { it.displayID == displayID }
     }
 
     /**
-     * 获取窗口列表。
+     * 获取 Window 列表。
      *
      * @param[sn] 设备序列号。
-     * @param[displayID] 显示屏逻辑 ID 。默认为空值，表示列出所有显示屏的窗口。
-     * @return 窗口列表，按照从顶层到底层的顺序排列。命令执行异常时返回空列表。
+     * @param[displayID] 显示屏 ID。默认为空值，表示列出所有显示屏的 Window。
+     * @return Window 列表。命令执行失败时返回空列表。每个显示屏内按照从顶层到底层的顺序排列。
      */
     suspend fun getWindows(sn: String, displayID: String? = null): List<WindowInfo> {
-        val lines = runForLines(sn, "dumpsys window windows") ?: return emptyList()
-        return ADBOutputParser.parseDumpWindows(lines)
-            .filter { displayID == null || it.displayID == displayID }
+        val lines = runForLines(sn, "dumpsys window windows") ?: emptyList()
+        val list = ADBOutputParser.parseDumpWindows(lines)
+        return if (displayID == null) list else list.filter { it.displayID == displayID }
     }
 
+    /**
+     * 获取全局焦点信息。
+     *
+     * Android 9 及更低版本多屏 API 不完善，焦点所在屏幕始终为 `0`。
+     *
+     * @param[sn] 设备序列号。
+     * @return 全局焦点信息。
+     */
     suspend fun getGlobalFocusInfo(sn: String): FocusInfo {
-        // TODO
-        return FocusInfo()
+        val cmd = """
+                dumpsys window | grep -iE 'Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|mTopFocusedDisplayId='
+                """.trimIndent()
+        val lines = runForLines(sn, cmd) ?: return FocusInfo()
+        val result = ADBOutputParser.parseGlobalFocusInfo(lines)
+
+        // Android 9 及更低版本的 Activity 信息没有焦点信息，回退到通过 Window 信息获取。
+        if (result.windowHash != "-") return result
+        val linesFallback = runForLines(sn, "dumpsys window windows") ?: return result
+        return ADBOutputParser.parseGlobalFocusInfoV9L(linesFallback)
     }
 
 
@@ -1052,12 +1111,14 @@ class ADBProxyClient(
                         // 通知上行通道继续发送下一个分片
                         controlChannel.trySend(Unit)
                     }
+
                     FileTransferEvent.Type.ERROR -> {
                         /* 接收端出现错误 */
                         // TODO
                         println("ERROR!")
                         break
                     }
+
                     else -> Unit
                 }
             }
@@ -1268,7 +1329,6 @@ class ADBProxyClient(
     ) {
         if (requireRunningConfig().enableTLS) {
             requireClient().wss(
-                method = HttpMethod.Post,
                 host = host,
                 port = port,
                 path = path,
@@ -1282,7 +1342,6 @@ class ADBProxyClient(
             )
         } else {
             requireClient().webSocket(
-                method = HttpMethod.Post,
                 host = host,
                 port = port,
                 path = path,

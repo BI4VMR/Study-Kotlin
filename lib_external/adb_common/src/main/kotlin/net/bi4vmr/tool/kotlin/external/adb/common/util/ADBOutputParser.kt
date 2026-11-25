@@ -1,12 +1,7 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 
 /**
  * ADB 输出解析器。
@@ -714,7 +709,7 @@ object ADBOutputParser {
     /**
      * 解析全局焦点信息。
      *
-     * 解析 `dumpsys window | grep -iE "Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|TopFocused"`
+     * 解析 `dumpsys window | grep -iE 'Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|TopFocused'`
      * 命令输出内容，获取当前焦点所在的 Activity 与 Window 信息。
      *
      * 命令输出示例：
@@ -761,7 +756,7 @@ object ADBOutputParser {
                 return@forEach
             }
 
-            // 匹配屏幕分段首行 `Display: mDisplayId=X`，开始解析当前屏幕的焦点信息。
+            // 匹配屏幕分段首行 `Display: mDisplayId=<ID>`，开始解析当前屏幕的焦点信息。
             focusedDisplayRegex.find(line)?.let {
                 commitFocusInfo()
                 val displayID = it.groupValues[1]

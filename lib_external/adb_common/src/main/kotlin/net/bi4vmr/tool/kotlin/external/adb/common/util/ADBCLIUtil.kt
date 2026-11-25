@@ -8,12 +8,8 @@ import net.bi4vmr.tool.kotlin.external.adb.common.constants.Intents
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil.buildCommand
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -513,7 +509,7 @@ object ADBCLIUtil {
     @JvmStatic
     fun getGlobalFocusInfo(sn: String): FocusInfo {
         val cmd = """
-                dumpsys window | grep -iE "Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|mTopFocusedDisplayId="
+                dumpsys window | grep -iE 'Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|mTopFocusedDisplayId='
                 """.trimIndent()
         val lines = runForLines(sn, cmd) ?: return FocusInfo()
         val result = ADBOutputParser.parseGlobalFocusInfo(lines)
@@ -601,7 +597,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun pushFile(sn: String, local: File, remote: String): Boolean {
-        val cmd = String.format("${getExecutableName()} -s %s push \"%s\" \"%s\"", sn, local.absolutePath, remote)
+        val cmd = String.format("${getExecutableName()} -s %s push '%s' '%s'", sn, local.absolutePath, remote)
         val status = CLIUtil.runForStatus(cmd)
         return CLIUtil.isSuccess(status)
     }
@@ -618,7 +614,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun pullFile(sn: String, remote: String, local: File): Boolean {
-        val cmd = String.format("${getExecutableName()} -s %s pull \"%s\" \"%s\"", sn, remote, local.absolutePath)
+        val cmd = String.format("${getExecutableName()} -s %s pull '%s' '%s'", sn, remote, local.absolutePath)
         val status = CLIUtil.runForStatus(cmd)
         return CLIUtil.isSuccess(status)
     }
