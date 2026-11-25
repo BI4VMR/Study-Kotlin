@@ -1,23 +1,46 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.client
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.network.tls.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.websocket.wss
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
+import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.http.Url
+import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
+import io.ktor.http.isSuccess
+import io.ktor.http.path
+import io.ktor.network.tls.addKeyStore
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readBytes
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import net.bi4vmr.tool.java.common.base.file.FileUtil
 import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.java.common.base.system.SystemUtil
@@ -29,20 +52,36 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
 import net.bi4vmr.tool.kotlin.external.adb.common.exceptions.RPCException
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBOutputParser
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.APIs
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
-import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.*
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBCastStartRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBExecRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBFileTransferRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBPropertyRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FileTransferEvent
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.security.SSLConfig
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.serializer.DisplayInfoSerializer
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import org.slf4j.LoggerFactory
-import java.io.*
+import java.io.DataInputStream
+import java.io.EOFException
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
 import java.net.ConnectException
 import java.net.ServerSocket
 import kotlin.coroutines.EmptyCoroutineContext
@@ -241,7 +280,7 @@ class ADBProxyClient(
     }
 
 
-    /* ----- 系统管理 ----- */
+    /* ----- 基础功能 ----- */
 
     /**
      * 获取服务端信息。
@@ -265,9 +304,6 @@ class ADBProxyClient(
 
         return requireNotNull(callResponse.data) { "GetServerInfo failed, Data is null!" }
     }
-
-
-    /* ----- 基础功能 ----- */
 
     /**
      * 获取设备列表。
@@ -621,7 +657,7 @@ class ADBProxyClient(
      */
 
     /**
-     * 获取远程设备的显示屏信息列表。
+     * 获取显示屏列表。
      *
      * @param[sn] 设备序列号。
      * @return 显示屏信息列表。若出现异常则返回空列表。
@@ -647,222 +683,6 @@ class ADBProxyClient(
             emptyList()
         }
     }
-
-
-    /*
-     * ----- 文件系统 -----
-     */
-
-    /**
-     * 推送文件到远程设备。
-     *
-     * 文件先由本机上传至服务端，再由服务端推送至设备。监听器回调的进度为整体进度，上传与设备推送两个阶段各占一半。
-     *
-     * @param[sn] 设备序列号。
-     * @param[local] 源文件（本机）。
-     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
-     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
-     * @throws[FileNotFoundException] 源文件不存在或不可读。
-     * @throws[IllegalStateException] 源文件指向目录。
-     * @throws[IllegalArgumentException] 未指明目标路径。
-     * @throws[IOException] 传输失败或用户取消推送。
-     */
-    suspend fun pushFile(sn: String, local: File, remote: String, listener: ADBFileTransferListener? = null) {
-        /* 参数校验 */
-        require(sn.isNotBlank()) { "Device SN is required!" }
-        if (!local.canRead()) {
-            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
-        }
-        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
-        require(remote.isNotBlank()) { "Remote path is empty!" }
-
-        val total = local.length()
-        val path = APIs.ADB_FILE_PUSH +
-                "?sn=${sn.encodeURLParameter()}" +
-                "&remote=${remote.encodeURLParameter()}" +
-                "&name=${local.name.encodeURLParameter()}" +
-                "&size=$total"
-
-        fun notifyProgress(transferred: Long) {
-            if (total <= 0) {
-                listener?.onProgress(transferred / 2, Double.NaN)
-            } else {
-                listener?.onProgress(transferred / 2, transferred.toDouble() / (total * 2).toDouble())
-            }
-        }
-
-        var result: FilePushEvent? = null
-        openWebSocket(path) {
-            listener?.setCancelNotifier {
-                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
-            }
-            listener?.onStart(total)
-
-            /* 上传文件数据 */
-            val uploadJob = launch(Dispatchers.IO) {
-                local.inputStream().use { input ->
-                    val buffer = ByteArray(64 * 1024)
-                    var uploaded = 0L
-                    while (listener?.isCancelled() != true) {
-                        val count = input.read(buffer)
-                        if (count < 0) {
-                            send(Frame.Text(FilePushEvent.CMD_EOF))
-                            break
-                        }
-                        send(Frame.Binary(true, buffer.copyOf(count)))
-                        uploaded += count
-                        notifyProgress(uploaded)
-                    }
-                }
-            }
-
-            /* 接收服务端事件 */
-            for (frame in incoming) {
-                if (frame !is Frame.Text) {
-                    continue
-                }
-
-                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
-                when (event.type) {
-                    FilePushEvent.TYPE_PROGRESS -> notifyProgress(total + event.size)
-                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
-                        result = event
-                        break
-                    }
-                }
-            }
-            uploadJob.cancel()
-        }
-
-        val event = result ?: throw IOException("Connection closed before push completed!")
-        when {
-            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
-            event.cancel -> {
-                listener?.onEnd()
-                throw IOException("Push cancelled by user!")
-            }
-
-            else -> listener?.onEnd()
-        }
-    }
-
-    /**
-     * 流式推送文件到远程设备。
-     *
-     * 文件数据按块发送至服务端，服务端收到后立即写入设备，不在代理设备磁盘上缓存完整文件。适用于大文件或代理设备磁盘空间有限的场景。
-     *
-     * 与 [pushFile] 相比，本方法没有“先上传完整文件，再推送至设备”的两个阶段，监听器回调的进度即为整体进度。
-     *
-     * @param[sn] 设备序列号。
-     * @param[local] 源文件（本机）。
-     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
-     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
-     * @param[chunkSize] 单次读取并发送的数据量（字节）。默认值为 [Constants.FILE_STREAM_CHUNK_SIZE]。
-     * @throws[FileNotFoundException] 源文件不存在或不可读。
-     * @throws[IllegalStateException] 源文件指向目录。
-     * @throws[IllegalArgumentException] 未指明目标路径或分块大小无效。
-     * @throws[IOException] 传输失败或用户取消推送。
-     */
-    @JvmOverloads
-    suspend fun pushFileStreaming(
-        sn: String,
-        local: File,
-        remote: String,
-        listener: ADBFileTransferListener? = null,
-        chunkSize: Int = Constants.FILE_STREAM_CHUNK_SIZE
-    ) {
-        /* 参数校验 */
-        require(sn.isNotBlank()) { "Device SN is required!" }
-        if (!local.canRead()) {
-            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
-        }
-        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
-        require(remote.isNotBlank()) { "Remote path is empty!" }
-        require(chunkSize > 0) { "Chunk size must be positive! Value:[$chunkSize]" }
-
-        val total = local.length()
-        val path = APIs.ADB_FILE_PUSH_FILE +
-                "?sn=${sn.encodeURLParameter()}" +
-                "&remote=${remote.encodeURLParameter()}" +
-                "&name=${local.name.encodeURLParameter()}" +
-                "&size=$total"
-
-        fun notifyProgress(size: Long) {
-            if (total <= 0) {
-                listener?.onProgress(size, Double.NaN)
-            } else {
-                listener?.onProgress(size, size.toDouble() / total.toDouble())
-            }
-        }
-
-        var result: FilePushEvent? = null
-        openWebSocket(path) {
-            // 服务端每写入一个分块便回报进度，发送任务收到进度后再发送下一个分块，避免大量数据堆积在内存中。
-            val ackChannel = Channel<Unit>(Channel.CONFLATED)
-
-            listener?.setCancelNotifier {
-                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
-            }
-            listener?.onStart(total)
-
-            /* 读取本地文件并分块发送，服务端收到后立即写入设备 */
-            val uploadJob = launch(Dispatchers.IO) {
-                local.inputStream().use { input ->
-                    val buffer = ByteArray(chunkSize)
-                    while (listener?.isCancelled() != true) {
-                        val count = input.read(buffer)
-                        if (count < 0) {
-                            send(Frame.Text(FilePushEvent.CMD_EOF))
-                            break
-                        }
-                        if (count == 0) {
-                            continue
-                        }
-
-                        send(Frame.Binary(true, buffer.copyOf(count)))
-                        // 等待服务端确认当前分块已写入设备；通道关闭表示传输已结束。
-                        if (ackChannel.receiveCatching().getOrNull() == null) {
-                            break
-                        }
-                    }
-                }
-            }
-
-            /* 接收服务端事件 */
-            for (frame in incoming) {
-                if (frame !is Frame.Text) {
-                    continue
-                }
-
-                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
-                when (event.type) {
-                    FilePushEvent.TYPE_PROGRESS -> {
-                        notifyProgress(event.size)
-                        ackChannel.trySend(Unit)
-                    }
-
-                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
-                        result = event
-                        break
-                    }
-                }
-            }
-            ackChannel.close()
-            uploadJob.cancel()
-        }
-
-        val event = result ?: throw IOException("Connection closed before push completed!")
-        when {
-            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
-            event.cancel -> {
-                listener?.onEnd()
-                throw IOException("Push cancelled by user!")
-            }
-
-            else -> listener?.onEnd()
-        }
-    }
-
 
     /**
      * 获取显示屏分辨率。
@@ -968,6 +788,256 @@ class ADBProxyClient(
     suspend fun getGlobalFocusInfo(sn: String): FocusInfo {
         // TODO
         return FocusInfo()
+    }
+
+
+    /*
+     * ----- 文件系统 -----
+     */
+
+    /**
+     * 流式推送文件到远程设备。
+     *
+     * 文件数据按块发送至服务端，服务端收到后立即写入设备，不在代理设备磁盘上缓存完整文件。适用于大文件或代理设备磁盘空间有限的场景。
+     *
+     * 与 [pushFile] 相比，本方法没有“先上传完整文件，再推送至设备”的两个阶段，监听器回调的进度即为整体进度。
+     *
+     * @param[sn] 设备序列号。
+     * @param[local] 源文件（本机）。
+     * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾则表示将文件写入该目录并保持原名，否则表示写入路径指定的文件。
+     * @param[listener] 传输监听器。可通过 [ADBFileTransferListener.notifyCancel] 取消传输。
+     * @param[chunkSize] 单次读取并发送的数据量（字节）。默认值为 [Constants.FILE_SEGMENT_SIZE]。
+     * @throws[FileNotFoundException] 源文件不存在或不可读。
+     * @throws[IllegalStateException] 源文件指向目录。
+     * @throws[IllegalArgumentException] 未指明目标路径或分块大小无效。
+     * @throws[IOException] 传输失败或用户取消推送。
+     */
+    @JvmOverloads
+    suspend fun pushFileStreaming(
+        sn: String,
+        local: File,
+        remote: String,
+        listener: ADBFileTransferListener? = null,
+        chunkSize: Int = Constants.FILE_SEGMENT_SIZE
+    ) {
+        /* 参数校验 */
+        require(sn.isNotBlank()) { "Device SN is required!" }
+        if (!local.canRead()) {
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
+        }
+        check(!local.isDirectory) { "Input is a directory! Path:[${local}]" }
+        require(remote.isNotBlank()) { "Remote path is empty!" }
+        require(chunkSize > 0) { "Chunk size must be positive! Value:[$chunkSize]" }
+
+        val total = local.length()
+        val path = APIs.ADB_FILES_PUSH_FILE +
+                "?sn=${sn.encodeURLParameter()}" +
+                "&remote=${remote.encodeURLParameter()}" +
+                "&name=${local.name.encodeURLParameter()}" +
+                "&size=$total"
+
+        fun notifyProgress(size: Long) {
+            if (total <= 0) {
+                listener?.onProgress(size, Double.NaN)
+            } else {
+                listener?.onProgress(size, size.toDouble() / total.toDouble())
+            }
+        }
+
+        var result: FilePushEvent? = null
+        openWebSocket(path) {
+            // 服务端每写入一个分块便回报进度，发送任务收到进度后再发送下一个分块，避免大量数据堆积在内存中。
+            val ackChannel = Channel<Unit>(Channel.CONFLATED)
+
+            listener?.setCancelNotifier {
+                outgoing.trySend(Frame.Text(FilePushEvent.CMD_CANCEL))
+            }
+            listener?.onStart(total)
+
+            /* 读取本地文件并分块发送，服务端收到后立即写入设备 */
+            val uploadJob = launch(Dispatchers.IO) {
+                local.inputStream().use { input ->
+                    val buffer = ByteArray(chunkSize)
+                    while (listener?.isCancelled() != true) {
+                        val count = input.read(buffer)
+                        if (count < 0) {
+                            send(Frame.Text(FilePushEvent.CMD_EOF))
+                            break
+                        }
+                        if (count == 0) {
+                            continue
+                        }
+
+                        send(Frame.Binary(true, buffer.copyOf(count)))
+                        // 等待服务端确认当前分块已写入设备；通道关闭表示传输已结束。
+                        if (ackChannel.receiveCatching().getOrNull() == null) {
+                            break
+                        }
+                    }
+                }
+            }
+
+            /* 接收服务端事件 */
+            for (frame in incoming) {
+                if (frame !is Frame.Text) {
+                    continue
+                }
+
+                val event = jsonTool.decodeFromString(FilePushEvent.serializer(), frame.readText())
+                when (event.type) {
+                    FilePushEvent.TYPE_PROGRESS -> {
+                        notifyProgress(event.size)
+                        ackChannel.trySend(Unit)
+                    }
+
+                    FilePushEvent.TYPE_END, FilePushEvent.TYPE_ERROR -> {
+                        result = event
+                        break
+                    }
+                }
+            }
+            ackChannel.close()
+            uploadJob.cancel()
+        }
+
+        val event = result ?: throw IOException("Connection closed before push completed!")
+        when {
+            event.type == FilePushEvent.TYPE_ERROR -> throw IOException("Failed to push file! Reason:[${event.message}]")
+            event.cancel -> {
+                listener?.onEnd()
+                throw IOException("Push cancelled by user!")
+            }
+
+            else -> listener?.onEnd()
+        }
+    }
+
+    @JvmOverloads
+    suspend fun pushFile(
+        sn: String,
+        local: String,
+        remote: String,
+        segmentSize: Int = Constants.FILE_SEGMENT_SIZE,
+        refreshMediaDB: Boolean = true,
+        listener: ADBFileTransferListener? = null
+    ) {
+        /* 参数校验 */
+        if (local.isBlank()) {
+            throw IllegalArgumentException("Local path is empty!")
+        }
+
+        if (remote.isBlank()) {
+            throw IllegalArgumentException("Remote path is empty!")
+        }
+
+        if (segmentSize <= 0) {
+            throw IllegalArgumentException("Segment size must > 0! Value:[$segmentSize]")
+        }
+
+        val localFile = File(local)
+        if (!localFile.canRead()) {
+            throw FileNotFoundException("Input path not exist or readable! Path:[${local}]")
+        }
+
+        if (!localFile.isFile) {
+            throw IllegalStateException("Input is not file! Path:[${local}]")
+        }
+
+
+        val request = ADBFileTransferRequest(sn, local, remote)
+        openWebSocket(APIs.ADB_FILES_PUSH_FILE, request) {
+
+            /*
+             * Ktor 的 WebSocket 收发 Channel 缓冲区默认为无限大，如果读取大文件时接收端处理缓慢，发送端内存将逐渐被填满。
+             *
+             * 我们通过缓冲区容量为 1 的 Channel 限制发送速率，每当收到接收端处理完毕上一个分片时，再唤醒发送协程转发下一个分片。
+             */
+            val controlChannel = Channel<Unit>(Channel.CONFLATED)
+
+            // 用户取消操作时，发送消息通知接收端。
+            listener?.setCancelNotifier {
+                val event = FileTransferEvent<Unit>(FileTransferEvent.Type.CANCEL.code)
+                outgoing.trySend(
+                    Frame.Text(jsonTool.encodeToString(event))
+                )
+            }
+
+            val totalSize: Long = localFile.length()
+            listener?.onStart(totalSize)
+            var transferredSegment = 0
+
+
+            /* 上行通道：文件数据 */
+            val uploadJob = launch(Dispatchers.IO) {
+                localFile.inputStream().use { input ->
+                    val buffer = ByteArray(segmentSize)
+                    while (listener?.isCancelled() != true) {
+                        val count = input.read(buffer)
+                        // 到达文件末尾，通知接收端结束并退出循环。
+                        if (count < 0) {
+                            val event = FileTransferEvent<Unit>(FileTransferEvent.Type.EOF.code)
+                            send(
+                                Frame.Text(jsonTool.encodeToString(event))
+                            )
+                            break
+                        }
+
+                        if (count == 0) continue
+
+                        // 读取到有效数据，转发给接收端。
+                        send(Frame.Binary(true, buffer.copyOf(count)))
+
+                        // 挂起当前协程，等待接收端处理完毕当前分片再进入下一轮循环。
+                        val channelResult = controlChannel.receiveCatching()
+                        // 如果读到空值，表示接收端已关闭通道，传输结束，退出循环。
+                        if (channelResult.getOrNull() == null) {
+                            break
+                        }
+                    }
+                }
+            }
+
+
+            /* 下行通道：控制信令 */
+            for (frame in incoming) {
+                // 目前下行通道仅使用文本帧，忽略其他类型。
+                if (frame !is Frame.Text) {
+                    continue
+                }
+
+                val event = jsonTool.decodeFromString(
+                    FileTransferEvent.serializer(JsonElement.serializer()), frame.readText()
+                )
+                val type = FileTransferEvent.Type.fromCode(event.type)
+                when (type) {
+                    FileTransferEvent.Type.SEGMENT_OK -> {
+                        /* 分片处理完毕 */
+                        transferredSegment++
+                        // 通知监听者当前进度
+                        val transferredSize = segmentSize * transferredSegment
+                        if (totalSize <= 0) {
+                            listener?.onProgress(transferredSize.toLong(), Double.NaN)
+                        } else {
+                            val percent = transferredSize.toDouble() / totalSize.toDouble()
+                            listener?.onProgress(transferredSize.toLong(), percent)
+                        }
+                        // 通知上行通道继续发送下一个分片
+                        controlChannel.trySend(Unit)
+                    }
+                    FileTransferEvent.Type.ERROR -> {
+                        /* 接收端出现错误 */
+                        break
+                    }
+                    else -> Unit
+                }
+            }
+
+            // `incoming` 循环结束表示服务端已断开连接，清理相关资源。
+            controlChannel.close()
+            uploadJob.cancel()
+        }
+
+        // ERR
     }
 
 
@@ -1153,11 +1223,39 @@ class ADBProxyClient(
             }
             .build()
 
-    private suspend fun openWebSocket(path: String, block: suspend DefaultClientWebSocketSession.() -> Unit) {
+    private suspend fun openWebSocket(
+        path: String,
+        params: Any? = null,
+        block: suspend DefaultClientWebSocketSession.() -> Unit
+    ) {
         if (requireRunningConfig().enableTLS) {
-            requireClient().wss(host = host, port = port, path = path, block = block)
+            requireClient().wss(
+                method = HttpMethod.Post,
+                host = host,
+                port = port,
+                path = path,
+                request = {
+                    if (params != null) {
+                        contentType(ContentType.Application.Json)
+                        setBody(params)
+                    }
+                },
+                block = block
+            )
         } else {
-            requireClient().webSocket(host = host, port = port, path = path, block = block)
+            requireClient().webSocket(
+                method = HttpMethod.Post,
+                host = host,
+                port = port,
+                path = path,
+                request = {
+                    if (params != null) {
+                        contentType(ContentType.Application.Json)
+                        setBody(params)
+                    }
+                },
+                block = block
+            )
         }
     }
 

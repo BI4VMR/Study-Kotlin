@@ -206,7 +206,7 @@ class ADBCoreModule : ADBProxyModule {
                 onADBFilePushWSConnect(this, server.jsonTool)
             }
 
-            webSocket(APIs.ADB_FILE_PUSH_FILE) {
+            webSocket(APIs.ADB_FILES_PUSH_FILE) {
                 onADBFilePushStreamWSConnect(this, server.jsonTool)
             }
         }
@@ -458,7 +458,7 @@ class ADBCoreModule : ADBProxyModule {
         val remote = query["remote"]
         val name = query["name"]?.let { File(it).name }
         val total = query["size"]?.toLongOrNull() ?: 0L
-        logger.debug("Receive [${APIs.ADB_FILE_PUSH_FILE}] request. SN:[$sn] Remote:[$remote] Name:[$name] Size:[$total]")
+        logger.debug("Receive [${APIs.ADB_FILES_PUSH_FILE}] request. SN:[$sn] Remote:[$remote] Name:[$name] Size:[$total]")
         if (sn.isNullOrBlank() || remote.isNullOrBlank() || name.isNullOrBlank()) {
             session.close(
                 CloseReason(

@@ -2,10 +2,17 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 
 /**
  * ADB 执行器公共能力接口。
@@ -265,6 +272,14 @@ interface ADBExecutor {
      * @return 文件列表。若路径不存在或不是目录则返回空值。
      */
     suspend fun listFiles(sn: String, path: String): List<DeviceFile>?
+
+    suspend fun pushFile(
+        sn: String,
+        local: String,
+        remote: String,
+        refreshMediaDB: Boolean = true,
+        listener: ADBFileTransferListener
+    )
 
 
     /*

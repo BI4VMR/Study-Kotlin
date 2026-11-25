@@ -121,7 +121,7 @@ object APIs {
      * 任意时刻发送文本帧 `cancel` 可取消传输。服务端以文本帧返回
      * [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent] 。
      */
-    const val ADB_FILE_PUSH_FILE: String = "/adb/file/push-file"
+    const val ADB_FILES_PUSH_FILE: String = "/adb/file/push-file"
 
 
     /* ----- 屏幕投射 ----- */

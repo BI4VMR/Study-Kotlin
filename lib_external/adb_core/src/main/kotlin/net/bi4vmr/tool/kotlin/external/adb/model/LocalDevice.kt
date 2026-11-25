@@ -14,7 +14,12 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
@@ -132,6 +137,17 @@ data class LocalDevice(
         ADBCLIUtil.runForText(getSN(), command, redirectError)
 
     /**
+     * 执行 ADB Shell 命令并获取错误消息。
+     * <p>
+     * 执行命令并阻塞当前线程，读取错误输出并转为文本。
+     *
+     * @param[command] 命令语句。
+     * @return 命令的错误输出文本。若出现异常则返回空值。
+     */
+    fun runForError(command: String): String? =
+        ADBCLIUtil.runForError(getSN(), command)
+
+    /**
      * 打开交互式 Shell。
      *
      * @param[terminal] 终端程序，可以传入 [Terminals] 内置枚举，也可以传入 [Terminal] 接口自定义实现。默认值为空，此时使用默认终端。
@@ -158,7 +174,7 @@ data class LocalDevice(
     /**
      * 重启。
      *
-     * @param[option] 附加命令，可以携带 `recovery` 、 `fastboot` 、 `bootloader` 等选项，默认为空。
+     * @param[option] 附加命令，可以携带 `recovery`、`fastboot`、`bootloader` 等选项，默认为空。
      * @return 状态码。若出现异常则返回 `-1`。
      */
     @JvmOverloads
@@ -286,14 +302,118 @@ data class LocalDevice(
      * 获取显示屏物理 ID 索引。
      *
      * @param[displayID] 逻辑 ID 。
-     * @return 索引序号。无法获取时返回 `0` 。
+     * @return 索引序号。无法获取时返回 `0`。
      */
     fun getDisplayUniqueIndex(displayID: String): String = ADBCLIUtil.getDisplayUniqueIndex(getSN(), displayID)
 
     /**
+     * 获取显示屏分辨率。
+     *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回空值。
+     *
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
+     * @return 分辨率信息。若显示屏不存在则返回空值。
+     */
+    fun getDisplaySize(displayID: String = "0"): DisplaySize? =
+        ADBCLIUtil.getDisplaySize(getSN(), displayID)
+
+    /**
+     * 设置显示屏分辨率。
+     *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
+     * @param[width] 宽度。
+     * @param[height] 高度。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmOverloads
+    fun setDisplaySize(width: Int, height: Int, displayID: String = "0"): Boolean =
+        ADBCLIUtil.setDisplaySize(getSN(), width, height, displayID)
+
+    /**
+     * 还原显示屏分辨率。
+     *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmOverloads
+    fun resetDisplaySize(displayID: String = "0"): Boolean =
+        ADBCLIUtil.resetDisplaySize(getSN(), displayID)
+
+    /**
+     * 获取显示屏像素密度。
+     *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回空值。
+     *
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
+     * @return 密度信息。若出现异常则返回空值。
+     */
+    @JvmOverloads
+    fun getDisplayDensity(displayID: String = "0"): DisplayDensity? =
+        ADBCLIUtil.getDisplayDensity(getSN(), displayID)
+
+    /**
+     * 设置显示屏像素密度。
+     *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
+     * @param[density] 密度。
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmOverloads
+    fun setDisplayDensity(density: Int, displayID: String = "0"): Boolean =
+        ADBCLIUtil.setDisplayDensity(getSN(), density, displayID)
+
+    /**
+     * 还原显示屏像素密度。
+     *
+     * 在 Android 10 以下版本中，`wm` 命令不支持调整主屏以外的其他屏幕，如果 ID 非 `0` 必然返回 `false`。
+     *
+     * @param[displayID] 显示屏 ID。默认值为 `0`，表示主屏。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    @JvmOverloads
+    fun resetDisplayDensity(displayID: String = "0"): Boolean =
+        ADBCLIUtil.resetDisplayDensity(getSN(), displayID)
+
+    /**
+     * 获取 Activity 列表。
+     *
+     * @param[displayID] 显示屏 ID。默认为空值，表示列出所有显示屏的 Activity。
+     * @return Activity 列表。命令执行失败时返回空列表。每个显示屏内按照从顶层到底层的顺序排列。
+     */
+    @JvmOverloads
+    fun getActivities(displayID: String? = null): List<ActivityInfo> =
+        ADBCLIUtil.getActivities(getSN(), displayID)
+
+    /**
+     * 获取 Window 列表。
+     *
+     * @param[displayID] 显示屏 ID。默认为空值，表示列出所有显示屏的 Window。
+     * @return Window 列表。命令执行失败时返回空列表。每个显示屏内按照从顶层到底层的顺序排列。
+     */
+    @JvmOverloads
+    fun getWindows(displayID: String? = null): List<WindowInfo> =
+        ADBCLIUtil.getWindows(getSN(), displayID)
+
+    /**
+     * 获取全局焦点信息。
+     *
+     * Android 9 及更低版本多屏 API 不完善，焦点所在屏幕始终为 `0`。
+     *
+     * @return 全局焦点信息。
+     */
+    fun getGlobalFocusInfo(): FocusInfo =
+        ADBCLIUtil.getGlobalFocusInfo(getSN())
+
+    /**
      * 获取屏幕截图。
      *
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
+     * @param[displayID] 显示屏 ID。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID。
      * @return 二进制数据。若出现错误则返回空值。
      */
     @JvmOverloads
@@ -304,8 +424,8 @@ data class LocalDevice(
      * 获取屏幕截图并保存至 PC 存储设备。
      *
      * @param[file] 目标文件。
-     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID 。
-     * @return `true` 表示操作成功； `false` 表示操作失败。
+     * @param[displayID] 显示屏 ID 。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID。
+     * @return `true` 表示操作成功；`false` 表示操作失败。
      */
     @JvmOverloads
     fun screenshotAsPNG(file: File, displayID: String? = null): Boolean =
@@ -344,7 +464,8 @@ data class LocalDevice(
      *
      * @param[local] 源文件（PC 端）。
      * @param[remote] 目标路径（Android 端）。如果以 `/` 结尾表示将文件写入目标目录并保持原名，否则表示使用目标路径指定的文件名称。
-     * @param[refreshMediaDB] 文件传输完毕后是否刷新媒体数据库。默认值为 `true`。传输多个文件至同一目录时可设为 `false` 并在完毕后调用 [mediaScan]。
+     * @param[refreshMediaDB] 文件传输完毕后是否刷新媒体数据库。默认值为 `true`。传输多个文件至同一目录时可设为 `false` 并在传输完毕后
+     * 统一调用一次 [mediaScan] 方法。
      * @param[listener] 传输进度监听器。
      * @throws[FileNotFoundException] 源文件不存在或不可读。
      * @throws[IllegalStateException] 源文件指向目录。
@@ -979,6 +1100,42 @@ data class LocalDevice(
      * @throws[Exception] 安装失败。消息为 ADB 命令输出的错误信息。
      */
     fun installPackage(file: File) = ADBCLIUtil.installPackage(getSN(), file)
+
+    /**
+     * 卸载软件包。
+     *
+     * @param[packageName] 包名。
+     * @param[userID] 用户 ID。对于预装应用等组件无法直接卸载，可以尝试在特定用户空间将其标记为伪卸载。默认为空值，表示全局卸载。
+     * @param[keepData] 是否保留数据。默认不保留数据。
+     * @throws[Exception] 卸载失败。消息为 ADB 命令输出的错误信息。
+     */
+    @JvmOverloads
+    fun uninstallPackage(packageName: String, userID: String? = null, keepData: Boolean = false) =
+        ADBCLIUtil.uninstallPackage(getSN(), packageName, userID, keepData)
+
+    /**
+     * 启用软件包。
+     *
+     * @param[packageName] 包名。
+     * @param[userID] 用户 ID。默认为空值，表示不指定用户。
+     * @throws[Exception] 启用失败。消息为 `pm` 命令输出的错误信息。
+     */
+    @JvmOverloads
+    fun enablePackage(packageName: String, userID: String? = null) =
+        ADBCLIUtil.enablePackage(getSN(), packageName, userID)
+
+    /**
+     * 禁用软件包。
+     *
+     * 优先使用 `pm disable` 命令；若执行失败则回退至 `pm disable-user` 命令。
+     *
+     * @param[packageName] 包名。
+     * @param[userID] 用户 ID。默认为空值，表示不指定用户。
+     * @throws[Exception] 禁用失败。消息为 `pm` 命令输出的错误信息。
+     */
+    @JvmOverloads
+    fun disablePackage(packageName: String, userID: String? = null) =
+        ADBCLIUtil.disablePackage(getSN(), packageName, userID)
 
 
     /*

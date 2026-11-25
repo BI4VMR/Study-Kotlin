@@ -2,11 +2,19 @@ package net.bi4vmr.androidtoolkit.core.model
 
 import kotlinx.coroutines.flow.StateFlow
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
+import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListener
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
+import java.io.File
 
 /**
  * 远程执行器。
@@ -137,7 +145,18 @@ class RemoteExecutor(
      * ----- 文件管理 -----
      */
 
+    // TODO not yet implemented
     override suspend fun listFiles(sn: String, path: String): List<DeviceFile>? = null
+
+    override suspend fun pushFile(
+        sn: String,
+        local: String,
+        remote: String,
+        refreshMediaDB: Boolean,
+        listener: ADBFileTransferListener
+    ) {
+        client.pushFileStreaming(sn, File(local), remote, listener)
+    }
 
 
     /*
