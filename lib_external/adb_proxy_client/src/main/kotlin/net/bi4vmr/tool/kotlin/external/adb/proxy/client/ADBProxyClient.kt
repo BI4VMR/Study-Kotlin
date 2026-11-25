@@ -253,12 +253,8 @@ class ADBProxyClient(
 
 
         /* 初始化双向消息通道 */
-        connectWebSocket()
+        connectEventsWS()
     }
-
-    fun getServiceState(): ServiceState = serviceStateFlow.value
-
-    fun isServiceReady(): Boolean = (serviceStateFlow.value == ServiceState.READY)
 
     /**
      * 终止连接。
@@ -278,6 +274,37 @@ class ADBProxyClient(
         _serviceErrorFlow.value = null
         _serviceStateFlow.value = ServiceState.INIT
     }
+
+    /**
+     * 获取服务端状态。
+     *
+     * @return 服务端状态。
+     */
+    fun getServiceState(): ServiceState = serviceStateFlow.value
+
+    /**
+     * 判断服务端是否就绪。
+     *
+     * @return `true` 表示服务端已就绪；`false` 表示服务端未就绪。
+     */
+    fun isServiceReady(): Boolean = (serviceStateFlow.value == ServiceState.READY)
+
+    /**
+     * 判断是否可以启动服务。
+     *
+     * @return `true` 表示可以调用 [init] 方法；`false` 表示已启动，调用 [init] 方法将被忽略。
+     */
+    fun canStart(): Boolean {
+        val state = getServiceState()
+        return (state == ServiceState.INIT) || (state == ServiceState.ERROR)
+    }
+
+    /**
+     * 判断是否可以停止服务。
+     *
+     * @return `true` 表示可以调用 [stop] 方法；`false` 表示未启动，调用 [stop] 方法将被忽略。
+     */
+    fun canStop(): Boolean = (getServiceState() == ServiceState.READY)
 
 
     /* ----- 基础功能 ----- */
@@ -1006,7 +1033,8 @@ class ADBProxyClient(
                 }
 
                 val event = jsonTool.decodeFromString(
-                    FileTransferEvent.serializer(JsonElement.serializer()), frame.readText()
+                    deserializer = FileTransferEvent.serializer(JsonElement.serializer()),
+                    string = frame.readText()
                 )
                 val type = FileTransferEvent.Type.fromCode(event.type)
                 when (type) {
@@ -1026,6 +1054,8 @@ class ADBProxyClient(
                     }
                     FileTransferEvent.Type.ERROR -> {
                         /* 接收端出现错误 */
+                        // TODO
+                        println("ERROR!")
                         break
                     }
                     else -> Unit
@@ -1121,22 +1151,11 @@ class ADBProxyClient(
     /**
      * 获取运行时配置。
      *
-     * 配置不存在则抛出异常。
-     *
      * @return 配置信息。
+     * @throws[IllegalStateException] 配置不存在。
      */
     private fun requireRunningConfig(): RunningConfig {
         return runningConfig ?: throw IllegalStateException("Client is not initialized!")
-    }
-
-    /**
-     * 获取 HTTP 客户端。
-     *
-     * @return 客户端实例。
-     * @throws[IllegalStateException] 未初始化。
-     */
-    private fun requireClient(): HttpClient {
-        return client ?: throw IllegalStateException("Client is not initialized! Have you call `init()` at first?")
     }
 
     /**
@@ -1173,13 +1192,26 @@ class ADBProxyClient(
         }
     }
 
-    private fun connectWebSocket() {
-        // 进入该方法前，客户端状态已在 PREPARING 。
+    /**
+     * 获取 HTTP 客户端。
+     *
+     * @return 客户端实例。
+     * @throws[IllegalStateException] 未初始化。
+     */
+    private fun requireClient(): HttpClient {
+        return client ?: throw IllegalStateException("Client is not initialized! Have you call `init()` at first?")
+    }
+
+    /**
+     * 初始化服务端事件 WebSocket 通道。
+     */
+    private fun connectEventsWS() {
         taskScope.launch {
             try {
                 // Ktor 的 WebSocket 请求只能填写路径，不能携带 `wss://` 等前缀。
                 openWebSocket(APIs.ADB_EVENTS) {
                     logger.info("Connect to [$host:$port] successfully.")
+                    // 进入该方法前，客户端状态应在 `PREPARING`，连接建立后标记为就绪。
                     _serviceStateFlow.value = ServiceState.READY
 
                     // 循环处理接收到的事件帧
@@ -1198,31 +1230,37 @@ class ADBProxyClient(
                 // 取消异常无需上报
             } catch (e: Exception) {
                 logger.warn("Failed to connect server [$host:$port]. Reason:[${e.message}]")
+                _serviceStateFlow.value = ServiceState.ERROR
                 _serviceErrorFlow.value = e
-            } finally {
-                // 遇到异常或事件循环结束表示连接已断开
-                _serviceStateFlow.value = ServiceState.INIT
             }
         }
     }
 
-    // 是否可以启动服务端
-    private fun canStart(): Boolean = (getServiceState() == ServiceState.INIT)
-
-    // 是否可以终止服务端
-    private fun canStop(): Boolean = (getServiceState() != ServiceState.INIT)
-
+    /**
+     * 构建请求 URL。
+     *
+     * `http://` 等前缀已按当前配置自动添加。
+     *
+     * @param[path] 目标路径。
+     */
     private fun buildURL(path: String): Url =
         URLBuilder(
             protocol = if (requireRunningConfig().enableTLS) URLProtocol.HTTPS else URLProtocol.HTTP,
             host = host,
             port = port
         )
-            .apply {
-                path(path)
-            }
+            .apply { path(path) }
             .build()
 
+    /**
+     * 建立 WebSocket 连接。
+     *
+     * 统一使用 POST 方法提交初始信息，参数将被转为 JSON 文本。
+     *
+     * @param[path] 目标路径。
+     * @param[params] 请求参数。
+     * @param[block] 连接处理回调方法。
+     */
     private suspend fun openWebSocket(
         path: String,
         params: Any? = null,
@@ -1258,12 +1296,4 @@ class ADBProxyClient(
             )
         }
     }
-
-    /**
-     * 构建 `wm` 命令的显示屏参数。
-     *
-     * @param[displayID] 显示屏逻辑 ID 。
-     * @return 参数文本。若未指定显示屏则返回空字符串。
-     */
-    private fun displayArg(displayID: String?): String = if (displayID == null) "" else " -d $displayID"
 }

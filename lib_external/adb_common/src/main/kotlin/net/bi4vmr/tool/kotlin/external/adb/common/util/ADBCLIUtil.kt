@@ -8,8 +8,12 @@ import net.bi4vmr.tool.kotlin.external.adb.common.constants.Intents
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil.buildCommand
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -508,7 +512,10 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun getGlobalFocusInfo(sn: String): FocusInfo {
-        val lines = runForLines(sn, "dumpsys activity activities") ?: return FocusInfo()
+        val cmd = """
+                dumpsys window | grep -iE "Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|mTopFocusedDisplayId="
+                """.trimIndent()
+        val lines = runForLines(sn, cmd) ?: return FocusInfo()
         val result = ADBOutputParser.parseGlobalFocusInfo(lines)
 
         // Android 9 及更低版本的 Activity 信息没有焦点信息，回退到通过 Window 信息获取。

@@ -1,7 +1,12 @@
 package net.bi4vmr.tool.kotlin.external.adb.common.util
 
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 
 /**
  * ADB 输出解析器。
@@ -124,13 +129,20 @@ object ADBOutputParser {
     private val focusedWindowRegex = """\bmCurrentFocus=Window\{(\S+?)(?:\s+.*?)?\s+u\d+\s+(\S+?)\}""".toRegex()
 
     /**
-     * 正则表达式：Activity 信息中当前焦点屏幕信息。
+     * 正则表达式：Window 信息中焦点屏幕信息。
      *
      * 格式：`Display: mDisplayId=<屏幕 ID>`。
      *
-     * 目前 Activity 信息中仅会出现一次该格式的行，因此可以使用关键字搜索确认焦点屏幕。
+     * 多屏设备中每个屏幕都会有一段该格式的行，需要结合 `mTopFocusedDisplayId` 确定焦点屏幕。
      */
     private val focusedDisplayRegex = """^\s*Display: mDisplayId=(\d+)""".toRegex()
+
+    /**
+     * 正则表达式：全局焦点所在的屏幕 ID。
+     *
+     * 格式：`mTopFocusedDisplayId=<屏幕 ID>`。
+     */
+    private val topFocusedDisplayRegex = """\bmTopFocusedDisplayId=(\d+)""".toRegex()
 
     /**
      * 正则表达式：窗口列表中的窗口标题行。
@@ -702,27 +714,65 @@ object ADBOutputParser {
     /**
      * 解析全局焦点信息。
      *
-     * 解析 `dumpsys activity activities` 命令输出内容，获取当前焦点所在的 Activity 与 Window 信息。
+     * 解析 `dumpsys window | grep -iE "Display: mDisplayId=|mCurrentFocus=|mFocusedApp=|FocusedWindow=|TopFocused"`
+     * 命令输出内容，获取当前焦点所在的 Activity 与 Window 信息。
      *
      * 命令输出示例：
      *
      * ```text
-     * ActivityTaskSupervisor state:
-     *   topDisplayFocusedRootTask=Task{b4221ec #1100752 type=home}
-     *   Display: mDisplayId=3 (organized)
-     *     init=1920x720 160dpi mMinSizeOfResizeableTaskDp=220 cur=1920x720 app=1800x720 rng=600x720-1800x1920
-     *     deferred=false mLayoutNeeded=false mTouchExcludeRegion=SkRegion((0,0,1920,720))
-     *   mCurrentFocus=Window{3c701b9 u0 PopupWindow:23074a8}
-     *   mFocusedApp=ActivityRecord{1d39097 u11 com.android.launcher/.HomeActivity} t1100753}
+     * Display: mDisplayId=0
+     * mCurrentFocus=Window{fb324e6 u0 com.android.settings/com.android.settings.SubSettings}
+     * mFocusedApp=AppWindowToken{a2fe24f token=Token{33174ae ActivityRecord{1d39097 u11 com.android.launcher/.HomeActivity t1100753}}}
+     *   mFocusedWindow=Window{fb324e6 u0 com.android.settings/com.android.settings.SubSettings}
+     *   mFocusedApp=Token{33174ae ActivityRecord{ad46929 u0 com.android.settings/.SubSettings t6}}
+     * Display: mDisplayId=1
+     *   mCurrentFocus=...
+     *   mFocusedApp=...
+     * mTopFocusedDisplayId=0
      * ```
      *
      * @param[input] 命令输出内容。
      * @return 焦点信息。
      */
     fun parseGlobalFocusInfo(input: List<String>): FocusInfo {
-        var result = FocusInfo()
+        // 各屏幕的焦点信息，键为屏幕 ID。
+        val displayInfos = mutableMapOf<String, FocusInfo>()
+
+        var currentDisplayID: String? = null
+        var currentInfo: FocusInfo? = null
+        // 全局焦点所在的屏幕 ID
+        var focusedDisplayID: String? = null
+
+        // 若先前内容已解析到屏幕分段的焦点信息，将其提交至结果表，并清空暂存变量。
+        fun commitFocusInfo() {
+            val displayID = currentDisplayID ?: return
+            displayInfos[displayID] = currentInfo ?: FocusInfo(displayID = displayID)
+            currentDisplayID = null
+            currentInfo = null
+        }
+
         input.forEach { line ->
             if (line.isBlank()) return@forEach
+
+            // 匹配全局焦点屏幕 `mTopFocusedDisplayId=<ID>`，它表示最终需要输出的屏幕。
+            topFocusedDisplayRegex.find(line)?.let {
+                focusedDisplayID = it.groupValues[1]
+                commitFocusInfo()
+                return@forEach
+            }
+
+            // 匹配屏幕分段首行 `Display: mDisplayId=X`，开始解析当前屏幕的焦点信息。
+            focusedDisplayRegex.find(line)?.let {
+                commitFocusInfo()
+                val displayID = it.groupValues[1]
+                currentDisplayID = displayID
+                currentInfo = FocusInfo(displayID = displayID)
+                return@forEach
+            }
+
+            // 若尚未进入屏幕分段，则忽略当前行。
+            val displayID = currentDisplayID ?: return@forEach
+            var info = currentInfo ?: FocusInfo(displayID = displayID)
 
             if (line.contains("mFocusedApp=")) {
                 /* 解析焦点 Activity 信息 */
@@ -730,25 +780,23 @@ object ADBOutputParser {
                     val hash = it.groupValues[1]
                     val packageName = it.groupValues[3]
                     val className = it.groupValues[4]
-                    result = result.copy(activityHash = hash, activityPackage = packageName, activityClass = className)
+                    info = info.copy(activityHash = hash, activityPackage = packageName, activityClass = className)
                 }
             } else if (line.contains("mCurrentFocus=")) {
-                /* 解析焦点 Activity 信息 */
+                /* 解析焦点窗口信息 */
                 focusedWindowRegex.find(line)?.let {
                     val hash = it.groupValues[1]
                     val name = it.groupValues[2].trim()
-                    result = result.copy(windowName = name, windowHash = hash)
-                }
-            } else if (line.contains("Display: mDisplayId=")) {
-                /* 解析焦点屏幕信息 */
-                focusedDisplayRegex.find(line)?.let {
-                    val displayID = it.groupValues[1]
-                    result = result.copy(displayID = displayID)
+                    info = info.copy(windowName = name, windowHash = hash)
                 }
             }
+            currentInfo = info
         }
+        // 遍历结束，如有遗留的屏幕分段信息则提交至结果表。
+        commitFocusInfo()
 
-        return result
+        // 返回 `mTopFocusedDisplayId` 指定屏幕的焦点信息；若未找到该字段则返回无效值。
+        return focusedDisplayID?.let { displayInfos[it] } ?: FocusInfo()
     }
 
     /**
