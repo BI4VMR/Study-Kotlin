@@ -1,4 +1,4 @@
-package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto
+package net.bi4vmr.tool.kotlin.external.adb.proxy.common.model
 
 import kotlinx.serialization.Serializable
 

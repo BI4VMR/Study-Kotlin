@@ -1,11 +1,15 @@
 package net.bi4vmr.tool.kotlin.external.adb.proxy.server.service
 
+import net.bi4vmr.tool.java.common.base.file.FilePathUtil
+import net.bi4vmr.tool.java.common.base.general.TextUtil
+import net.bi4vmr.tool.java.common.base.system.CLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.constants.Constants
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.RemoteDevice
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBFileTransferRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.server.ADBProxyServer
 import org.slf4j.LoggerFactory
@@ -112,6 +116,57 @@ class ADBCoreService(
         logger.debug("Create file push stream. SN:[{}] Remote:[{}]", sn, remotePath)
         return ADBFilePushStream(process, remotePath)
     }
+
+    fun openFilePushPipe(request: ADBFileTransferRequest):FilePushPipe {
+        val device = requireDevice(request.sn)
+        check(device.isOnline()) { "Device not ready or not exist." }
+
+
+        /* 特殊规则：目标路径以 `/` 结尾时，将写入该目录并保持原名。 */
+        val remoteIsDir = FilePathUtil.isDirectory(request.remote)
+        val remotePath = if (remoteIsDir) {
+            "${request.remote}${FilePathUtil.getFileName(request.local)}"
+        } else {
+            request.remote
+        }
+
+        val remoteParent = FilePathUtil.getParent(remotePath)
+        if (TextUtil.isBlank(remoteParent)) {
+            throw IllegalArgumentException("Remote path parent is empty! Path:[$remotePath]")
+        }
+
+        // 如果目标目录不存在则自动创建
+        device.runForStatus("mkdir -p \'$remoteParent\'")
+        // ADB 将数据传输至临时文件后才判断目标路径是否可写，提前判断并报错可节省大文件传输的耗时。
+        val state = device.runForStatus("test -w \'$remoteParent\'")
+        if (!CLIUtil.isSuccess(state)) {
+            throw IOException("Remote directory cannot be write! Path:[$remoteParent]")
+        }
+
+        /* 建立设备端写入流 */
+        return FilePushPipe(device, remotePath)
+    }
+
+    /**
+     * 创建文件拉取管道。
+     *
+     * 与 [LocalDevice.pullFile] 不同，本方法不会在代理设备上生成完整临时文件，服务端直接读取源文件的数据流并转发。
+     *
+     * @param[request] 文件传输请求，使用其中的设备序列号与远程路径。
+     * @return 文件拉取管道。
+     * @throws[IllegalArgumentException] 远程路径为空。
+     * @throws[IllegalStateException] 设备不存在或未就绪。
+     */
+    fun openFilePullPipe(request: ADBFileTransferRequest): FilePullPipe {
+        require(request.remote.isNotBlank()) { "Remote path is empty!" }
+
+        val device = requireDevice(request.sn)
+        check(device.isOnline()) { "Device not ready or not exist." }
+
+        logger.debug("Create file pull pipe. SN:[{}] Remote:[{}]", request.sn, request.remote)
+        return FilePullPipe(device, request.remote)
+    }
+
 
     private fun requireDevice(sn: String): LocalDevice {
         return ADBController.getDevice(sn) ?: throw IllegalStateException("Device not found for sn: $sn")

@@ -13,7 +13,13 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFolderTransferList
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
@@ -472,7 +478,7 @@ data class LocalDevice(
         local: String,
         remote: String,
         refreshMediaDB: Boolean = true,
-        listener: ADBFileTransferListener
+        listener: ADBFileTransferListener? = null
     ) {
         /* 参数校验 */
         if (local.isBlank()) {
@@ -501,7 +507,6 @@ data class LocalDevice(
             remote
         }
 
-
         val remoteParent = FilePathUtil.getParent(remotePath)
         if (TextUtil.isBlank(remoteParent)) {
             throw IllegalArgumentException("Remote path parent is empty! Path:[$remotePath]")
@@ -526,7 +531,7 @@ data class LocalDevice(
 
             init {
                 // 监听用户发出的取消指令
-                listener.setCancelNotifier {
+                listener?.setCancelNotifier {
                     cancelled.set(true)
                 }
             }
@@ -538,7 +543,7 @@ data class LocalDevice(
              * 获取文件大小。
              */
             override fun start(totalWork: Int) {
-                listener.onStart(totalSize)
+                listener?.onStart(totalSize)
             }
 
             /**
@@ -547,7 +552,7 @@ data class LocalDevice(
              * 如果中途被取消则不会回调该方法。
              */
             override fun stop() {
-                listener.onEnd()
+                listener?.onEnd()
             }
 
             /**
@@ -569,10 +574,10 @@ data class LocalDevice(
 
                 // 文件为空或无法获取长度时，以 `NaN` 通告进度。
                 if (totalSize <= 0) {
-                    listener.onProgress(transferredSize, Double.NaN)
+                    listener?.onProgress(transferredSize, Double.NaN)
                 } else {
                     val progress = transferredSize.toDouble() / totalSize.toDouble()
-                    listener.onProgress(transferredSize, progress)
+                    listener?.onProgress(transferredSize, progress)
                 }
             }
 
@@ -613,7 +618,7 @@ data class LocalDevice(
      * @throws[IOException] 目标目录无法创建或不可写入。
      * @throws[SyncException] 传输失败或用户取消推送。
      */
-    fun pushFolder(local: String, remote: String, listener: ADBFolderTransferListener) {
+    fun pushFolder(local: String, remote: String, listener: ADBFolderTransferListener? = null) {
         /* 参数校验 */
         if (local.isBlank()) {
             throw IllegalArgumentException("Local path is empty!")
@@ -647,7 +652,7 @@ data class LocalDevice(
         localFolder.walkTopDown().forEach {
             if (it.isFile) totalCount++
         }
-        listener.onStart(totalCount)
+        listener?.onStart(totalCount)
 
         var currentIndex = 0
         var currentPath = FileUtil.PATH_INVALID
@@ -660,26 +665,26 @@ data class LocalDevice(
 
                 // 只有目录时，以 `NaN` 通告进度。
                 if (totalCount <= 0) {
-                    listener.onProgress(currentIndex, Double.NaN)
+                    listener?.onProgress(currentIndex, Double.NaN)
                 } else {
                     val progress = currentIndex.toDouble() / totalCount.toDouble()
-                    listener.onProgress(currentIndex, progress)
+                    listener?.onProgress(currentIndex, progress)
                 }
 
-                listener.onFileStart(currentPath, size)
+                listener?.onFileStart(currentPath, size)
             }
 
             override fun onProgress(size: Long, progress: Double) {
-                listener.onFileProgress(size, progress)
+                listener?.onFileProgress(size, progress)
             }
 
             override fun onEnd() {
-                listener.onFileEnd()
+                listener?.onFileEnd()
             }
         }
 
         // 收到取消指令时，通知正在传输的任务。
-        listener.setCancelNotifier {
+        listener?.setCancelNotifier {
             cancelled.set(true)
             fileListener.notifyCancel()
         }
@@ -711,7 +716,7 @@ data class LocalDevice(
 
         mediaScan(remote)
 
-        listener.onEnd()
+        listener?.onEnd()
     }
 
     /**
@@ -739,7 +744,7 @@ data class LocalDevice(
      * @throws[IOException] 目标路径不可写入。
      * @throws[SyncException] 传输失败或用户取消任务。具体错误类型可通过 [SyncException.SyncError] 获取。
      */
-    fun pullFile(remote: String, local: String, listener: ADBFileTransferListener) {
+    fun pullFile(remote: String, local: String, listener: ADBFileTransferListener? = null) {
         /* 参数校验 */
         if (remote.isBlank()) {
             throw IllegalArgumentException("Remote path is empty!")
@@ -792,7 +797,7 @@ data class LocalDevice(
 
             init {
                 // 监听用户发出的取消指令
-                listener.setCancelNotifier {
+                listener?.setCancelNotifier {
                     cancelled.set(true)
                 }
             }
@@ -805,7 +810,7 @@ data class LocalDevice(
              * 获取文件大小。
              */
             override fun start(totalWork: Int) {
-                listener.onStart(fileSize)
+                listener?.onStart(fileSize)
             }
 
             /**
@@ -814,7 +819,7 @@ data class LocalDevice(
              * 如果中途被取消则不会回调该方法。
              */
             override fun stop() {
-                listener.onEnd()
+                listener?.onEnd()
             }
 
             /**
@@ -836,10 +841,10 @@ data class LocalDevice(
 
                 // 文件为空或无法获取长度时，以 `NaN` 通告进度。
                 if (fileSize <= 0) {
-                    listener.onProgress(transferredSize, Double.NaN)
+                    listener?.onProgress(transferredSize, Double.NaN)
                 } else {
                     val progress = transferredSize.toDouble() / fileSize.toDouble()
-                    listener.onProgress(transferredSize, progress)
+                    listener?.onProgress(transferredSize, progress)
                 }
             }
 
@@ -875,7 +880,7 @@ data class LocalDevice(
      * @throws[IOException] 无法获取源目录的文件列表。
      * @throws[SyncException] 传输失败或用户取消任务。
      */
-    fun pullFolder(remote: String, local: String, listener: ADBFolderTransferListener) {
+    fun pullFolder(remote: String, local: String, listener: ADBFolderTransferListener? = null) {
         /* 参数校验 */
         if (remote.isBlank()) {
             throw IllegalArgumentException("Remote path is empty!")
@@ -927,7 +932,7 @@ data class LocalDevice(
         }
 
         val totalCount = files.size
-        listener.onStart(totalCount)
+        listener?.onStart(totalCount)
 
         var currentIndex = 0
         var currentPath = FileUtil.PATH_INVALID
@@ -940,26 +945,26 @@ data class LocalDevice(
 
                 // 只有目录时，以 `NaN` 通告进度。
                 if (totalCount <= 0) {
-                    listener.onProgress(currentIndex, Double.NaN)
+                    listener?.onProgress(currentIndex, Double.NaN)
                 } else {
                     val progress = currentIndex.toDouble() / totalCount.toDouble()
-                    listener.onProgress(currentIndex, progress)
+                    listener?.onProgress(currentIndex, progress)
                 }
 
-                listener.onFileStart(currentPath, size)
+                listener?.onFileStart(currentPath, size)
             }
 
             override fun onProgress(size: Long, progress: Double) {
-                listener.onFileProgress(size, progress)
+                listener?.onFileProgress(size, progress)
             }
 
             override fun onEnd() {
-                listener.onFileEnd()
+                listener?.onFileEnd()
             }
         }
 
         // 收到取消指令时，通知正在传输的任务。
-        listener.setCancelNotifier {
+        listener?.setCancelNotifier {
             cancelled.set(true)
             fileListener.notifyCancel()
         }
@@ -976,7 +981,7 @@ data class LocalDevice(
             pullFile(it, File(localRoot, relativeOf(it)).absolutePath, fileListener)
         }
 
-        listener.onEnd()
+        listener?.onEnd()
     }
 
     /**

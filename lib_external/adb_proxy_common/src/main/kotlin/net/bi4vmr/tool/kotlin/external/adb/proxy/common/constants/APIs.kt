@@ -4,6 +4,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.enums.PairResult
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.ServerInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBDeviceRequest
+import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.ADBFileTransferRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.BaseResponse
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitRequest
 import net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.PairCommitResponse
@@ -104,24 +105,16 @@ object APIs {
     /**
      * 推送文件到设备。
      *
-     * 协议为 WebSocket ，查询参数为 `sn` （设备序列号）、 `remote` （目标路径）、 `name` （源文件名称）与 `size` （源文件大小）。
-     *
-     * 客户端先以二进制帧发送文件内容，随后发送文本帧 `eof` ；任意时刻发送文本帧 `cancel` 可取消传输。服务端以文本帧返回
-     * [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent] 。
+     * 协议为 WebSocket，客户端连接后发送首个文本帧表示请求参数，类型为 [ADBFileTransferRequest]。
      */
-    const val ADB_FILE_PUSH: String = "/adb/file/push"
+    const val ADB_FILES_PUSH_FILE: String = "/adb/files/push-file"
 
     /**
-     * 流式推送文件到设备。
+     * 从设备拉取文件。
      *
-     * 协议为 WebSocket ，查询参数包括 `sn` （设备序列号）、 `remote` （目标路径）、 `name` （源文件名称）与 `size` （源文件大小）。
-     *
-     * 客户端连续发送二进制帧；服务端每收到一帧便立即写入设备端文件，不在代理设备磁盘上缓存完整文件。服务端通过 `progress`
-     * 事件回报写入进度，客户端可等待该事件后再发送下一帧，以避免数据在内存中堆积。客户端发送文本帧 `eof` 表示数据发送完毕，
-     * 任意时刻发送文本帧 `cancel` 可取消传输。服务端以文本帧返回
-     * [net.bi4vmr.tool.kotlin.external.adb.proxy.common.model.dto.FilePushEvent] 。
+     * 协议为 WebSocket，客户端连接后发送首个文本帧表示请求参数，类型为 [ADBFileTransferRequest]。
      */
-    const val ADB_FILES_PUSH_FILE: String = "/adb/file/push-file"
+    const val ADB_FILES_PULL_FILE: String = "/adb/files/pull-file"
 
 
     /* ----- 屏幕投射 ----- */

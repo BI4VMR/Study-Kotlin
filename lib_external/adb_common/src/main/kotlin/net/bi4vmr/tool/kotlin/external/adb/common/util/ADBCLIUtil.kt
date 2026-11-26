@@ -8,8 +8,12 @@ import net.bi4vmr.tool.kotlin.external.adb.common.constants.Intents
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
-import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil.buildCommand
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -653,7 +657,7 @@ object ADBCLIUtil {
     @JvmStatic
     @JvmOverloads
     fun mediaScan(sn: String, path: String = "/"): Boolean {
-        val cmd = "am broadcast -a ${Intents.Action.MEDIA_SCAN} -d file:/$path"
+        val cmd = "am broadcast -a ${Intents.Action.MEDIA_SCAN} -d 'file:/$path'"
         val status = runForStatus(sn, cmd)
         return CLIUtil.isSuccess(status)
     }

@@ -201,7 +201,7 @@ object LocalExecutor : ADBExecutor {
         local: String,
         remote: String,
         refreshMediaDB: Boolean,
-        listener: ADBFileTransferListener
+        listener: ADBFileTransferListener?
     ) {
         val device = ADBController.requireDevice(sn)
         device.pushFile(local, remote, refreshMediaDB, listener)

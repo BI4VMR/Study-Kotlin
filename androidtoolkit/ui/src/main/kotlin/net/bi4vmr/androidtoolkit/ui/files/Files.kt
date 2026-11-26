@@ -116,25 +116,29 @@ fun FilesPage(globalStateManager: GlobalStateManager) {
                     globalStateManager.logicManager.getSelectedExecutor().let { executor ->
                         val d = globalStateManager.logicManager.getSelectedDevice()!!
                         scope.launch {
-                            executor.pushFile(
-                                sn = d.getSN(),
-                                local = "/home/bi4vmr/Downloads/jadx-1.5.2.zip",
-                                remote = "/data/local/tmp/",
-                                refreshMediaDB = true,
-                                listener = object : ADBFileTransferListener() {
-                                    override fun onStart(size: Long) {
-                                        println("onStart: size=$size")
-                                    }
+                            runCatching {
+                                executor.pushFile(
+                                    sn = d.getSN(),
+                                    local = "/home/bi4vmr/Downloads/jadx-1.5.2.zip",
+                                    remote = "/data/",
+                                    refreshMediaDB = true,
+                                    listener = object : ADBFileTransferListener() {
+                                        override fun onStart(size: Long) {
+                                            println("onStart: size=$size")
+                                        }
 
-                                    override fun onProgress(size: Long, progress: Double) {
-                                        println("onProgress: size=$size, progress=$progress")
-                                    }
+                                        override fun onProgress(size: Long, progress: Double) {
+                                            println("onProgress: size=$size, progress=$progress")
+                                        }
 
-                                    override fun onEnd() {
-                                        println("onEnd")
+                                        override fun onEnd() {
+                                            println("onEnd")
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }.onFailure { e ->
+                                println("Push file failed: ${e.message}")
+                            }
                         }
                     }
                 }

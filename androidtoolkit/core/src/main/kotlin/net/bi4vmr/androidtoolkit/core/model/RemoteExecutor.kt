@@ -14,7 +14,6 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
 import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
-import java.io.File
 
 /**
  * 远程执行器。
@@ -136,9 +135,8 @@ class RemoteExecutor(
     override suspend fun getWindows(sn: String, displayID: String?): List<WindowInfo> =
         client.getWindows(sn, displayID)
 
-    override suspend fun getGlobalFocusInfo(sn: String): FocusInfo {
-        TODO("Not yet implemented")
-    }
+    override suspend fun getGlobalFocusInfo(sn: String): FocusInfo =
+        client.getGlobalFocusInfo(sn)
 
 
     /*
@@ -153,9 +151,9 @@ class RemoteExecutor(
         local: String,
         remote: String,
         refreshMediaDB: Boolean,
-        listener: ADBFileTransferListener
+        listener: ADBFileTransferListener?
     ) {
-        client.pushFileStreaming(sn, File(local), remote, listener)
+        client.pushFile(sn, local, remote, refreshMediaDB = refreshMediaDB, listener = listener)
     }
 
 

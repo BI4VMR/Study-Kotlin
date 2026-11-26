@@ -278,7 +278,7 @@ interface ADBExecutor {
         local: String,
         remote: String,
         refreshMediaDB: Boolean = true,
-        listener: ADBFileTransferListener
+        listener: ADBFileTransferListener? = null
     )
 
 
