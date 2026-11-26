@@ -19,6 +19,10 @@ import net.bi4vmr.androidtoolkit.ui.setting.SettingPage
 import net.bi4vmr.androidtoolkit.ui.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 
+// 全局状态管理
+val LocalGlobalStateManager = staticCompositionLocalOf { GlobalStateManager() }
+
+
 /**
  * 应用主界面。
  */
@@ -26,82 +30,84 @@ import org.jetbrains.compose.resources.stringResource
 fun App() {
     val globalStateManager: GlobalStateManager = remember { GlobalStateManager() }
 
-    AppTheme(globalStateManager) {
-        Surface {
-            /* 根容器 */
-            Row {
-                var currentPage: Pages by remember { mutableStateOf(Pages.GENERAL) }
+    CompositionLocalProvider(LocalGlobalStateManager provides globalStateManager) {
+        AppTheme(globalStateManager) {
+            Surface {
+                /* 根容器 */
+                Row {
+                    var currentPage: Pages by remember { mutableStateOf(Pages.GENERAL) }
 
-                /* 左栏：导航栏 */
-                NavigationRail {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(vertical = Dimens.Layout.Padding)
-                    ) {
-                        Pages.entries.forEach { page ->
-                            NavigationRailItem(
-                                selected = (currentPage == page),
-                                icon = {
-                                    Icon(
-                                        imageVector = page.icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(Dimens.Icon.Large)
-                                    )
-                                },
-                                label = { Text(stringResource(page.titleRes)) },
-                                onClick = { currentPage = page }
-                            )
+                    /* 左栏：导航栏 */
+                    NavigationRail {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(Dimens.Layout.Space),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(vertical = Dimens.Layout.Padding)
+                        ) {
+                            Pages.entries.forEach { page ->
+                                NavigationRailItem(
+                                    selected = (currentPage == page),
+                                    icon = {
+                                        Icon(
+                                            imageVector = page.icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(Dimens.Icon.Large)
+                                        )
+                                    },
+                                    label = { Text(stringResource(page.titleRes)) },
+                                    onClick = { currentPage = page }
+                                )
+                            }
                         }
                     }
+
+                    VerticalDivider()
+
+                    /* 右栏：选中的页面 */
+                    when (currentPage) {
+                        Pages.GENERAL -> GenericPage()
+                        Pages.DISPLAY -> DisplayPage(globalStateManager)
+                        Pages.APP -> AppsPage(globalStateManager)
+                        Pages.FILE -> FilesPage(globalStateManager)
+                        Pages.SETTING -> SettingPage(globalStateManager)
+                    }
                 }
 
-                VerticalDivider()
-
-                /* 右栏：选中的页面 */
-                when (currentPage) {
-                    Pages.GENERAL -> GenericPage(globalStateManager)
-                    Pages.DISPLAY -> DisplayPage(globalStateManager)
-                    Pages.APP -> AppsPage(globalStateManager)
-                    Pages.FILE -> FilesPage(globalStateManager)
-                    Pages.SETTING -> SettingPage(globalStateManager)
-                }
+                /* 全局消息气泡层 */
+                ToastHost(globalStateManager.toastManager)
             }
 
-            /* 全局消息气泡层 */
-            ToastHost(globalStateManager.toastManager)
-        }
+
+            /* 配对申请确认：多个申请按顺序逐个展示 */
+            val pendingPairings by globalStateManager.logicManager.pendingPairingsFlow.collectAsState()
+            val pending = pendingPairings.firstOrNull()
+            pending?.let { p ->
+                AlertDialog(
+                    onDismissRequest = { p.reject() },
+                    title = { Text("配对申请") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("设备名称：${p.getClientName()}", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                text = "客户端证书指纹：${p.getClientFingerprint()}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text("配对码：${p.getSASCode()}", style = MaterialTheme.typography.headlineMedium)
+                            Text("请核对客户端显示的配对码，仅在两端完全一致时批准；不一致说明通信可能被劫持。")
+                        }
+                    },
+                    confirmButton = { TextButton(onClick = { p.approve() }) { Text("批准") } },
+                    dismissButton = { TextButton(onClick = { p.reject() }) { Text("拒绝") } }
+                )
+            }
 
 
-        /* 配对申请确认：多个申请按顺序逐个展示 */
-        val pendingPairings by globalStateManager.logicManager.pendingPairingsFlow.collectAsState()
-        val pending = pendingPairings.firstOrNull()
-        pending?.let { p ->
-            AlertDialog(
-                onDismissRequest = { p.reject() },
-                title = { Text("配对申请") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("设备名称：${p.getClientName()}", style = MaterialTheme.typography.bodySmall)
-                        Text(
-                            text = "客户端证书指纹：${p.getClientFingerprint()}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text("配对码：${p.getSASCode()}", style = MaterialTheme.typography.headlineMedium)
-                        Text("请核对客户端显示的配对码，仅在两端完全一致时批准；不一致说明通信可能被劫持。")
+            /* 全局窗口管理 */
+            globalStateManager.windowManager.windows.forEach { record ->
+                key(record.id) {
+                    if (record is CastRecord) {
+                        ADBCastWindow(globalStateManager, record)
                     }
-                },
-                confirmButton = { TextButton(onClick = { p.approve() }) { Text("批准") } },
-                dismissButton = { TextButton(onClick = { p.reject() }) { Text("拒绝") } }
-            )
-        }
-
-
-        /* 全局窗口管理 */
-        globalStateManager.windowManager.windows.forEach { record ->
-            key(record.id) {
-                if (record is CastRecord) {
-                    ADBCastWindow(globalStateManager, record)
                 }
             }
         }

@@ -2,9 +2,7 @@ package net.bi4vmr.androidtoolkit.ui.generic
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -13,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.runBlocking
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.LocalGlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
 import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
@@ -26,9 +25,12 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 
 @Composable
-fun GenericPage(globalStateManager: GlobalStateManager) {
-    val viewModel: GenericPageViewModel = viewModel { GenericPageViewModel(globalStateManager) }
+fun GenericPage() {
+    val globalStateManager: GlobalStateManager = LocalGlobalStateManager.current
     val logicManager: LogicManager = globalStateManager.logicManager
+
+    val viewModel: GenericPageViewModel = viewModel { GenericPageViewModel(globalStateManager) }
+
     val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
 
     Row(modifier = Modifier.fillMaxSize()) {
@@ -82,8 +84,13 @@ private fun DevicePanel(
         val rawValue = viewModel.getSelectedExecutor().getOSVersion(device.getSN())
         value = AndroidVersion.fromVersion(rawValue)
     }
+
     // 焦点信息
     val focusInfo: FocusInfo by viewModel.focusInfoFlow.collectAsStateWithLifecycle()
+    // 焦点信息刷新状态
+    val focusInfoRefreshState: Boolean by viewModel.focusInfoRefreshStateFlow.collectAsStateWithLifecycle()
+    // 焦点信息是否自动刷新
+    var focusInfoAutoRefresh: Boolean by remember { mutableStateOf(viewModel.isFocusInfoAutoRefresh()) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -98,9 +105,37 @@ private fun DevicePanel(
 
         HorizontalDivider()
 
-        Text("焦点信息")
-        IconButton(onClick = { viewModel.refreshFocusInfo() }) {
-            Icon(Icons.Refresh, null)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("焦点信息", modifier = Modifier.weight(1F))
+
+            Checkbox(
+                checked = focusInfoAutoRefresh,
+                onCheckedChange = {
+                    focusInfoAutoRefresh = it
+                    viewModel.setFocusInfoAutoRefresh(it)
+                },
+                modifier = Modifier.size(Dimens.Icon.Normal)
+            )
+            Text("自动刷新")
+
+            // 手动刷新按钮或加载中动画
+            if (focusInfoRefreshState) {
+                CircularProgressIndicator(modifier = Modifier.size(Dimens.Icon.Normal))
+            } else {
+                IconButton(
+                    modifier = Modifier.size(Dimens.Icon.Normal),
+                    onClick = { viewModel.refreshFocusInfo() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(Dimens.Icon.Normal)
+                    )
+                }
+            }
         }
 
         Text("屏幕：# ${focusInfo.displayID}")
@@ -110,6 +145,9 @@ private fun DevicePanel(
 
         HorizontalDivider()
 
+        Spacer(modifier = Modifier.weight(1F))
+
+        Text("常用操作")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             XOutlinedButton(
                 onClick = {
