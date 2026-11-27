@@ -13,6 +13,10 @@ object ConfigDefaults {
 
     const val COMMON_NODE_NAME: String = "AndroidToolkit"
 
+    const val COMMON_WINDOW_WIDTH: Int = 800
+
+    const val COMMON_WINDOW_HEIGHT: Int = 600
+
     val ADB_EXEC_MODE: Int = ADBExecFileMode.INTERNAL.code
 
     const val PROXY_START_ON_INIT: Boolean = true

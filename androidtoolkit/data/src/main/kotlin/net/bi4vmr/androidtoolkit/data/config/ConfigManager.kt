@@ -64,6 +64,16 @@ class ConfigManager(
             it[Configs.COMMON_NODE_NAME] ?: ""
         }
 
+    val windowWidthFlow: Flow<Int> =
+        dataStore.data.map {
+            it[Configs.COMMON_WINDOW_WIDTH] ?: ConfigDefaults.COMMON_WINDOW_WIDTH
+        }
+
+    val windowHeightFlow: Flow<Int> =
+        dataStore.data.map {
+            it[Configs.COMMON_WINDOW_HEIGHT] ?: ConfigDefaults.COMMON_WINDOW_HEIGHT
+        }
+
     val adbExecFileModeFlow: Flow<ADBExecFileMode> =
         dataStore.data.map {
             val code = it[Configs.ADB_EXEC_MODE] ?: ConfigDefaults.ADB_EXEC_MODE
@@ -118,6 +128,17 @@ class ConfigManager(
 
     suspend fun setNodeName(name: String) {
         dataStore.edit { it[Configs.COMMON_NODE_NAME] = name }
+    }
+
+    suspend fun getWindowWidth(): Int = windowWidthFlow.first()
+
+    suspend fun getWindowHeight(): Int = windowHeightFlow.first()
+
+    suspend fun setWindowSize(width: Int, height: Int) {
+        dataStore.edit {
+            it[Configs.COMMON_WINDOW_WIDTH] = width
+            it[Configs.COMMON_WINDOW_HEIGHT] = height
+        }
     }
 
     suspend fun getADBExecFileMode(): ADBExecFileMode =

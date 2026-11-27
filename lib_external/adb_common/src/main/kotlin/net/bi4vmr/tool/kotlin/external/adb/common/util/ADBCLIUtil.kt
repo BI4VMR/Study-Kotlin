@@ -18,9 +18,12 @@ import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getEx
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * ADB 命令行工具。
@@ -31,6 +34,11 @@ import java.nio.charset.StandardCharsets
  * @since 1.0.0
  */
 object ADBCLIUtil {
+
+    /**
+     * 日志工具。
+     */
+    private val logger = LoggerFactory.getLogger(ADBCLIUtil::class.java)
 
     /**
      * 正则表达式：ADB 命令。
@@ -54,12 +62,14 @@ object ADBCLIUtil {
     @JvmStatic
     @JvmOverloads
     fun run(sn: String, command: String, redirectError: Boolean = true): Process {
-        val optimizedCommand = buildCommandArgs(sn, command)
+        val optimizedCommand = buildCommand(sn, command)
         return CLIUtil.run(optimizedCommand, redirectError)
     }
 
     /**
      * 执行 ADB Shell 命令并获取返回值。
+     *
+     * Windows 平台中双引号有特殊含义，我们需要确保 [command] 部分不含双引号，防止解析异常引起非预期的结果。
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
@@ -67,7 +77,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun runForStatus(sn: String, command: String): Int {
-        val optimizedCommand = buildCommandArgs(sn, command)
+        val optimizedCommand = buildCommand(sn, command)
         return CLIUtil.runForStatus(optimizedCommand)
     }
 
@@ -88,7 +98,7 @@ object ADBCLIUtil {
         command: String,
         redirectError: Boolean = false
     ): List<String>? {
-        val optimizedCommand = buildCommandArgs(sn, command)
+        val optimizedCommand = buildCommand(sn, command)
         return CLIUtil.runForLines(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
     }
 
@@ -105,7 +115,7 @@ object ADBCLIUtil {
     @JvmStatic
     @JvmOverloads
     fun runForText(sn: String, command: String, redirectError: Boolean = false): String? {
-        val optimizedCommand = buildCommandArgs(sn, command)
+        val optimizedCommand = buildCommand(sn, command)
         return CLIUtil.runForText(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
     }
 
@@ -120,7 +130,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun runForError(sn: String, command: String): String? {
-        val optimizedCommand = buildCommandArgs(sn, command)
+        val optimizedCommand = buildCommand(sn, command)
         return CLIUtil.runForError(optimizedCommand, StandardCharsets.UTF_8.name())
     }
 
@@ -291,7 +301,7 @@ object ADBCLIUtil {
         // 对于 Android 9 及更低版本可能解析不到数据，此时默认返回 `0`。
         return getDisplays(sn)
             .find { it.id == displayID }
-            ?.uniqueID
+            ?.getUniqueIndex()
             ?: "0"
     }
 
@@ -525,7 +535,9 @@ object ADBCLIUtil {
     }
 
     /**
-     * 获取屏幕截图。
+     * 获取屏幕截图数据。
+     *
+     * 目前 Android 仅支持 PNG 格式，若需要其他格式请自行转换。
      *
      * @param[sn] 设备序列号。
      * @param[displayID] 显示屏 ID。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID。
@@ -533,7 +545,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     @JvmOverloads
-    fun screenshotAsPNG(sn: String, displayID: String? = null): ByteArray? {
+    fun screenshot(sn: String, displayID: String? = null): ByteArray? {
         try {
             val cmd = if (displayID == null) {
                 String.format("${getExecutableName()} -s %s exec-out screencap -p", sn)
@@ -559,6 +571,8 @@ object ADBCLIUtil {
     /**
      * 获取屏幕截图并保存至 PC 存储设备。
      *
+     * 目前 Android 仅支持 PNG 格式，若需要其他格式请自行转换。
+     *
      * @param[sn] 设备序列号。
      * @param[file] 目标文件。
      * @param[displayID] 显示屏 ID。默认值为主屏幕。方法内部已自动转换，填写逻辑 ID 即可，请勿填写物理 ID。
@@ -566,19 +580,54 @@ object ADBCLIUtil {
      */
     @JvmStatic
     @JvmOverloads
-    fun screenshotAsPNG(sn: String, file: File, displayID: String? = null): Boolean {
+    fun screenshot(sn: String, file: File, displayID: String? = null): Boolean {
         try {
-            val cmd = if (displayID == null) {
-                String.format("${getExecutableName()} -s %s exec-out screencap -p", sn)
-            } else {
-                val physicalID = getDisplayUniqueIndex(sn, displayID)
-                String.format("${getExecutableName()} -s %s exec-out screencap -d %s -p", sn, physicalID)
-            }
+            val cmdArray = arrayOf(
+                "adb", "exec-out",
+                "screencap",
+                if (displayID != null) "-d ${getDisplayUniqueIndex(sn, displayID)}" else "",
+                "-p"
+            )
+            val cmd = cmdArray.joinToString(" ")
 
-            val process = CLIUtil.run(cmd, false)
+            val process = run(sn, cmd, false)
             // 丢弃错误输出，防止阻塞其他线程。
             BaseIOUtil.readAndDrop(process.errorStream)
             return FileIOUtil.saveToFile(process.inputStream, file, IOUtil.BUFFER_SIZE_8MB)
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    @OptIn(ExperimentalUuidApi::class)
+    fun screenrecord(
+        sn: String,
+        file: File,
+        displayID: String? = null,
+        bitRate: Int = 20_000_000
+    ): Boolean {
+        try {
+            val tempFileName = "screenrecord_${Uuid.generateV4()}.mp4"
+            val tempFilePath = "/data/local/tmp/$tempFileName"
+            val cmdArray = arrayOf(
+                "screenrecord",
+                "--bit-rate", "$bitRate",
+                if (displayID != null) "--display-id ${getDisplayUniqueIndex(sn, displayID)}" else "",
+                "'$tempFilePath'"
+            )
+            val cmd = cmdArray.joinToString(" ")
+
+            val status = runForStatus(sn, cmd)
+            return if (CLIUtil.isSuccess(status)) {
+                val pullResult = pullFile(sn, tempFilePath, file)
+                // 删除临时文件
+                runForStatus(sn, "rm -f '$tempFilePath'")
+                pullResult
+            } else {
+                false
+            }
         } catch (_: Exception) {
             return false
         }
@@ -898,80 +947,6 @@ object ADBCLIUtil {
      */
 
     /**
-     * 构建 ADB 命令。
-     *
-     * 使用当前设备构建 ADB 命令。若原命令包含 `adb shell` 或 `adb exec-out` 前缀，将会保留；若未指明前缀默认添加 `adb shell`。
-     *
-     * @param[sn] 设备序列号。
-     * @param[command] 命令语句。
-     * @return 命令语句。如果输入语句为空，则返回空命令 `:`。
-     */
-    @JvmStatic
-    fun buildCommand(sn: String, command: String): String {
-        var execOut = false
-        val matchResult = adbCMDRegex.find(command)
-
-        // 如果命令原有 `adb shell` 等前缀，则先将其移除。
-        var trimmed = if (matchResult != null) {
-            execOut = matchResult.groupValues[1] == "exec-out"
-            command.removeRange(matchResult.range)
-                .trim()
-        } else {
-            command.trim()
-        }
-
-        // 如果命令被引号包围，则将其去除，用于空命令判断。
-        var trimmedNoQuotes = trimmed
-        if (trimmed.length >= 2) {
-            val first = trimmed.first()
-            val last = trimmed.last()
-            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
-                trimmedNoQuotes = trimmed.substring(1, trimmed.length - 1)
-            }
-        }
-
-        // 将 `adb shell ""` 指令替换为立刻返回的空语句，防止进入 ADB 交互式环境导致调用线程被无限阻塞。
-        if (trimmedNoQuotes.isBlank()) {
-            trimmed = ":"
-        }
-
-        // 添加当前序列号并返回原命令内容
-        return if (execOut) {
-            String.format("${getExecutableName()} -s %s exec-out \'%s\'", sn, trimmed)
-        } else {
-            String.format("${getExecutableName()} -s %s shell \'%s\'", sn, trimmed)
-        }
-    }
-
-
-    /**
-     * 构建 ADB 命令数组。
-     *
-     * [buildCommand] 方法生成的命令行便于人类阅读，但不适合创建进程，本方法将生成可用于远程执行的参数数组。
-     *
-     * @param[sn] 设备序列号。
-     * @param[command] 命令语句。
-     * @return 命令语句。如果输入语句为空，则返回空命令 `:`。
-     */
-    @JvmStatic
-    fun buildCommandArgs(sn: String, command: String): Array<String> {
-        val cmd = buildCommand(sn, command)
-        // 远程命令起始位置
-        val quoteIndex = cmd.indexOf(" \'")
-        if (quoteIndex < 0) {
-            return emptyArray()
-        }
-
-        // `adb -s <sn> shell` 或 `adb -s <sn> exec-out` 前缀
-        val prefix = cmd.substring(0, quoteIndex)
-        val prefixArgs = CLIUtil.parseCommand(prefix)
-        // 单引号之间的命令部分
-        val suffix = cmd.substring(quoteIndex + 2, cmd.length - 1)
-        // `parseCommand()` 方法将会移除引号并进行解析，无法处理带有空格的文件名等参数，因此仅处理前缀部分，后缀部分作为一个参数传入。
-        return arrayOf(*prefixArgs, suffix)
-    }
-
-    /**
      * 判断语句是否为 ADB 命令。
      *
      * @param[command] 命令语句。
@@ -991,5 +966,57 @@ object ADBCLIUtil {
     @JvmStatic
     fun isADBShellCommand(command: String): Boolean {
         return adbCMDRegex.matches(command)
+    }
+
+
+    /*
+     * ----- 内部方法 -----
+     */
+
+    /**
+     * 构建 ADB 命令。
+     *
+     * 使用指定的设备序列号构建 ADB 命令。若原命令包含 `adb shell` 或 `adb exec-out` 前缀，将会保留并插入设备序列号；若原命令未指明前缀
+     * 则添加 `adb -s <设备序列号> shell` 前缀。
+     *
+     * @param[sn] 设备序列号。
+     * @param[command] 命令数组。
+     * @return 命令语句。如果输入语句为空，则返回空命令 `:`。
+     */
+    @JvmStatic
+    private fun buildCommand(sn: String, command: String): Array<String> {
+        var execOut = false
+        val matchResult = adbCMDRegex.find(command)
+
+        // 如果命令原有 `adb shell` 等前缀，则先将其移除。
+        var trimmed = if (matchResult != null) {
+            execOut = matchResult.groupValues[1] == "exec-out"
+            command.removeRange(matchResult.range).trim()
+        } else {
+            command.trim()
+        }
+
+        // 如果命令首尾被引号包围，则将其去除，消解 Shell 语义。
+        var trimmedNoQuotes = trimmed
+        if (trimmed.length >= 2) {
+            val first = trimmed.first()
+            val last = trimmed.last()
+            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+                trimmedNoQuotes = trimmed.substring(1, trimmed.length - 1)
+            }
+        }
+
+        // 将 `adb shell ""` 指令替换为立刻返回的空语句，防止进入 ADB 交互式环境导致调用线程被无限阻塞。
+        if (trimmedNoQuotes.isBlank()) {
+            trimmed = ":"
+        }
+
+        // 添加当前设备序列号并追加原命令内容
+        return arrayOf(
+            getExecutableName(),
+            "-s", sn,
+            if (execOut) "exec-out" else "shell",
+            trimmed
+        )
     }
 }

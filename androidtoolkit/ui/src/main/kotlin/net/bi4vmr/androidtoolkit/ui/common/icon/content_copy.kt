@@ -1,4 +1,4 @@
-package com.example.test
+package net.bi4vmr.androidtoolkit.ui.common.icon
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
@@ -33,7 +33,7 @@ public val content_copy: ImageVector
             strokeLineCap = StrokeCap.Butt,
             strokeLineJoin = StrokeJoin.Bevel,
             strokeLineMiter = 1f,
-            pathFillType = PathFillType.Companion.NonZero,
+            pathFillType = PathFillType.NonZero,
           ) {
             moveTo(9f, 18f)
             quadTo(8.18f, 18f, 7.59f, 17.41f)

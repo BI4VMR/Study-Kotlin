@@ -55,6 +55,7 @@ tasks.matching { it.name == "prepareAppResources" }.configureEach {
 dependencies {
     /* 工程组件 */
     implementation(project(":androidtoolkit:ui"))
+    implementation(project(":androidtoolkit:core"))
 
 
     /* 外部组件 */

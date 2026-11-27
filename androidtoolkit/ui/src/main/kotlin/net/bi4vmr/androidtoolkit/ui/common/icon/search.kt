@@ -1,4 +1,4 @@
-package com.example.test
+package net.bi4vmr.androidtoolkit.ui.common.icon
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
@@ -33,7 +33,7 @@ public val search: ImageVector
             strokeLineCap = StrokeCap.Butt,
             strokeLineJoin = StrokeJoin.Bevel,
             strokeLineMiter = 1f,
-            pathFillType = PathFillType.Companion.NonZero,
+            pathFillType = PathFillType.NonZero,
           ) {
             moveTo(19.6f, 21f)
             lineTo(13.3f, 14.7f)

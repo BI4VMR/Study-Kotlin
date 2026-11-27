@@ -24,6 +24,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
+import java.io.File
 
 /**
  * 本地执行器。
@@ -155,6 +156,12 @@ object LocalExecutor : ADBExecutor {
 
     override suspend fun getGlobalFocusInfo(sn: String): FocusInfo =
         withContext(Dispatchers.IO) { ADBCLIUtil.getGlobalFocusInfo(sn) }
+
+    override suspend fun screenshot(sn: String, file: File, displayID: String) =
+        withContext(Dispatchers.IO) { ADBCLIUtil.screenshot(sn, file, displayID) }
+
+    override suspend fun screenrecord(sn: String, file: File, displayID: String) =
+        withContext(Dispatchers.IO) { ADBCLIUtil.screenrecord(sn, file, displayID) }
 
 
     /*

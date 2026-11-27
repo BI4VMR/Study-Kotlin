@@ -3,75 +3,119 @@ package net.bi4vmr.androidtoolkit.ui.display
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.runBlocking
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.LocalGlobalStateManager
 import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
-import net.bi4vmr.androidtoolkit.ui.component.*
+import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
+import net.bi4vmr.androidtoolkit.ui.component.InfoRow
+import net.bi4vmr.androidtoolkit.ui.component.PlaceHolder
+import net.bi4vmr.androidtoolkit.ui.component.PlaceHolderType
+import net.bi4vmr.androidtoolkit.ui.component.SegmentedTab
+import net.bi4vmr.androidtoolkit.ui.component.SegmentedTabRow
+import net.bi4vmr.androidtoolkit.ui.component.ToastManager
+import net.bi4vmr.androidtoolkit.ui.component.ToastType
+import net.bi4vmr.androidtoolkit.ui.component.XOutlinedButton
 import net.bi4vmr.androidtoolkit.ui.displayselectpanel_title
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * 显示管理页面。
  */
 @Composable
-fun DisplayPage(globalStateManager: GlobalStateManager) {
+fun DisplayPage() {
+    val globalStateManager: GlobalStateManager = LocalGlobalStateManager.current
+
     val viewModel: DisplayPageViewModel = viewModel { DisplayPageViewModel(globalStateManager) }
+
     val displays: List<DisplayInfo> by viewModel.displaysFlow.collectAsStateWithLifecycle()
     val selectedDisplay: DisplayInfo? by viewModel.selectedDisplayFlow.collectAsStateWithLifecycle()
 
-    // 根容器
-    Row(modifier = Modifier.fillMaxSize()) {
-        // 左栏：设备与屏幕列表
-        Column(Modifier.fillMaxHeight().weight(0.4F)) {
-            // 设备选择面板
-            DeviceSelectPanel(
-                globalStateManager = globalStateManager,
-                modifier = Modifier.weight(0.5F)
-            )
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // 侧边栏占据整个面板的 40%，且最大不超过 350 dp。
+        val panelWidth = (maxWidth * 0.4F).coerceIn(200.dp, 350.dp)
 
-            HorizontalDivider()
+        Row(modifier = Modifier.fillMaxSize()) {
+            // 左栏：设备与屏幕列表
+            Column(Modifier.fillMaxHeight().width(panelWidth)) {
+                // 设备选择面板
+                DeviceSelectPanel(modifier = Modifier.weight(0.5F))
 
-            // 屏幕选择面板
-            DisplaySelectPanel(
-                viewModel = viewModel,
-                displays = displays,
-                selectedDisplay = selectedDisplay,
-                onSelect = { viewModel.selectDisplay(it) },
-                modifier = Modifier.weight(0.5F)
-            )
-        }
+                HorizontalDivider()
 
-        VerticalDivider()
-
-        // 右栏：屏幕详情
-        val currentDisplay = selectedDisplay
-        if (currentDisplay == null) {
-            Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
-                Text("请选择一个显示屏", style = MaterialTheme.typography.bodyLarge)
+                // 屏幕选择面板
+                DisplaySelectPanel(
+                    viewModel = viewModel,
+                    displays = displays,
+                    selectedDisplay = selectedDisplay,
+                    onSelect = { viewModel.selectDisplay(it) },
+                    modifier = Modifier.weight(0.5F)
+                )
             }
-            return
-        }
 
-        Column(Modifier.fillMaxHeight().weight(0.6F)) {
-            DisplayDetailPanel(
-                viewModel = viewModel,
-                display = currentDisplay,
-                modifier = Modifier.fillMaxWidth()
-            )
+            VerticalDivider()
+
+            // 右栏：屏幕详情
+            val display = selectedDisplay
+
+            // 占位控件：未选中设备
+            if (display == null) {
+                PlaceHolder(
+                    type = PlaceHolderType.Info,
+                    info = "请选择设备"
+                )
+                return@Row
+            }
+
+            Column(Modifier.fillMaxHeight().weight(1F)) {
+                DisplayDetailPanel(
+                    viewModel = viewModel,
+                    display = display,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
@@ -109,9 +153,10 @@ private fun DisplaySelectPanel(
 
 
         if (displays.isEmpty()) {
-            Box(Modifier.weight(1F).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("请先选择设备")
-            }
+            PlaceHolder(
+                type = PlaceHolderType.Info,
+                info = "请选择设备"
+            )
             return@Column
         }
 
@@ -184,7 +229,7 @@ private fun DisplayDetailPanel(
 ) {
     var tabs: Tabs by remember { mutableStateOf(Tabs.BASE) }
 
-    Column(modifier.padding(Dimens.Layout.Space)) {
+    Column(modifier.padding(Dimens.Layout.Padding)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SegmentedTabRow {
                 Tabs.entries.forEach { tab ->
@@ -196,12 +241,6 @@ private fun DisplayDetailPanel(
                     }
                 }
             }
-
-            Spacer(Modifier.weight(1F))
-
-            XOutlinedButton(onClick = { viewModel.startCast() }) {
-                Text("远程控制")
-            }
         }
 
         Spacer(Modifier.width(Dimens.Layout.Space))
@@ -212,6 +251,26 @@ private fun DisplayDetailPanel(
             Tabs.ACTIVITIES -> ActivityInfo(viewModel)
 
             Tabs.WINDOWS -> WindowInfo(viewModel)
+        }
+
+        /* 底栏：快捷操作 */
+        Text("快捷操作")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            XOutlinedButton(
+                onClick = { viewModel.startCast() }
+            ) { Text("远程控制") }
+
+            XOutlinedButton(
+                onClick = {
+                    runBlocking {
+                        viewModel.screenshot()
+                    }
+                }
+            ) { Text("截图") }
+
+            XOutlinedButton(
+                onClick = { }
+            ) { Text("录像") }
         }
     }
 }
@@ -399,7 +458,7 @@ private fun ActivityInfo(
 ) {
     val list = viewModel.activitiesFlow.collectAsStateWithLifecycle()
     LazyColumn(
-        verticalArrangement = spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(list.value, key = { it.componentName }) { activity ->
@@ -428,7 +487,7 @@ private fun WindowInfo(
 ) {
     val list = viewModel.windowsFlow.collectAsStateWithLifecycle()
     LazyColumn(
-        verticalArrangement = spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(list.value, key = { it.hash }) { window ->

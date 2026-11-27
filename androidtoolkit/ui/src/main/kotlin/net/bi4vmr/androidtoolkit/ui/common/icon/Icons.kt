@@ -1,10 +1,5 @@
 package net.bi4vmr.androidtoolkit.ui.common.icon
 
-import com.example.test.content_copy
-import com.example.test.content_paste
-import com.example.test.image
-import com.example.test.search
-
 /**
  * 矢量图标。
  *
@@ -33,6 +28,7 @@ object Icons {
 
     val Info = info
     val Warning = warning
+    val Error = error
     val Done = check
 
     val File = draft

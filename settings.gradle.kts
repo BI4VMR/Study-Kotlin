@@ -74,6 +74,7 @@ rootProject.name = "Study-Kotlin"
 // ----- 基础知识 -----
 include("M01_Overview:C00_Temporary")
 include("M01_Overview:C01_HelloWorld")
+include(":M01_Overview:C03_Adaptive")
 
 // ----- 基本语法 -----
 include(":M02_Syntax:C01_Struct")

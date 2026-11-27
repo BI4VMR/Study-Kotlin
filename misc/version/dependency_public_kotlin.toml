@@ -30,6 +30,7 @@ compose-material3 = "1.9.0"
 compose-materialIcons = "1.7.3"
 compose-resources = "1.12.2"
 compose-viewmodel = "2.10.0"
+compose-adaptive = "1.3.0"
 
 reorderable = "2.4.3"
 coil3 = "3.5.0"
@@ -169,6 +170,12 @@ compose-resources = { module = "org.jetbrains.compose.components:components-reso
 compose-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "compose-viewmodel" }
 # Compose・ViewModel・Navigation3
 compose-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "compose-viewmodel" }
+# Compose・Material3・自适应布局・核心（WindowSizeClass / WindowAdaptiveInfo）
+compose-adaptive-core = { module = "org.jetbrains.compose.material3.adaptive:adaptive", version.ref = "compose-adaptive" }
+# Compose・Material3・自适应布局・面板（ListDetailPaneScaffold / SupportingPaneScaffold）
+compose-adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "compose-adaptive" }
+# Compose・Material3・自适应布局・导航（ThreePaneScaffoldNavigator）
+compose-adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "compose-adaptive" }
 
 
 # < Reorderable >

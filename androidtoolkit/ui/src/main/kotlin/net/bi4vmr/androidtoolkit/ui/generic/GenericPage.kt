@@ -1,8 +1,29 @@
 package net.bi4vmr.androidtoolkit.ui.generic
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,6 +37,8 @@ import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
 import net.bi4vmr.androidtoolkit.ui.component.DeviceSelectPanel
 import net.bi4vmr.androidtoolkit.ui.component.InfoRow
+import net.bi4vmr.androidtoolkit.ui.component.PlaceHolder
+import net.bi4vmr.androidtoolkit.ui.component.PlaceHolderType
 import net.bi4vmr.androidtoolkit.ui.component.ToastManager
 import net.bi4vmr.androidtoolkit.ui.component.XOutlinedButton
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
@@ -24,50 +47,71 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
 import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.model.LocalDevice
 
+/**
+ * 页面：通用（主页）。
+ */
 @Composable
 fun GenericPage() {
     val globalStateManager: GlobalStateManager = LocalGlobalStateManager.current
-    val logicManager: LogicManager = globalStateManager.logicManager
 
     val viewModel: GenericPageViewModel = viewModel { GenericPageViewModel(globalStateManager) }
 
-    val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // 侧边栏占据整个面板的 40%，且最大不超过 350 dp。
+        val panelWidth = (maxWidth * 0.4F).coerceIn(200.dp, 350.dp)
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        DeviceSelectPanel(
-            globalStateManager = globalStateManager,
-            modifier = Modifier.fillMaxHeight().weight(0.4F)
-        )
+        Row(modifier = Modifier.fillMaxSize()) {
+            // 左栏：设备选择器
+            DeviceSelectPanel(Modifier.fillMaxHeight().width(panelWidth))
 
-        VerticalDivider()
+            VerticalDivider()
 
-        DevicePanel(
-            viewModel = viewModel,
-            globalStateManager = globalStateManager,
-            device = selectedDevice,
-            modifier = Modifier.fillMaxHeight().weight(0.6F)
-        )
+            // 右栏：设备信息面板
+            DeviceInfoPanel(
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxHeight().weight(1F)
+            )
+        }
     }
 }
 
 
+/**
+ * 设备信息面板。
+ */
 @Composable
-private fun DevicePanel(
+private fun DeviceInfoPanel(
     viewModel: GenericPageViewModel,
-    globalStateManager: GlobalStateManager,
-    device: ADBDevice?, modifier: Modifier = Modifier
+    modifier: Modifier = Modifier
 ) {
+    val globalStateManager: GlobalStateManager = LocalGlobalStateManager.current
     val logicManager: LogicManager = globalStateManager.logicManager
     val toastManager: ToastManager = globalStateManager.toastManager
 
+    val selectedDevice: ADBDevice? by logicManager.selectedDeviceFlow.collectAsStateWithLifecycle()
+
+    val device = selectedDevice
+    // 占位控件：未选中设备
     if (device == null) {
-        Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            Text("请在左侧选择一台设备", style = MaterialTheme.typography.bodyLarge)
-        }
+        PlaceHolder(
+            type = PlaceHolderType.Info,
+            info = "请选择设备",
+            modifier = modifier
+        )
         return
     }
 
-    val enabled = device.getState() == DeviceState.ONLINE
+    // 占位控件：设备未就绪
+    if (device.getState() != DeviceState.ONLINE) {
+        PlaceHolder(
+            type = PlaceHolderType.Warning,
+            info = "设备未就绪",
+            detail = "当前状态：${device.getState().name}",
+            modifier = modifier
+        )
+        return
+    }
+
 
     // 品牌
     val brand by produceState(initialValue = "-", device) {
@@ -147,13 +191,12 @@ private fun DevicePanel(
 
         Spacer(modifier = Modifier.weight(1F))
 
-        Text("常用操作")
+        Text("快捷操作")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             XOutlinedButton(
                 onClick = {
                     logicManager.selectedExecutorFlow.value.openShell(device.getSN())
-                },
-                enabled = enabled
+                }
             ) { Text("打开 Shell") }
 
             XOutlinedButton(
@@ -162,8 +205,7 @@ private fun DevicePanel(
                         val state = device.startRemoteControl()
                         toastManager.show("启动远程调试 -> $state")
                     }
-                },
-                enabled = enabled
+                }
             ) { Text("开启远程调试") }
         }
 
@@ -173,8 +215,7 @@ private fun DevicePanel(
                     runBlocking {
                         viewModel.getSelectedExecutor().root(device.getSN())
                     }
-                },
-                enabled = enabled
+                }
             ) { Text("Root") }
 
             XOutlinedButton(
@@ -182,8 +223,7 @@ private fun DevicePanel(
                     runBlocking {
                         viewModel.getSelectedExecutor().reboot(device.getSN())
                     }
-                },
-                enabled = enabled
+                }
             ) { Text("重启") }
         }
     }

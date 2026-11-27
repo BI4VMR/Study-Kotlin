@@ -13,6 +13,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
 import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import java.io.File
 
 /**
  * ADB 执行器公共能力接口。
@@ -259,6 +260,9 @@ interface ADBExecutor {
      */
     suspend fun getGlobalFocusInfo(sn: String): FocusInfo
 
+    suspend fun screenshot(sn: String, file: File, displayID: String): Boolean
+
+    suspend fun screenrecord(sn: String, file: File, displayID: String): Boolean
 
     /*
      * ----- 文件系统 -----

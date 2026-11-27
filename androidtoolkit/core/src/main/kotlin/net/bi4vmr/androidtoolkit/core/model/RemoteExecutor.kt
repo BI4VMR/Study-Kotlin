@@ -14,6 +14,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
 import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
 import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
 import net.bi4vmr.tool.kotlin.external.adb.proxy.client.ADBProxyClient
+import java.io.File
 
 /**
  * 远程执行器。
@@ -137,6 +138,18 @@ class RemoteExecutor(
 
     override suspend fun getGlobalFocusInfo(sn: String): FocusInfo =
         client.getGlobalFocusInfo(sn)
+
+    override suspend fun screenshot(
+        sn: String,
+        file: File,
+        displayID: String
+    ): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun screenrecord(sn: String, file: File, displayID: String): Boolean {
+        TODO("Not yet implemented")
+    }
 
 
     /*

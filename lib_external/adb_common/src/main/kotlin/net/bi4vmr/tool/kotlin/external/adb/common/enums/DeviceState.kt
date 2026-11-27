@@ -52,6 +52,8 @@ enum class DeviceState {
 
     /**
      * USB 连接已断开。
+     *
+     * 设备已移除但 DDMLib 仍持有引用，通常为瞬时状态，稍后设备将从列表中消失。
      */
     DISCONNECTED;
 }

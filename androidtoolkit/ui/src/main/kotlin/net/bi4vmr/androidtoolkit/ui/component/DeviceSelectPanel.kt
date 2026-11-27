@@ -3,12 +3,35 @@ package net.bi4vmr.androidtoolkit.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,9 +44,15 @@ import net.bi4vmr.androidtoolkit.core.model.ADBExecutor
 import net.bi4vmr.androidtoolkit.core.model.DummyDevice
 import net.bi4vmr.androidtoolkit.core.model.LocalExecutor
 import net.bi4vmr.androidtoolkit.core.model.RemoteExecutor
-import net.bi4vmr.androidtoolkit.ui.*
+import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.LocalGlobalStateManager
+import net.bi4vmr.androidtoolkit.ui.Res
 import net.bi4vmr.androidtoolkit.ui.common.Dimens
 import net.bi4vmr.androidtoolkit.ui.common.icon.Icons
+import net.bi4vmr.androidtoolkit.ui.deviceselectpanel_remote
+import net.bi4vmr.androidtoolkit.ui.deviceselectpanel_title
+import net.bi4vmr.androidtoolkit.ui.deviceselectpanel_unknown
+import net.bi4vmr.androidtoolkit.ui.state_connecting
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.DeviceState
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
@@ -39,9 +68,9 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun DeviceSelectPanel(
-    globalStateManager: GlobalStateManager,
     modifier: Modifier = Modifier
 ) {
+    val globalStateManager: GlobalStateManager = LocalGlobalStateManager.current
     val logicManager: LogicManager = globalStateManager.logicManager
     val executors: List<ADBExecutor> by logicManager.executorsFlow.collectAsStateWithLifecycle()
     val selectedExecutor: ADBExecutor by logicManager.selectedExecutorFlow.collectAsStateWithLifecycle()
@@ -379,7 +408,8 @@ fun StatusIndicator(
         DeviceState.ONLINE -> Color(0xFF4CAF50)
         DeviceState.UNAUTHORIZED -> Color(0xFFFFC107)
         DeviceState.BOOTLOADER -> Color(0xFF2196F3)
-        DeviceState.RECOVERY -> Color(0xFFFF5722)
+        DeviceState.RECOVERY -> Color(0xFFD22EFF)
+        DeviceState.OFFLINE -> Color(0xFFFF5722)
         else -> Color(0xFF9E9E9E)
     }
 

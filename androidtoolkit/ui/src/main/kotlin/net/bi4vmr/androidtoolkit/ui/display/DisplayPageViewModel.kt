@@ -6,11 +6,24 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.bi4vmr.androidtoolkit.core.LogicManager
 import net.bi4vmr.androidtoolkit.ui.GlobalStateManager
-import net.bi4vmr.tool.kotlin.external.adb.common.model.*
+import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
+import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import java.io.File
 
 /**
  * ViewModel : 显示页面。
@@ -337,5 +350,18 @@ class DisplayPageViewModel(
                 globalStateManager.windowManager.addWindow(record)
             }
         }
+    }
+
+    suspend fun screenshot() {
+        val display = getSelectedDisplay()
+        requireNotNull(display)
+
+       val result = logicManager.getSelectedExecutor()
+            .screenshot(
+                sn = display.sn,
+                file = File("/home/bi4vmr/Downloads/test.png"),
+                displayID = display.id
+            )
+        println(result)
     }
 }

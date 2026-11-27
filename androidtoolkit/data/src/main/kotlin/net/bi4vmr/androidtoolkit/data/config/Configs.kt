@@ -16,6 +16,10 @@ object Configs {
 
     val COMMON_NODE_NAME = stringPreferencesKey("common_node_name")
 
+    val COMMON_WINDOW_WIDTH = intPreferencesKey("common_window_width")
+
+    val COMMON_WINDOW_HEIGHT = intPreferencesKey("common_window_height")
+
     val ADB_EXEC_MODE = intPreferencesKey("adb_exec_mode")
 
     val ADB_EXEC_PATH_USER = stringPreferencesKey("adb_exec_path_user")

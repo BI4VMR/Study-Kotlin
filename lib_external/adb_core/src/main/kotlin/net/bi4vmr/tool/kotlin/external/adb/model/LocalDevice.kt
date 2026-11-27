@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * [getSN]、[getState]、[isOnline] 方法为内存读写，不必在子线程调用；其他方法耗时可能较长，建议在非 UI 线程调用。
  *
- * 除了引用 [ddmDevice] 的方法，其他方法均为 [ADBCLIUtil] 的快捷调用，例如：[ADBCLIUtil.screenshotAsPNG] 在此处可以针对当前设备调用，
+ * 除了引用 [ddmDevice] 的方法，其他方法均为 [ADBCLIUtil] 的快捷调用，例如：[ADBCLIUtil.screenshot] 在此处可以针对当前设备调用，
  * 省略 `sn` 参数。
  *
  * @author bi4vmr@outlook.com
@@ -419,7 +419,7 @@ data class LocalDevice(
      */
     @JvmOverloads
     fun screenshotAsPNG(displayID: String? = null): ByteArray? =
-        ADBCLIUtil.screenshotAsPNG(getSN(), displayID)
+        ADBCLIUtil.screenshot(getSN(), displayID)
 
     /**
      * 获取屏幕截图并保存至 PC 存储设备。
@@ -430,7 +430,7 @@ data class LocalDevice(
      */
     @JvmOverloads
     fun screenshotAsPNG(file: File, displayID: String? = null): Boolean =
-        ADBCLIUtil.screenshotAsPNG(getSN(), file, displayID)
+        ADBCLIUtil.screenshot(getSN(), file, displayID)
 
 
     /*

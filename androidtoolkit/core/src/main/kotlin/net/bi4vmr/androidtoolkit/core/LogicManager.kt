@@ -297,6 +297,10 @@ object LogicManager {
 
     val nodeNameFlow: Flow<String> = configManager.nodeNameFlow
 
+    val windowWidthFlow: Flow<Int> = configManager.windowWidthFlow
+
+    val windowHeightFlow: Flow<Int> = configManager.windowHeightFlow
+
     val adbExecFileModeFlow: Flow<ADBExecFileMode> = configManager.adbExecFileModeFlow
 
     val proxyStartOnInitFlow: Flow<Boolean> = configManager.proxyStartOnInitFlow
@@ -575,6 +579,22 @@ object LogicManager {
         taskScope.launch {
             configManager.setNodeName(name)
         }
+    }
+
+    /**
+     * 异步保存窗口尺寸。
+     */
+    fun setWindowSize(width: Int, height: Int) {
+        taskScope.launch {
+            configManager.setWindowSize(width, height)
+        }
+    }
+
+    /**
+     * 同步保存窗口尺寸，用于程序退出前确保数据落盘。
+     */
+    suspend fun saveWindowSizeNow(width: Int, height: Int) {
+        configManager.setWindowSize(width, height)
     }
 
     fun setADBExecMode(mode: ADBExecFileMode) {

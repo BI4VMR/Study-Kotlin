@@ -28,6 +28,10 @@ dependencies {
     implementation(privateLibJava.common.base)
 
 
+    /* 外部组件 */
+    implementation(libJava.slf4j.api)
+
+
     /* 测试组件 */
     // JUnit5 BOM 版本配置文件
     testImplementation(platform(libJava.junit5.bom))
