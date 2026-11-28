@@ -16,7 +16,6 @@ import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminals
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
-import java.nio.charset.StandardCharsets
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -68,23 +67,23 @@ object ADBCLIUtil {
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @return 状态码。若出现异常则返回 `-1`。
+     * @return 状态码。特殊值 `-1` 表示进程启动失败，例如：ADB 可执行文件不存在。
      */
     @JvmStatic
     fun runForStatus(sn: String, command: String): Int {
         val optimizedCommand = buildCommand(sn, command)
-        return CLIUtil.runForStatus(optimizedCommand)
+        return CLIUtil.runForStatus(*optimizedCommand)
     }
 
     /**
-     * 执行 ADB Shell 命令并获取文本消息。
+     * 执行 ADB Shell 命令并获取文本输出。
      * <p>
-     * 执行命令并阻塞当前线程，将错误输出与标准输出合并，然后读取所有输出数据并转为文本。
+     * 阻塞调用线程，直到目标进程完成，返回以行分隔的输出文本。
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
-     * @return 命令输出文本。若出现异常则返回空值。
+     * @return 命令输出文本，按行分隔。空值表示进程启动失败，例如：命令不存在。
      */
     @JvmStatic
     @JvmOverloads
@@ -94,39 +93,42 @@ object ADBCLIUtil {
         redirectError: Boolean = false
     ): List<String>? {
         val optimizedCommand = buildCommand(sn, command)
-        return CLIUtil.runForLines(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
+        // Android 控制台始终以 UTF-8 编码。
+        return CLIUtil.runForLines(optimizedCommand, redirectError, Charsets.UTF_8.name())
     }
 
     /**
-     * 执行 ADB Shell 命令并获取文本消息。
+     * 执行 ADB Shell 命令并获取文本输出。
      * <p>
-     * 执行命令并阻塞当前线程，将错误输出与标准输出合并，然后读取所有输出数据并转为文本。
+     * 阻塞调用线程，直到目标进程完成，返回输出文本（可能带有换行符）。
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
      * @param[redirectError] 是否将错误输出重定向到标准输出。默认为 `true`。
-     * @return 命令输出文本。若出现异常则返回空值。
+     * @return 命令输出文本。空值表示进程启动失败，例如：命令不存在。
      */
     @JvmStatic
     @JvmOverloads
     fun runForText(sn: String, command: String, redirectError: Boolean = false): String? {
         val optimizedCommand = buildCommand(sn, command)
-        return CLIUtil.runForText(optimizedCommand, redirectError, StandardCharsets.UTF_8.name())
+        // Android 控制台始终以 UTF-8 编码。
+        return CLIUtil.runForText(optimizedCommand, redirectError, Charsets.UTF_8.name())
     }
 
     /**
-     * 执行 ADB Shell 命令并获取错误消息。
+     * 执行 ADB Shell 命令并获取错误输出。
      * <p>
-     * 执行命令并阻塞当前线程，读取错误输出并转为文本。
+     * 阻塞调用线程，直到目标进程完成，返回错误输出文本（可能带有换行符）。
      *
      * @param[sn] 设备序列号。
      * @param[command] 命令语句。
-     * @return 命令的错误输出文本。若出现异常则返回空值。
+     * @return 命令输出文本。空值表示进程启动失败，例如：命令不存在。
      */
     @JvmStatic
     fun runForError(sn: String, command: String): String? {
         val optimizedCommand = buildCommand(sn, command)
-        return CLIUtil.runForError(optimizedCommand, StandardCharsets.UTF_8.name())
+        // Android 控制台始终以 UTF-8 编码。
+        return CLIUtil.runForError(optimizedCommand, Charsets.UTF_8.name())
     }
 
     /**
@@ -163,7 +165,7 @@ object ADBCLIUtil {
     @JvmStatic
     fun root(sn: String): Int =
         // TODO adb root失败也会返回成功，需要根据返回值判断
-        CLIUtil.runForStatus(arrayOf("adb", "-s", sn, "root"))
+        CLIUtil.runForStatus("adb", "-s", sn, "root")
 
     /**
      * 重启。
@@ -688,7 +690,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun remount(sn: String): Boolean {
-        val status = CLIUtil.runForStatus(arrayOf("adb", "-s", sn, "remount"))
+        val status = CLIUtil.runForStatus("adb", "-s", sn, "remount")
         return CLIUtil.isSuccess(status)
     }
 

@@ -236,6 +236,18 @@ private fun ControlPanel(
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         XOutlinedButton(
             onClick = {
+                // TODO
+            }
+        ) { Text("远程控制") }
+
+        XOutlinedButton(
+            onClick = {
+                // TODO
+            }
+        ) { Text("截屏") }
+
+        XOutlinedButton(
+            onClick = {
                 logicManager.selectedExecutorFlow.value.openShell(device.getSN())
             }
         ) { Text("打开 Shell") }
@@ -268,7 +280,9 @@ private fun ControlPanel(
                 }
             }
         ) { Text("Remount") }
+    }
 
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         XOutlinedButton(
             onClick = {
                 runBlocking {
@@ -280,17 +294,17 @@ private fun ControlPanel(
         XOutlinedButton(
             onClick = {
                 runBlocking {
-                    viewModel.getSelectedExecutor().reboot(device.getSN())
+                    viewModel.getSelectedExecutor().reboot(device.getSN(), "recovery")
                 }
             }
-        ) { Text("重启至FB") }
+        ) { Text("重启至 Recovery") }
 
         XOutlinedButton(
             onClick = {
                 runBlocking {
-                    viewModel.getSelectedExecutor().reboot(device.getSN())
+                    viewModel.getSelectedExecutor().reboot(device.getSN(), "bootloader")
                 }
             }
-        ) { Text("重启至BL") }
+        ) { Text("重启至 Bootloader") }
     }
 }

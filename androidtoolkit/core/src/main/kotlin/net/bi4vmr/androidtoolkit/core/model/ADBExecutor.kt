@@ -89,7 +89,7 @@ interface ADBExecutor {
      * 重启。
      *
      * @param[sn] 设备序列号。
-     * @param[option] 附加命令，可以携带 `recovery`、`fastboot`、`bootloader` 等选项，默认为空。
+     * @param[option] 附加命令，可以携带 `recovery`、`bootloader` 等选项，默认为空。
      * @return 状态码。若出现异常则返回 `-1`。
      */
     suspend fun reboot(sn: String, option: String = ""): Int

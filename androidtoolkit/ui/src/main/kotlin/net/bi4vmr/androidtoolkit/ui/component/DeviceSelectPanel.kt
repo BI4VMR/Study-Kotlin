@@ -209,20 +209,20 @@ private fun DeviceList(
                         )
                     }
                 }
+            }
+        }
 
-                /* 按钮：连接 TCP/IP 设备 */
-                if (executor is LocalExecutor) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        XOutlinedButton(
-                            onClick = { connectDeviceDialogState = true }
-                        ) {
-                            Icon(Icons.Add, null, Modifier.size(Dimens.Icon.Small))
-                            Text("添加远程设备")
-                        }
-                    }
+        /* 按钮：连接 TCP/IP 设备 */
+        if (executor is LocalExecutor) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                XOutlinedButton(
+                    onClick = { connectDeviceDialogState = true }
+                ) {
+                    Icon(Icons.Add, null, Modifier.size(Dimens.Icon.Small))
+                    Text("添加远程设备")
                 }
             }
         }
