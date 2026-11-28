@@ -1,13 +1,8 @@
 package net.bi4vmr.androidtoolkit.core.model
 
 import com.android.ddmlib.FileListingService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.bi4vmr.androidtoolkit.core.common.ExecutorType
 import net.bi4vmr.tool.java.common.base.id.IDUtil
 import net.bi4vmr.tool.kotlin.external.adb.ADBController
@@ -15,13 +10,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListen
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBCLIUtil
 import net.bi4vmr.tool.kotlin.external.adb.ktx.ADBObserver
 import java.io.File
@@ -214,6 +203,8 @@ object LocalExecutor : ADBExecutor {
         device.pushFile(local, remote, refreshMediaDB, listener)
     }
 
+    override suspend fun remount(sn: String): Boolean =
+        ADBCLIUtil.remount(sn)
 
     /*
      * ----- 软件包管理 -----

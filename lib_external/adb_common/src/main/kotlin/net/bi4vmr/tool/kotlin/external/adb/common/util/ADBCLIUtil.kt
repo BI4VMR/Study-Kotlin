@@ -8,12 +8,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.constants.Intents
 import net.bi4vmr.tool.kotlin.external.adb.common.constants.Propertys
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.AndroidVersion
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import net.bi4vmr.tool.kotlin.external.adb.common.util.ADBExecutableHelper.getExecutableName
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.Terminal
 import net.bi4vmr.tool.kotlin.gui.interaction.terminal.TerminalUtil
@@ -167,7 +162,8 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun root(sn: String): Int =
-        runForStatus(sn, "root")
+        // TODO adb root失败也会返回成功，需要根据返回值判断
+        CLIUtil.runForStatus(arrayOf("adb", "-s", sn, "root"))
 
     /**
      * 重启。
@@ -692,7 +688,7 @@ object ADBCLIUtil {
      */
     @JvmStatic
     fun remount(sn: String): Boolean {
-        val status = runForStatus(sn, "remount")
+        val status = CLIUtil.runForStatus(arrayOf("adb", "-s", sn, "remount"))
         return CLIUtil.isSuccess(status)
     }
 

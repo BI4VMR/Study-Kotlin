@@ -2,12 +2,8 @@
 
 package net.bi4vmr.androidtoolkit.app
 
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -70,9 +66,13 @@ fun main() {
                 exitApplication()
             }
         ) {
+            val f = LocalDensity.current.density
+            println("fontScale -> $f")
             // 限制拖拽时窗口最小尺寸
             LaunchedEffect(Unit) {
-                window.minimumSize = Dimension(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
+                window.minimumSize =
+                    Dimension((MIN_WINDOW_WIDTH * f).toInt(), (MIN_WINDOW_HEIGHT * f).toInt())
+                        .also { println("Dimension -> $it") }
             }
 
             // 监听窗口尺寸变化并持久化；防抖，避免拖拽过程中频繁写入配置文件。

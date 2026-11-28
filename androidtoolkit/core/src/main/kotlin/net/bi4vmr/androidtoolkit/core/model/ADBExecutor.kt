@@ -6,13 +6,7 @@ import net.bi4vmr.tool.kotlin.external.adb.common.callback.ADBFileTransferListen
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ConnectionType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.PackageType
 import net.bi4vmr.tool.kotlin.external.adb.common.enums.ServiceState
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ADBDevice
-import net.bi4vmr.tool.kotlin.external.adb.common.model.ActivityInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayDensity
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplayInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.DisplaySize
-import net.bi4vmr.tool.kotlin.external.adb.common.model.FocusInfo
-import net.bi4vmr.tool.kotlin.external.adb.common.model.WindowInfo
+import net.bi4vmr.tool.kotlin.external.adb.common.model.*
 import java.io.File
 
 /**
@@ -284,6 +278,13 @@ interface ADBExecutor {
         refreshMediaDB: Boolean = true,
         listener: ADBFileTransferListener? = null
     )
+
+    /**
+     * 将系统分区挂载为可读写。
+     *
+     * @return `true` 表示操作成功；`false` 表示操作失败。
+     */
+    suspend fun remount(sn: String): Boolean
 
 
     /*
